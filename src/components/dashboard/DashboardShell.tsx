@@ -27,18 +27,16 @@ export default function DashboardShell({ user }: DashboardShellProps) {
     router.push('/');
   };
 
-  // Mock data for now
-  const mockChallenge = {
-    firm: 'Tradeify',
-    accountSize: 50000,
-    dailyPnl: 340,
-    totalPnl: 1247,
-    drawdownUsed: 24,
-    maxDrawdown: 4,
-    dailyLimitRemaining: 200,
-  };
-
-  const isProfitable = mockChallenge.dailyPnl >= 0;
+  // Mock data removed - showing clean new user experience
+  // const mockChallenge = {
+  //   firm: 'Tradeify',
+  //   accountSize: 50000,
+  //   dailyPnl: 340,
+  //   totalPnl: 1247,
+  //   drawdownUsed: 24,
+  //   maxDrawdown: 4,
+  //   dailyLimitRemaining: 200,
+  // };
 
   return (
     <div className="min-h-screen bg-bg-primary pb-20">
@@ -65,83 +63,18 @@ export default function DashboardShell({ user }: DashboardShellProps) {
           Welcome back, <span className="text-content-primary">{user.email}</span>
         </div>
 
-        {/* Challenge Card */}
-        <div className="card">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <div className="text-content-tertiary text-sm">Challenge</div>
-              <div className="font-display font-bold text-lg">
-                {mockChallenge.firm} ${(mockChallenge.accountSize / 1000)}K
-              </div>
-            </div>
-            <div className="px-3 py-1 bg-profit/10 text-profit text-xs font-medium rounded-full">
-              Active
-            </div>
+        {/* No Challenge Yet - Clean State */}
+        <div className="card text-center py-12">
+          <div className="w-16 h-16 bg-accent-cyan/10 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Activity className="w-8 h-8 text-accent-cyan" />
           </div>
-
-          {/* Daily P&L */}
-          <div className="mb-6">
-            <div className="text-content-tertiary text-sm mb-1">Today</div>
-            <div className="flex items-baseline gap-2">
-              <span
-                className={`font-data text-4xl font-bold ${
-                  isProfitable ? 'text-profit' : 'text-loss'
-                }`}
-              >
-                {isProfitable ? '+' : ''}${mockChallenge.dailyPnl.toLocaleString()}
-              </span>
-              <span className="text-content-tertiary flex items-center gap-1">
-                {isProfitable ? (
-                  <TrendingUp className="w-4 h-4 text-profit" />
-                ) : (
-                  <TrendingDown className="w-4 h-4 text-loss" />
-                )}
-                {((mockChallenge.dailyPnl / mockChallenge.accountSize) * 100).toFixed(2)}%
-              </span>
-            </div>
-          </div>
-
-          {/* Drawdown Bar */}
-          <div className="mb-4">
-            <div className="flex items-center justify-between text-sm mb-2">
-              <span className="text-content-tertiary">Drawdown</span>
-              <span className="font-data text-content-secondary">
-                {mockChallenge.drawdownUsed}% / {mockChallenge.maxDrawdown}%
-              </span>
-            </div>
-            <div className="h-2 bg-bg-tertiary rounded-full overflow-hidden">
-              <div
-                className="h-full bg-gradient-to-r from-profit to-warning rounded-full transition-all duration-500"
-                style={{
-                  width: `${(mockChallenge.drawdownUsed / mockChallenge.maxDrawdown) * 100}%`,
-                }}
-              />
-            </div>
-          </div>
-
-          {/* Daily Limit Warning */}
-          <div className="flex items-center gap-2 p-3 bg-warning/10 border border-warning/30 rounded-lg">
-            <AlertTriangle className="w-4 h-4 text-warning flex-shrink-0" />
-            <span className="text-sm text-warning">
-              ${mockChallenge.dailyLimitRemaining} remaining on daily limit
-            </span>
-          </div>
-        </div>
-
-        {/* Stats Grid */}
-        <div className="grid grid-cols-3 gap-4">
-          <div className="card text-center">
-            <div className="text-content-tertiary text-xs mb-1">Win Rate</div>
-            <div className="font-data text-xl font-bold">67%</div>
-          </div>
-          <div className="card text-center">
-            <div className="text-content-tertiary text-xs mb-1">Avg Win</div>
-            <div className="font-data text-xl font-bold text-profit">$85</div>
-          </div>
-          <div className="card text-center">
-            <div className="text-content-tertiary text-xs mb-1">Trades</div>
-            <div className="font-data text-xl font-bold">23</div>
-          </div>
+          <h3 className="font-display font-bold text-lg mb-2">No Active Challenge</h3>
+          <p className="text-content-tertiary text-sm mb-6 max-w-md mx-auto">
+            Connect your prop firm account to start tracking your challenge progress.
+          </p>
+          <button className="btn-primary">
+            Connect Broker
+          </button>
         </div>
 
         {/* Quick Actions */}

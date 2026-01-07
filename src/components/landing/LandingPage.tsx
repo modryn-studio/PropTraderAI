@@ -122,29 +122,29 @@ function TerminalDemo() {
   );
 }
 
-// Stats Component
-function Stats() {
-  const stats = [
-    { value: '1,247', label: 'Traders' },
-    { value: '64%', label: 'Pass Rate' },
-    { value: '$2.4M', label: 'In Payouts' },
-  ];
+// Stats Component - COMMENTED OUT (demo data)
+// function Stats() {
+//   const stats = [
+//     { value: '1,247', label: 'Traders' },
+//     { value: '64%', label: 'Pass Rate' },
+//     { value: '$2.4M', label: 'In Payouts' },
+//   ];
 
-  return (
-    <div className="grid grid-cols-3 gap-4 max-w-md mx-auto">
-      {stats.map((stat) => (
-        <div key={stat.label} className="text-center">
-          <div className="font-data text-2xl sm:text-3xl font-bold text-content-primary">
-            {stat.value}
-          </div>
-          <div className="text-xs sm:text-sm text-content-tertiary mt-1">
-            {stat.label}
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
+//   return (
+//     <div className="grid grid-cols-3 gap-4 max-w-md mx-auto">
+//       {stats.map((stat) => (
+//         <div key={stat.label} className="text-center">
+//           <div className="font-data text-2xl sm:text-3xl font-bold text-content-primary">
+//             {stat.value}
+//           </div>
+//           <div className="text-xs sm:text-sm text-content-tertiary mt-1">
+//             {stat.label}
+//           </div>
+//         </div>
+//       ))}
+//     </div>
+//   );
+// }
 
 // Feature Cards
 function Features() {
@@ -267,14 +267,14 @@ export default function LandingPage() {
             Ready to execute. <span className="text-accent-cyan">No code required.</span>
           </motion.p>
 
-          {/* Stats */}
-          <motion.div
+          {/* Stats - COMMENTED OUT (demo data) */}
+          {/* <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.4 }}
           >
             <Stats />
-          </motion.div>
+          </motion.div> */}
         </div>
       </section>
 
