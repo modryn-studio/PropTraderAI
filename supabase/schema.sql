@@ -265,47 +265,14 @@ CREATE POLICY "Users can CRUD own broker connections" ON public.broker_connectio
 CREATE TABLE public.prop_firms (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   name TEXT NOT NULL UNIQUE,
-  slug TEXT NOT NULL UNIQUE,
-  account_sizes JSONB NOT NULL,
-  daily_loss_limit_percent DECIMAL NOT NULL,
-  max_drawdown_percent DECIMAL NOT NULL,
-  profit_target_percent DECIMAL,
-  profit_split DECIMAL,
-  trading_days_required INTEGER,
-  allowed_instruments JSONB DEFAULT '[]',
-  trading_hours JSONB DEFAULT '{}',
-  rules JSONB DEFAULT '{}',
   website_url TEXT,
-  logo_url TEXT,
-  is_active BOOLEAN DEFAULT true,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Insert Tradeify as first prop firm
-INSERT INTO public.prop_firms (
-  name, 
-  slug, 
-  account_sizes, 
-  daily_loss_limit_percent, 
-  max_drawdown_percent,
-  profit_target_percent,
-  profit_split,
-  trading_days_required,
-  allowed_instruments,
-  rules
-) VALUES (
-  'Tradeify',
-  'tradeify',
-  '[50000, 100000, 150000, 250000]',
-  2.0,
-  4.0,
-  6.0,
-  80.0,
-  5,
-  '["ES", "NQ", "MES", "MNQ", "YM", "RTY", "CL", "GC"]',
-  '{"max_contracts": {"50000": 5, "100000": 10, "150000": 15, "250000": 25}, "trailing_drawdown": true}'
-);
+-- Insert Tradeify as first prop firm (simple version)
+INSERT INTO public.prop_firms (name, website_url) VALUES 
+  ('Tradeify', 'https://tradeify.co');
 
 -- Public read access for prop firms
 ALTER TABLE public.prop_firms ENABLE ROW LEVEL SECURITY;
