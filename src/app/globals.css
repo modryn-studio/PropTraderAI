@@ -1,27 +1,135 @@
+@import '@fontsource/inter/400.css';
+@import '@fontsource/inter/500.css';
+@import '@fontsource/inter/600.css';
+@import '@fontsource/inter/700.css';
+@import '@fontsource/jetbrains-mono/400.css';
+@import '@fontsource/jetbrains-mono/500.css';
+@import '@fontsource/jetbrains-mono/700.css';
+@import '@fontsource/space-mono/400.css';
+@import '@fontsource/space-mono/700.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@media (prefers-color-scheme: dark) {
+@layer base {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    /* Base - Terminal Black */
+    --bg-primary: #0a0e14;
+    --bg-secondary: #12171f;
+    --bg-tertiary: #1a2029;
+
+    /* Borders */
+    --line-subtle: #1f2633;
+    --line-default: #2d3544;
+    --line-strong: #3d4555;
+
+    /* Text */
+    --content-primary: #e6edf3;
+    --content-secondary: #8b949e;
+    --content-tertiary: #6e7681;
+
+    /* Accent */
+    --accent-cyan: #00bbd4;
+    --accent-purple: #8b5cf6;
+    --accent-blue: #3b82f6;
+
+    /* Financial */
+    --profit-green: #00897b;
+    --loss-red: #b5323d;
+  }
+
+  html {
+    @apply bg-bg-primary text-content-primary antialiased;
+  }
+
+  body {
+    @apply font-body min-h-screen;
+  }
+
+  /* Custom scrollbar for dark theme */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-bg-primary;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-line rounded-full;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-line-strong;
   }
 }
 
-body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+@layer components {
+  /* Terminal-style input */
+  .terminal-input {
+    @apply bg-bg-primary border border-line rounded-lg px-4 py-3;
+    @apply font-data text-content-primary placeholder:text-content-tertiary;
+    @apply focus:outline-none focus:border-accent-cyan focus:ring-1 focus:ring-accent-cyan/20;
+    @apply transition-all duration-200;
+  }
+
+  /* Glow button */
+  .btn-primary {
+    @apply bg-accent-cyan text-bg-primary font-medium px-6 py-3 rounded-lg;
+    @apply hover:shadow-glow-cyan hover:brightness-110;
+    @apply active:scale-95 transition-all duration-150;
+  }
+
+  .btn-secondary {
+    @apply bg-bg-tertiary text-content-primary border border-line;
+    @apply font-medium px-6 py-3 rounded-lg;
+    @apply hover:border-accent-cyan/50 hover:text-accent-cyan;
+    @apply active:scale-95 transition-all duration-150;
+  }
+
+  /* Card styles */
+  .card {
+    @apply bg-bg-secondary border border-line rounded-xl p-6;
+  }
+
+  .card-elevated {
+    @apply bg-bg-tertiary border border-line-strong rounded-xl p-6;
+  }
+
+  /* Data display */
+  .data-positive {
+    @apply text-profit font-data;
+  }
+
+  .data-negative {
+    @apply text-loss font-data;
+  }
+
+  .data-neutral {
+    @apply text-content-secondary font-data;
+  }
+
+  /* Terminal prompt */
+  .terminal-prompt::before {
+    content: '> ';
+    @apply text-accent-cyan;
+  }
 }
 
 @layer utilities {
-  .text-balance {
-    text-wrap: balance;
+  /* Text gradient */
+  .text-gradient {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-accent-cyan to-accent-purple;
+  }
+
+  /* Safe area padding for mobile */
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .pt-safe {
+    padding-top: env(safe-area-inset-top);
   }
 }
