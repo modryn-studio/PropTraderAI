@@ -2,8 +2,22 @@
 ## Elite UI/UX System for Mobile-First Trading Platform
 
 **Created:** January 7, 2026  
-**Version:** 1.0  
-**Philosophy:** "Terminal Luxe" meets "Financial Brutalism"
+**Version:** 1.1  
+**Philosophy:** "Vibe-First Simplicity" evolving to "Terminal Luxe"
+
+> **⚠️ IMPORTANT:** This document implements the strategic direction defined in `PropTraderAI_UX_Philosophy_Roadmap.md`. When in conflict, UX Philosophy takes precedence.
+
+---
+
+## 📋 Design Evolution by Phase
+
+| Phase | Design Direction | Aesthetic | Information Density |
+|-------|------------------|-----------|--------------------|
+| **Phase 1** | Vibe-first simplicity | Notion-like clean cards | One metric per card |
+| **Phase 2** | Progressive power | Stripe-like professional | Multi-metric cards |
+| **Phase 3** | Terminal luxe | Bloomberg-inspired | Dense data grids |
+
+**Current Focus:** Phase 1 (Weeks 1-8) - Vibe-First Simplicity
 
 ---
 
@@ -98,10 +112,11 @@ Not Ugly = Modern spacing + Subtle animations + Quality typography
 
 ### Core Principles
 
-**1. Information Supremacy**
-- Data density is a feature, not a bug
-- Every pixel earns its place
-- No decorative bullshit
+**1. Vibe-First Simplicity (Phase 1 Priority)**
+- One action per screen
+- Hide complexity by default
+- Show only what's essential for decision-making
+- Information density comes in Phase 2+
 
 **2. Speed as Aesthetic**
 - Instant feedback everywhere
@@ -109,11 +124,11 @@ Not Ugly = Modern spacing + Subtle animations + Quality typography
 - Optimistic UI updates
 - Perceived performance > actual performance
 
-**3. Monospace Honesty**
-- Financial data = code = terminal output
-- Monospace fonts for numbers/data
-- Proportional fonts for prose
-- NO mixing within the same context
+**3. Monospace Where It Matters**
+- P&L numbers only in monospace (JetBrains Mono)
+- Everything else in Inter (readable, friendly)
+- Phase 1: Minimal monospace usage
+- Phase 2+: Expand to more data displays
 
 **4. Dark-First, Always**
 - Traders work at night
@@ -127,10 +142,11 @@ Not Ugly = Modern spacing + Subtle animations + Quality typography
 - Loading states tell a story
 - Errors feel human, not hostile
 
-**6. Progressive Disclosure**
-- Show simple by default, reveal complexity on demand
-- Advanced features don't clutter the UI
-- Power features hidden until needed
+**6. Progressive Disclosure (Matches UX Phases)**
+- Phase 1: Hide all complexity (no parsed logic, no technical indicators)
+- Phase 2: "Advanced Mode" toggle unlocks power features
+- Phase 3: Full API access and data exports
+- Default is always simple, power is always opt-in
 
 **7. Confidence Through Clarity**
 - Users trust the app because it's honest and clear
@@ -438,36 +454,47 @@ Buttons:        Medium weight - confident but not shouty
 
 ## 🎯 Key UI Patterns & Examples
 
-### Pattern 1: The Dashboard - "Everything Critical in One Glance"
+### Pattern 1: The Dashboard - "One Thing at a Time"
 
-**Goal:** Show everything critical in one glance, expandable for detail
+**Phase 1 Goal:** Show only essential info, one card at a time (scrollable)
 
 ```
 ┌─────────────────────────────────────┐
-│ Challenge: Topstep 50K              │
+│ Today's Performance                 │
 │                                     │
-│ Today: +$340 ↑ 12.4%               │
-│ Drawdown: ████░░░░░░ 24% / 100%    │  <- Visual bar
+│ $340                                │  <- Big, bold
+│ 12.4% gain                          │  <- Simple context
+└─────────────────────────────────────┘
+
+┌─────────────────────────────────────┐
+│ Challenge Status                    │
 │                                     │
-│ Daily Limit: $200 remaining         │  <- Clear number
+│ Daily Limit: $200 left              │  <- Clear language
+│ ████░░░░░░ 24%                      │  <- Simple bar
+└─────────────────────────────────────┘
+
+┌─────────────────────────────────────┐
+│ Your Strategy                       │
 │                                     │
-│ [2 Active Strategies]               │  <- Expandable
+│ EMA Pullback Strategy               │
+│ ✓ Active                            │  <- Status only
+│                                     │
+│ [No parsed logic shown]             │  <- Hidden until Phase 2
 └─────────────────────────────────────┘
 ```
 
-**Example - Progressive Disclosure:**
-```
-Default view:
-- Current P&L: +$247
-- Drawdown: 12% of limit
-- Active strategies: 2
+**Phase 1 Rules:**
+- One metric per card
+- No dense grids
+- Scroll to see more (don't cram)
+- "Active strategies: 2" NOT detailed breakdown
 
-Tap to expand:
-- Detailed breakdown by strategy
-- Individual trade history
-- Risk metrics
-- Time-based analytics
-```
+**Phase 2 Progressive Disclosure:**
+- Advanced Mode toggle reveals:
+  - Parsed strategy logic
+  - Multi-metric cards
+  - Detailed breakdowns
+  - Indicator values
 
 ### Pattern 2: Natural Language Input - "Chat-Like but Structured"
 
@@ -498,10 +525,24 @@ AI asks naturally:
 Not: [?] tooltip on every single field
 ```
 
-### Pattern 3: Data-Dense Cards - "Professional Information Density"
+### Pattern 3: Data-Dense Cards - "Phase 2+ Advanced Mode"
 
-**Goal:** Professional information density without visual clutter
+**⚠️ NOT FOR PHASE 1** - This pattern appears only in Advanced Mode
 
+**Goal:** Professional information density for power users
+
+**Phase 1 Version (Simple):**
+```
+┌─────────────────────────────────────┐
+│ EMA Pullback Strategy          ✓    │
+│                                     │
+│ Active and watching the market      │
+│                                     │
+│ [Parsed logic hidden]               │
+└─────────────────────────────────────┘
+```
+
+**Phase 2 Version (Advanced Mode Unlocked):**
 ```
 ┌─────────────────────────────────────┐
 │ EMA Pullback Strategy          [•]  │  <- Status indicator
@@ -546,10 +587,20 @@ Not: "Select risk level: Low | Medium | High" (vague)
 
 **Goal:** Every action gets immediate visual response
 
+**Phase 1 Version (Conversational):**
+```
+User finishes describing strategy →
+Immediate: "Got it. Give us a moment..." (0.5s)
+Then: "We'll watch for your setup." ✓
+Then: Simple strategy card appears
+[No backtest results shown]
+```
+
+**Phase 2 Version (Technical):**
 ```
 User finishes describing strategy →
 Immediate: "Parsing your strategy..." (0.5s)
-Then: Strategy card appears with animation
+Then: Strategy card with parsed logic
 Then: Backtest results load progressively
 ```
 
@@ -697,6 +748,229 @@ export function AlertBanner({
 
 ---
 
+## 🎯 Phase 1 Component Guidelines
+
+### What to Show in Phase 1
+
+✅ **SHOW:**
+- Challenge progress (simple bars)
+- P&L summary (today, this week)
+- AI alerts ("You're close to your limit")
+- Trade history (what happened, basic details)
+- Strategy status (active/paused)
+
+❌ **HIDE (Until Phase 2):**
+- Parsed strategy logic
+- Technical indicators/values
+- Order flow details
+- WebSocket connection status
+- Backtest results
+- Win rate breakdowns
+- Setup grades
+- Tilt score details
+
+### Copy Guidelines for Phase 1
+
+| ❌ Don't Say | ✅ Say Instead |
+|-------------|---------------|
+| "Strategy parsed successfully" | "Got it. We'll watch for your setup." |
+| "WebSocket connection established" | "Connected to your account" |
+| "Tilt score: 72%" | "You might be trading emotionally right now" |
+| "Daily loss limit: 78% utilized" | "You're close to your daily limit" |
+| "Execution engine active" | "We're watching the market for you" |
+
+### Trader-Specific Messaging (AA Sponsor Voice)
+
+**Core Principle:** PropTraderAI is an AA sponsor, not a wellness app. Direct, not gentle. Data as mirror. No shame, just facts.
+
+| Situation | ❌ Generic App | ✅ PropTraderAI |
+|-----------|---------------|----------------|
+| **Approaching daily limit** | "You're getting close to your limit 😊" | "87% of daily limit used. One more loss and you're done for the day." |
+| **Revenge trade detected** | "Are you sure about this trade?" | "This looks like revenge. Same direction, 2x size, 4 minutes after loss. Your call — but I'm logging this." |
+| **Win streak** | "Amazing! You're on fire! 🔥" | "5 wins straight. This is when most traders blow it. Stick to your sizing." |
+| **Challenge passed** | "Congratulations!!! 🎉🎉🎉" | "Challenge passed. 23 days. 47 trades. 3 near-violations prevented. You did the work." |
+
+---
+
+## 🛡️ Friction Components (Phase 2)
+
+> **Key Insight:** For traders, friction is a feature, not a bug. Make bad decisions harder.
+
+### 1. Revenge Trade Countdown
+
+**When to show:** Detected revenge trade (trade <10min after loss + increased size)
+
+```jsx
+// components/trading/RevengeTradeFriction.tsx
+export function RevengeTradeFriction({ 
+  countdown, 
+  historicalPattern,
+  onWait,
+  onProceed 
+}) {
+  const [confirmText, setConfirmText] = useState('');
+  const isConfirmed = confirmText.toLowerCase() === 'i understand this is revenge';
+  
+  return (
+    <div className="bg-warning/10 border-2 border-warning rounded-lg p-6 animate-in fade-in duration-300">
+      {/* Header */}
+      <div className="flex items-center gap-2 mb-3">
+        <AlertTriangle className="w-6 h-6 text-warning animate-pulse" />
+        <h3 className="text-warning font-semibold text-lg">Revenge Trade Detected</h3>
+      </div>
+      
+      {/* Pattern Mirror */}
+      <div className="bg-bg-tertiary rounded-md p-4 mb-4">
+        <p className="text-sm text-secondary mb-2">
+          Same direction, 2x size, 4 minutes after loss.
+        </p>
+        <p className="text-sm text-tertiary">
+          You've done this <span className="text-warning font-semibold">{historicalPattern.count} times</span> this month.
+          Total losses: <span className="font-mono text-loss">${historicalPattern.totalLoss}</span>
+        </p>
+      </div>
+      
+      {/* Countdown */}
+      {countdown > 0 ? (
+        <div className="text-center py-6">
+          <div className="text-6xl font-mono text-warning mb-2">
+            {countdown}
+          </div>
+          <p className="text-xs text-tertiary">seconds until order can be placed</p>
+        </div>
+      ) : (
+        /* Confirmation Input */
+        <div className="space-y-4">
+          <div>
+            <label className="text-xs text-tertiary block mb-2">
+              Type the phrase below to proceed:
+            </label>
+            <input
+              type="text"
+              value={confirmText}
+              onChange={(e) => setConfirmText(e.target.value)}
+              placeholder="I understand this is revenge"
+              className="w-full bg-bg-tertiary border border-border-default rounded-md px-4 py-2 text-sm"
+            />
+          </div>
+          
+          {/* Actions */}
+          <div className="flex gap-3">
+            <button
+              onClick={onWait}
+              className="flex-1 bg-bg-secondary text-text-primary px-4 py-3 rounded-md hover:bg-bg-tertiary transition-colors"
+            >
+              Wait 15 Minutes
+            </button>
+            <button
+              onClick={onProceed}
+              disabled={!isConfirmed}
+              className="flex-1 bg-danger text-white px-4 py-3 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90 transition-opacity"
+            >
+              Proceed Anyway
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+```
+
+### 2. Pattern Mirror Display
+
+**When to show:** Post-session review (NOT during trading)
+
+```jsx
+// components/behavioral/PatternMirror.tsx
+export function PatternMirror({ patterns }) {
+  return (
+    <div className="bg-bg-secondary rounded-lg p-6 space-y-4">
+      <h3 className="text-text-primary font-semibold text-lg">Your Patterns Today</h3>
+      
+      <div className="space-y-4">
+        {patterns.map((pattern, index) => (
+          <div key={index} className="space-y-1">
+            {/* Pattern Label */}
+            <p className="text-sm text-text-secondary">{pattern.label}</p>
+            
+            {/* Result (with color) */}
+            <p className={`font-mono text-lg ${
+              pattern.pnl >= 0 ? 'text-profit-green' : 'text-loss-red'
+            }`}>
+              {pattern.tradeCount} trades, {pattern.pnl >= 0 ? '+' : ''}{pattern.pnl.toLocaleString('en-US', { 
+                style: 'currency', 
+                currency: 'USD' 
+              })}
+            </p>
+            
+            {/* Context (no judgment, just data) */}
+            <p className="text-xs text-text-tertiary">
+              {pattern.winRate}% win rate on these setups historically
+            </p>
+          </div>
+        ))}
+      </div>
+      
+      {/* No "You should..." suggestions. Let data speak. */}
+    </div>
+  );
+}
+```
+
+### 3. Discipline Celebration Card
+
+**When to show:** Dashboard (always visible)
+
+```jsx
+// components/dashboard/DisciplineCard.tsx
+export function DisciplineCard({ 
+  tradesNotTaken, 
+  estimatedLossesPrevented,
+  disciplineStreak 
+}) {
+  return (
+    <div className="bg-bg-secondary border border-success/20 rounded-lg p-6">
+      {/* Header with Icon */}
+      <div className="flex items-center gap-2 mb-4">
+        <Shield className="w-5 h-5 text-success" />
+        <h3 className="text-text-primary font-semibold">Account Protected</h3>
+      </div>
+      
+      <div className="space-y-3">
+        {/* Trades NOT Taken */}
+        <div>
+          <p className="text-sm text-text-secondary mb-1">Trades NOT taken today</p>
+          <p className="font-mono text-3xl text-success">{tradesNotTaken}</p>
+        </div>
+        
+        {/* Estimated Savings */}
+        <div>
+          <p className="text-sm text-text-secondary mb-1">Estimated losses prevented</p>
+          <p className="font-mono text-xl text-success">
+            ~{estimatedLossesPrevented.toLocaleString('en-US', { 
+              style: 'currency', 
+              currency: 'USD' 
+            })}
+          </p>
+        </div>
+        
+        {/* Streak */}
+        {disciplineStreak > 0 && (
+          <div className="pt-3 border-t border-border-subtle">
+            <p className="text-xs text-text-tertiary">
+              Discipline streak: <span className="text-success font-semibold">{disciplineStreak} days</span> without violation
+            </p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+```
+
+---
+
 ### 3. P&L Card (The Truth Display)
 
 **Design Requirements:**
@@ -782,7 +1056,9 @@ export function PnLCard({ dailyPnL, totalPnL, accountSize }) {
 
 ---
 
-### 4. Chart Analysis Result (The AI Insight)
+### 4. Chart Analysis Display (Phase 2+ Only)
+
+**⚠️ NOT FOR PHASE 1** - This feature appears only in Advanced Mode
 
 **Design Requirements:**
 - Screenshot preview with overlays
