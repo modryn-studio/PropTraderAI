@@ -1,7 +1,7 @@
 # GitHub Copilot Instructions for PropTraderAI
 
-**Last Updated:** January 7, 2026  
-**Version:** 1.0
+**Last Updated:** January 8, 2026  
+**Version:** 1.1
 
 ---
 
@@ -12,6 +12,13 @@ PropTraderAI is a natural language trading automation platform for prop traders 
 ### The Core Insight
 
 > **PATH 2 (Behavioral Intelligence) is our actual product. PATH 1 (Execution) is just the delivery mechanism.**
+
+### The Marketing Reality
+
+**We sell:** Passing challenges and getting funded (RESULTS)  
+**We deliver:** Behavioral intelligence that prevents self-sabotage (MECHANISM)
+
+PATH 2 is our moat, NOT our headline. Sell the outcome, deliver the mechanism.
 
 ---
 
@@ -39,14 +46,28 @@ If yes → prioritize. If no → defer unless critical for PATH 1.
 
 ### Phase 1: Vibe-Only Consumer App (NOW)
 
-**Philosophy:** Aggressively vibe. Hide everything.
+**Philosophy:** Aggressively vibe. Hide everything. One thing at a time.
+
+#### Critical Day 1 Reality
+
+**Traders don't have weeks to build trust.** They:
+- Sign up for prop firm
+- Get challenge account
+- Start trading SAME DAY
+- Often blow account in HOURS
+
+**Implication:** Can't wait until "Week 3" to show protection value. Must show value immediately.
+
+**Solution:** Show "what we protect against" on Day 1, then switch to results ("$X saved") once they have trading data.
 
 #### What We Show
+- ✅ ONE hero element per screen (P&L OR challenge status OR protection)
+- ✅ Everything else scrolls below (secondary, tertiary)
 - ✅ Challenge progress (simple progress bars)
-- ✅ P&L summary (daily, weekly, overall)
-- ✅ AI alerts ("You're approaching daily limit")
-- ✅ Trade history (what happened, not why)
-- ✅ Behavioral insights (after patterns emerge)
+- ✅ AI status ("We're watching the market for you")
+- ✅ Protection value framed as $ SAVED, not "discipline metrics"
+- ✅ Day 1: What we protect against (daily loss limit, revenge trades, oversizing, bad setups)
+- ✅ After trades: Results ($X protected, Y bad setups caught)
 
 #### What We Hide (Until Phase 2+)
 - ❌ Parsed strategy logic
@@ -55,6 +76,7 @@ If yes → prioritize. If no → defer unless critical for PATH 1.
 - ❌ WebSocket status
 - ❌ Anything that looks like code
 - ❌ "Advanced Mode" (comes in Phase 2)
+- ❌ Multi-metric cards (Phase 1 = one metric per card)
 
 #### Target User for Phase 1
 Traders who fail challenges due to **emotions**, not strategy. They:
@@ -62,17 +84,29 @@ Traders who fail challenges due to **emotions**, not strategy. They:
 - Know what they should do but can't stop themselves
 - Will never learn Pine Script
 - Need protection from themselves
+- **Will blow account on Day 1 if we don't intervene**
 
 ### Code Generation Rules
 
 #### UI/UX Rules
-1. **Default to hiding complexity** — If in doubt, don't show it
-2. **Mobile-first always** — Desktop is secondary
-3. **One action per screen** — Don't overwhelm
-4. **Celebrate saves, not trades** — "We protected you" > "We executed"
+1. **One thing at a time** — ONE hero card, everything else scrolls
+2. **Default to hiding complexity** — If in doubt, don't show it
+3. **Mobile-first always** — Desktop is secondary
+4. **Frame protection as $ saved** — Not discipline, not willpower, MONEY
 5. **No technical jargon** — "Your strategy" not "Your parsed rule set"
+6. **Day 1 messaging** — Show value immediately, not after weeks
 
 #### Copy/Messaging Guidelines
+
+**Context matters:**
+
+| Context | Voice | Examples |
+|---------|-------|----------|
+| **Landing page** | Confident, outcome-focused, validates trader | "Your strategy is good. Your execution isn't. We fix that." |
+| **Dashboard** | Direct, protective, data-as-mirror | "This setup doesn't match your winning patterns" |
+| **Real-time intervention** | AA sponsor voice (Phase 2) | "This looks like revenge. 2x size, 4 min after loss." |
+
+**Universal translations:**
 
 | ❌ Instead of... | ✅ Say... |
 |-----------------|----------|
@@ -81,7 +115,8 @@ Traders who fail challenges due to **emotions**, not strategy. They:
 | "Tilt score: 72%" | "You might be trading emotionally right now" |
 | "Daily loss limit: 78% utilized" | "You're close to your daily limit" |
 | "Execution engine active" | "We're watching the market for you" |
-| "Parsed rules view" | "How your strategy works" |
+| "Discipline streak: 4 days" | "$1,840 protected this week" |
+| "Trades NOT taken: 3" | "3 bad setups caught before they cost you" |
 
 ---
 

@@ -146,23 +146,23 @@ function TerminalDemo() {
 //   );
 // }
 
-// Feature Cards
+// Feature Cards - Results-focused messaging
 function Features() {
   const features = [
     {
       icon: Bot,
-      title: 'Natural Language',
-      description: 'Describe your strategy in plain English. No Pine Script. No coding.',
+      title: 'Plain English Strategy',
+      description: 'Your strategy is good. Just describe it. No Pine Script, no coding, no complexity.',
     },
     {
       icon: Zap,
-      title: 'AI Execution',
-      description: 'AI monitors 24/7 and executes perfectly. No emotions. No hesitation.',
+      title: 'Perfect Execution',
+      description: 'AI executes exactly as you described. 24/7 monitoring. Zero emotional trades.',
     },
     {
       icon: Shield,
-      title: 'Challenge Guardian',
-      description: 'Enforces prop firm rules. Prevents violations before they happen.',
+      title: 'Account Protection',
+      description: 'AI monitors your patterns to prevent costly mistakes before they happen.',
     },
   ];
 
@@ -183,12 +183,12 @@ function Features() {
   );
 }
 
-// How It Works
+// How It Works - Results-focused
 function HowItWorks() {
   const steps = [
-    { step: '01', title: 'Describe', description: 'Tell the AI your strategy in natural language' },
-    { step: '02', title: 'Connect', description: 'Link your Tradovate account via OAuth' },
-    { step: '03', title: 'Execute', description: 'AI trades for you. You pass your challenge.' },
+    { step: '01', title: 'Describe', description: 'Tell us your strategy in plain English' },
+    { step: '02', title: 'Connect', description: 'Link your Tradovate account securely' },
+    { step: '03', title: 'Get Funded', description: 'AI executes perfectly. You pass your challenge.' },
   ];
 
   return (
@@ -237,34 +237,45 @@ export default function LandingPage() {
       {/* Hero Section */}
       <section className="pt-32 pb-16 px-4">
         <div className="max-w-6xl mx-auto">
+          {/* Headline - Results first */}
+          <motion.h1
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-center font-display text-3xl md:text-4xl font-bold mb-4"
+          >
+            Pass your prop challenge.
+          </motion.h1>
+          
           {/* Problem Statement */}
           <motion.p
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="text-center text-content-secondary mb-6"
+            transition={{ delay: 0.1 }}
+            className="text-center text-content-secondary mb-8"
           >
-            90% fail prop challenges due to{' '}
-            <span className="text-loss">execution failure</span>, not strategy failure.
+            <span className="text-loss">94% fail.</span> You don&apos;t have to.
+            <br />
+            <span className="text-content-tertiary text-sm">Your strategy is good. Your execution isn&apos;t. We fix that.</span>
           </motion.p>
 
           {/* Terminal Demo */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="mb-12"
+            transition={{ delay: 0.2 }}
+            className="mb-8"
           >
             <TerminalDemo />
           </motion.div>
 
-          {/* Tagline */}
+          {/* Value prop */}
           <motion.p
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ delay: 0.3 }}
-            className="text-center text-lg text-content-secondary mb-12"
+            transition={{ delay: 0.4 }}
+            className="text-center text-content-secondary mb-12"
           >
-            Ready to execute. <span className="text-accent-cyan">No code required.</span>
+            Describe your strategy. AI executes perfectly. <span className="text-accent-cyan">You get funded.</span>
           </motion.p>
 
           {/* Stats - COMMENTED OUT (demo data) */}
@@ -282,10 +293,10 @@ export default function LandingPage() {
       <section id="features" className="py-20 px-4 border-t border-line-subtle">
         <div className="max-w-6xl mx-auto">
           <h2 className="font-display text-2xl font-bold text-center mb-4">
-            Professional Tools, Human Interface
+            Why Traders Pass With Us
           </h2>
           <p className="text-content-secondary text-center mb-12 max-w-xl mx-auto">
-            Everything you need to pass your prop firm challenge, powered by AI.
+            Your strategy. Our execution. Perfect results.
           </p>
           <Features />
         </div>
@@ -308,12 +319,12 @@ export default function LandingPage() {
       <section className="py-20 px-4 border-t border-line-subtle">
         <div className="max-w-xl mx-auto text-center">
           <h2 className="font-display text-3xl font-bold mb-4">
-            You bring the vision.
+            Stop failing challenges.
             <br />
-            <span className="text-gradient">We handle everything else.</span>
+            <span className="text-gradient">Start passing them.</span>
           </h2>
           <p className="text-content-secondary mb-8">
-            Start your free trial. No credit card required.
+            Your strategy deserves perfect execution. No credit card required.
           </p>
           <a href="/auth/login" className="btn-primary inline-flex items-center gap-2">
             Start Free Trial

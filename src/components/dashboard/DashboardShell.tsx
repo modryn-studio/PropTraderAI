@@ -9,6 +9,9 @@ import {
   BarChart3,
   Settings,
   LogOut,
+  Shield,
+  TrendingUp,
+  AlertTriangle,
 } from 'lucide-react';
 
 interface DashboardShellProps {
@@ -24,16 +27,9 @@ export default function DashboardShell({ user }: DashboardShellProps) {
     router.push('/');
   };
 
-  // Mock data removed - showing clean new user experience
-  // const mockChallenge = {
-  //   firm: 'Tradeify',
-  //   accountSize: 50000,
-  //   dailyPnl: 340,
-  //   totalPnl: 1247,
-  //   drawdownUsed: 24,
-  //   maxDrawdown: 4,
-  //   dailyLimitRemaining: 200,
-  // };
+  // Check if user has connected broker (placeholder - will be from DB)
+  const hasBrokerConnected = false;
+  const hasActiveChallenge = false;
 
   return (
     <div className="min-h-screen bg-bg-primary pb-20">
@@ -53,54 +49,175 @@ export default function DashboardShell({ user }: DashboardShellProps) {
         </div>
       </header>
 
-      {/* Main Content */}
+      {/* Main Content - ONE THING AT A TIME */}
       <main className="px-4 py-6 space-y-6">
-        {/* Welcome */}
-        <div className="text-content-secondary text-sm">
-          Welcome back, <span className="text-content-primary">{user.email}</span>
-        </div>
+        {/* New User Flow - No Broker Connected */}
+        {!hasBrokerConnected && (
+          <>
+            {/* HERO CARD: Primary action - Connect to start */}
+            <div className="card text-center py-12">
+              <div className="w-16 h-16 bg-accent-cyan/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                <TrendingUp className="w-8 h-8 text-accent-cyan" />
+              </div>
+              <h3 className="font-display font-bold text-xl mb-2">
+                Ready to pass your challenge?
+              </h3>
+              <p className="text-content-tertiary text-sm mb-6 max-w-sm mx-auto">
+                94% fail their first challenge. Connect Tradovate and we&apos;ll make sure you&apos;re not one of them.
+              </p>
+              <button className="btn-primary mb-4">
+                Connect Tradovate
+              </button>
+              <p className="text-xs text-content-tertiary">
+                Or <button className="text-accent-cyan underline">describe your strategy first</button>
+              </p>
+            </div>
 
-        {/* No Challenge Yet - Clean State */}
-        <div className="card text-center py-12">
-          <div className="w-16 h-16 bg-accent-cyan/10 rounded-full flex items-center justify-center mx-auto mb-4">
-            <Activity className="w-8 h-8 text-accent-cyan" />
-          </div>
-          <h3 className="font-display font-bold text-lg mb-2">No Active Challenge</h3>
-          <p className="text-content-tertiary text-sm mb-6 max-w-md mx-auto">
-            Connect your prop firm account to start tracking your challenge progress.
-          </p>
-          <button className="btn-primary">
-            Connect Broker
-          </button>
-        </div>
+            {/* SECONDARY: What we protect against (Day 1 messaging) - Scroll to see */}
+            <div className="card border-l-4 border-l-warning">
+              <div className="flex items-start gap-3">
+                <Shield className="w-6 h-6 text-warning flex-shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <h3 className="font-display font-bold mb-2">How We Protect You</h3>
+                  <p className="text-content-secondary text-sm mb-3">
+                    Most traders blow their first challenge in hours. Here&apos;s what we stop:
+                  </p>
+                  <ul className="space-y-2 text-sm text-content-secondary">
+                    <li className="flex items-start gap-2">
+                      <span className="text-warning">•</span>
+                      <span><strong>Daily loss limit</strong> — We stop you before you hit it</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-warning">•</span>
+                      <span><strong>Revenge trades</strong> — After a loss, emotions take over</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-warning">•</span>
+                      <span><strong>Oversized positions</strong> — Going too big after wins or losses</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-warning">•</span>
+                      <span><strong>Bad setups</strong> — Trading when your strategy says don&apos;t</span>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </>
+        )}
 
-        {/* Quick Actions */}
-        <div className="card">
-          <h3 className="font-display font-bold mb-4">Quick Actions</h3>
-          <div className="space-y-3">
-            <button className="w-full btn-secondary text-left flex items-center gap-3">
-              <MessageSquare className="w-5 h-5 text-accent-purple" />
-              <span>Create new strategy</span>
-            </button>
-            <button className="w-full btn-secondary text-left flex items-center gap-3">
-              <Activity className="w-5 h-5 text-accent-cyan" />
-              <span>Connect Tradovate</span>
-            </button>
-          </div>
-        </div>
+        {/* Connected User Flow - Has broker but no active challenge */}
+        {hasBrokerConnected && !hasActiveChallenge && (
+          <>
+            {/* HERO CARD: Next step - Create strategy */}
+            <div className="card text-center py-12">
+              <div className="w-16 h-16 bg-accent-purple/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                <MessageSquare className="w-8 h-8 text-accent-purple" />
+              </div>
+              <h3 className="font-display font-bold text-xl mb-2">
+                Tradovate Connected
+              </h3>
+              <p className="text-content-tertiary text-sm mb-6 max-w-sm mx-auto">
+                Now describe your strategy in plain English. We&apos;ll handle the execution.
+              </p>
+              <button className="btn-primary">
+                Describe Your Strategy
+              </button>
+            </div>
 
-        {/* Active Strategies */}
-        <div className="card">
-          <h3 className="font-display font-bold mb-4">Active Strategies</h3>
-          <div className="text-center py-8">
-            <p className="text-content-tertiary text-sm mb-4">
-              No strategies yet. Create your first one to get started.
-            </p>
-            <button className="btn-primary">
-              Create Strategy
-            </button>
-          </div>
-        </div>
+            {/* SECONDARY: Protection status - Scroll to see */}
+            <div className="card border-l-4 border-l-profit">
+              <div className="flex items-start gap-3">
+                <Shield className="w-6 h-6 text-profit flex-shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <h3 className="font-display font-bold mb-2">Protection Active</h3>
+                  <p className="text-content-secondary text-sm mb-3">
+                    Your account is connected. Once you create a strategy, we&apos;ll start monitoring:
+                  </p>
+                  <ul className="space-y-2 text-sm text-content-secondary">
+                    <li className="flex items-start gap-2">
+                      <span className="text-profit">✓</span>
+                      <span>Challenge rule compliance</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-profit">✓</span>
+                      <span>Emotional trading patterns</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-profit">✓</span>
+                      <span>Position sizing</span>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* Active Challenge Flow - ONE metric at a time */}
+        {hasActiveChallenge && (
+          <>
+            {/* HERO CARD: Today's P&L - The main thing */}
+            <div className="card text-center py-12">
+              <p className="text-sm text-content-tertiary mb-2">Today&apos;s Performance</p>
+              <p className="font-data text-5xl text-profit mb-2">+$340</p>
+              <p className="text-sm text-content-tertiary">3 trades • 67% win rate</p>
+            </div>
+
+            {/* SECONDARY: Challenge status - Simple, scroll to see */}
+            <div className="card">
+              <h3 className="font-display font-bold text-sm text-content-tertiary mb-4">
+                Challenge Status • Day 5 of 30
+              </h3>
+              
+              {/* Daily Limit - One metric */}
+              <div className="mb-4">
+                <div className="flex items-center justify-between text-sm mb-2">
+                  <span className="text-content-secondary">Daily Loss Limit</span>
+                  <span className="font-data text-content-primary">23% used</span>
+                </div>
+                <div className="h-2 bg-bg-tertiary rounded-full overflow-hidden">
+                  <div className="h-full bg-profit rounded-full transition-all" style={{ width: '23%' }} />
+                </div>
+                <p className="text-xs text-content-tertiary mt-1">$385 remaining today</p>
+              </div>
+
+              {/* Drawdown - One metric */}
+              <div>
+                <div className="flex items-center justify-between text-sm mb-2">
+                  <span className="text-content-secondary">Max Drawdown</span>
+                  <span className="font-data text-content-primary">12% used</span>
+                </div>
+                <div className="h-2 bg-bg-tertiary rounded-full overflow-hidden">
+                  <div className="h-full bg-profit rounded-full transition-all" style={{ width: '12%' }} />
+                </div>
+                <p className="text-xs text-content-tertiary mt-1">$4,400 remaining</p>
+              </div>
+            </div>
+
+            {/* TERTIARY: Account Protection - Results (scroll to see) */}
+            <div className="card border-l-4 border-l-profit">
+              <div className="flex items-start gap-3">
+                <Shield className="w-5 h-5 text-profit flex-shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <h3 className="font-display font-bold mb-1">Account Protected</h3>
+                  <div className="space-y-3">
+                    <div>
+                      <p className="text-sm text-content-secondary">This week we caught</p>
+                      <p className="font-data text-2xl text-profit">$1,840</p>
+                      <p className="text-xs text-content-tertiary">4 bad setups stopped before they cost you</p>
+                    </div>
+                    <div className="pt-3 border-t border-line-subtle">
+                      <p className="text-xs text-content-tertiary">
+                        Most recent: Prevented oversized position 23 minutes ago
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </>
+        )}
       </main>
 
       {/* Bottom Navigation */}
