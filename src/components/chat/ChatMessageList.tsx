@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { User, Bot, Terminal } from 'lucide-react';
+import { User, Bot } from 'lucide-react';
 
 export interface ChatMessage {
   id: string;

@@ -2,7 +2,6 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Send, Loader2 } from 'lucide-react';
-import { motion } from 'framer-motion';
 
 interface ChatInputProps {
   onSubmit: (message: string) => void;
