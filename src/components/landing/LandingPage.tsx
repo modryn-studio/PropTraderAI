@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { Check, ArrowRight, Zap, Shield, Bot } from 'lucide-react';
 
@@ -11,11 +11,11 @@ function TerminalDemo() {
   const [isTyping, setIsTyping] = useState(true);
 
   const demoStrategy = "Trade pullbacks to 20 EMA when RSI < 40 during morning session";
-  const steps = [
+  const steps = useMemo(() => [
     { label: 'Parsed', delay: 500 },
     { label: 'Validated', delay: 800 },
     { label: 'Ready', delay: 1000 },
-  ];
+  ], []);
 
   useEffect(() => {
     if (isTyping && text.length < demoStrategy.length) {
