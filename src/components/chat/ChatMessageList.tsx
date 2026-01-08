@@ -49,8 +49,8 @@ export default function ChatMessageList({
             <div className="absolute inset-0 blur-2xl bg-accent-cyan/30" />
             <span className="text-accent-cyan text-5xl font-mono relative z-10">&gt;</span>
             <motion.span
-              animate={{ opacity: [1, 0, 1] }}
-              transition={{ duration: 1.06, repeat: Infinity, ease: "steps(1)" }}
+              animate={{ opacity: [1, 1, 0, 0] }}
+              transition={{ duration: 1.06, repeat: Infinity, times: [0, 0.5, 0.5, 1] }}
               className="text-accent-cyan text-4xl font-mono relative z-10"
             >
               █
