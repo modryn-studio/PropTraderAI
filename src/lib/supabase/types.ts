@@ -97,6 +97,44 @@ export type Database = {
           updated_at?: string
         }
       }
+      strategy_conversations: {
+        Row: {
+          id: string
+          user_id: string
+          messages: Json[] // Array of { role: 'user' | 'assistant', content: string, timestamp: string }
+          strategy_id: string | null
+          status: 'in_progress' | 'completed' | 'stale'
+          last_activity: string
+          parent_strategy_id: string | null
+          edit_reason: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          messages?: Json[]
+          strategy_id?: string | null
+          status?: 'in_progress' | 'completed' | 'stale'
+          last_activity?: string
+          parent_strategy_id?: string | null
+          edit_reason?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          messages?: Json[]
+          strategy_id?: string | null
+          status?: 'in_progress' | 'completed' | 'stale'
+          last_activity?: string
+          parent_strategy_id?: string | null
+          edit_reason?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
       strategies: {
         Row: {
           id: string

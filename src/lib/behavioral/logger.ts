@@ -20,6 +20,15 @@ export type BehavioralEventType =
   | 'strategy_paused'
   | 'screenshot_analyzed'
   
+  // Strategy chat events (Strategy Builder)
+  | 'strategy_chat_message_sent'
+  | 'strategy_clarification_requested'
+  | 'strategy_conversation_completed'
+  | 'strategy_conversation_abandoned'
+  | 'multi_strategy_cta_shown'
+  | 'multi_strategy_cta_clicked'
+  | 'dashboard_add_strategy_clicked'
+  
   // Protection events (PATH 2 core)
   | 'pre_trade_check'
   | 'near_violation'

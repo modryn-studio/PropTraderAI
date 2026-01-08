@@ -1,0 +1,339 @@
+'use client';
+
+import { useState } from 'react';
+import { motion } from 'framer-motion';
+import { 
+  CheckCircle, 
+  TrendingUp, 
+  TrendingDown, 
+  Clock, 
+  Target,
+  Shield,
+  Edit3,
+  Loader2,
+  Plus
+} from 'lucide-react';
+import { ParsedRules } from '@/lib/claude/client';
+
+interface StrategyConfirmationCardProps {
+  strategyName: string;
+  summary: string;
+  parsedRules: ParsedRules;
+  instrument: string;
+  onSave: (name: string) => Promise<void>;
+  onRefine: () => void;
+  userStrategyCount: number;
+  onAddAnother?: () => void;
+}
+
+export default function StrategyConfirmationCard({
+  strategyName,
+  summary,
+  parsedRules,
+  instrument,
+  onSave,
+  onRefine,
+  userStrategyCount,
+  onAddAnother,
+}: StrategyConfirmationCardProps) {
+  const [editedName, setEditedName] = useState(strategyName);
+  const [isEditing, setIsEditing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSave = async () => {
+    if (!editedName.trim()) {
+      setError('Strategy name is required');
+      return;
+    }
+
+    setIsSaving(true);
+    setError(null);
+
+    try {
+      await onSave(editedName.trim());
+      setSaved(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save strategy');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Post-save success state
+  if (saved) {
+    return (
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="border-t border-line-default bg-bg-secondary/50 p-6 mt-4 rounded-lg"
+      >
+        <div className="flex items-start gap-3 mb-4">
+          <div className="w-10 h-10 rounded-full bg-profit/10 flex items-center justify-center">
+            <CheckCircle className="w-5 h-5 text-profit" />
+          </div>
+          <div>
+            <h3 className="text-lg font-display font-bold text-content-primary mb-1">
+              Strategy saved!
+            </h3>
+            <p className="text-content-secondary text-sm">
+              &quot;{editedName}&quot; is ready to monitor.
+            </p>
+          </div>
+        </div>
+
+        {/* Soft cap at 3 strategies */}
+        {userStrategyCount < 3 && onAddAnother ? (
+          <div className="space-y-3">
+            <p className="text-content-tertiary text-sm">
+              {getPostSaveMessage(userStrategyCount)}
+            </p>
+            <button
+              onClick={onAddAnother}
+              className="btn-primary w-full flex items-center justify-center gap-2"
+            >
+              <Plus className="w-4 h-4" />
+              Describe another strategy
+            </button>
+          </div>
+        ) : (
+          <div className="text-content-tertiary text-sm">
+            Focus on executing your strategies. More isn&apos;t always better.
+          </div>
+        )}
+      </motion.div>
+    );
+  }
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="border-t border-line-default bg-bg-secondary/50 p-6 mt-4 rounded-lg space-y-6"
+    >
+      {/* Header */}
+      <div className="flex items-start justify-between">
+        <div>
+          <div className="text-xs text-accent-cyan font-data uppercase tracking-wider mb-1">
+            Strategy Complete
+          </div>
+          
+          {/* Editable name */}
+          {isEditing ? (
+            <input
+              type="text"
+              value={editedName}
+              onChange={(e) => setEditedName(e.target.value)}
+              onBlur={() => setIsEditing(false)}
+              onKeyDown={(e) => e.key === 'Enter' && setIsEditing(false)}
+              autoFocus
+              className="input-terminal text-lg font-display font-bold"
+            />
+          ) : (
+            <button
+              onClick={() => setIsEditing(true)}
+              className="flex items-center gap-2 text-lg font-display font-bold text-content-primary hover:text-accent-cyan transition-colors group"
+            >
+              {editedName}
+              <Edit3 className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity" />
+            </button>
+          )}
+        </div>
+        
+        <div className="px-3 py-1 bg-accent-purple/10 text-accent-purple text-xs font-data rounded-full">
+          {instrument}
+        </div>
+      </div>
+
+      {/* Summary */}
+      <p className="text-content-secondary text-sm leading-relaxed">
+        {summary}
+      </p>
+
+      {/* Parsed Rules - Human Readable */}
+      <div className="grid gap-4">
+        {/* Entry Conditions */}
+        {parsedRules.entry_conditions && parsedRules.entry_conditions.length > 0 && (
+          <RuleCard
+            icon={<TrendingUp className="w-4 h-4" />}
+            label="Entry"
+            color="text-profit"
+            bgColor="bg-profit/10"
+          >
+            <ul className="space-y-1">
+              {parsedRules.entry_conditions.map((condition, i) => (
+                <li key={i} className="text-content-secondary text-sm">
+                  {condition.description || formatEntryCondition(condition)}
+                </li>
+              ))}
+            </ul>
+          </RuleCard>
+        )}
+
+        {/* Exit Conditions */}
+        {parsedRules.exit_conditions && parsedRules.exit_conditions.length > 0 && (
+          <RuleCard
+            icon={<TrendingDown className="w-4 h-4" />}
+            label="Exit"
+            color="text-loss"
+            bgColor="bg-loss/10"
+          >
+            <ul className="space-y-1">
+              {parsedRules.exit_conditions.map((condition, i) => (
+                <li key={i} className="text-content-secondary text-sm">
+                  {condition.description || formatExitCondition(condition)}
+                </li>
+              ))}
+            </ul>
+          </RuleCard>
+        )}
+
+        {/* Filters */}
+        {parsedRules.filters && parsedRules.filters.length > 0 && (
+          <RuleCard
+            icon={<Clock className="w-4 h-4" />}
+            label="Filters"
+            color="text-accent-blue"
+            bgColor="bg-accent-blue/10"
+          >
+            <ul className="space-y-1">
+              {parsedRules.filters.map((filter, i) => (
+                <li key={i} className="text-content-secondary text-sm">
+                  {filter.description || formatFilter(filter)}
+                </li>
+              ))}
+            </ul>
+          </RuleCard>
+        )}
+
+        {/* Position Sizing */}
+        {parsedRules.position_sizing && (
+          <RuleCard
+            icon={<Target className="w-4 h-4" />}
+            label="Risk"
+            color="text-warning"
+            bgColor="bg-warning/10"
+          >
+            <p className="text-content-secondary text-sm">
+              {formatPositionSizing(parsedRules.position_sizing)}
+            </p>
+          </RuleCard>
+        )}
+      </div>
+
+      {/* Error message */}
+      {error && (
+        <div className="text-loss text-sm flex items-center gap-2">
+          <Shield className="w-4 h-4" />
+          {error}
+        </div>
+      )}
+
+      {/* Actions */}
+      <div className="flex gap-3">
+        <button
+          onClick={onRefine}
+          disabled={isSaving}
+          className="flex-1 py-3 border border-line-default rounded-lg text-content-secondary hover:text-content-primary hover:border-line-strong transition-colors"
+        >
+          Keep Refining
+        </button>
+        <button
+          onClick={handleSave}
+          disabled={isSaving}
+          className="flex-1 btn-primary flex items-center justify-center gap-2"
+        >
+          {isSaving ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Saving...
+            </>
+          ) : (
+            <>
+              <CheckCircle className="w-4 h-4" />
+              Save Strategy
+            </>
+          )}
+        </button>
+      </div>
+    </motion.div>
+  );
+}
+
+// Rule card component
+function RuleCard({ 
+  icon, 
+  label, 
+  color, 
+  bgColor, 
+  children 
+}: { 
+  icon: React.ReactNode;
+  label: string;
+  color: string;
+  bgColor: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="flex items-start gap-3">
+      <div className={`w-8 h-8 rounded-lg ${bgColor} flex items-center justify-center flex-shrink-0`}>
+        <span className={color}>{icon}</span>
+      </div>
+      <div className="flex-1">
+        <div className={`text-xs font-data uppercase tracking-wider ${color} mb-1`}>
+          {label}
+        </div>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+// Helper functions to format rules
+function formatEntryCondition(condition: ParsedRules['entry_conditions'][0]): string {
+  const indicator = condition.indicator.toUpperCase();
+  const period = condition.period ? `(${condition.period})` : '';
+  const relation = condition.relation.replace(/_/g, ' ');
+  const value = condition.value !== undefined ? ` ${condition.value}` : '';
+  return `${indicator}${period} ${relation}${value}`;
+}
+
+function formatExitCondition(condition: ParsedRules['exit_conditions'][0]): string {
+  const type = condition.type.replace(/_/g, ' ');
+  return `${type}: ${condition.value} ${condition.unit}`;
+}
+
+function formatFilter(filter: ParsedRules['filters'][0]): string {
+  if (filter.type === 'time_window' && filter.start && filter.end) {
+    return `Trading hours: ${filter.start} - ${filter.end}`;
+  }
+  if (filter.indicator) {
+    return `${filter.indicator.toUpperCase()}${filter.period ? `(${filter.period})` : ''} ${filter.condition || ''} ${filter.value || ''}`;
+  }
+  return filter.type.replace(/_/g, ' ');
+}
+
+function formatPositionSizing(sizing: ParsedRules['position_sizing']): string {
+  switch (sizing.method) {
+    case 'risk_percent':
+      return `Risk ${sizing.value}% per trade${sizing.max_contracts ? `, max ${sizing.max_contracts} contracts` : ''}`;
+    case 'fixed':
+      return `Fixed ${sizing.value} contracts`;
+    case 'kelly':
+      return `Kelly criterion (${sizing.value}x)`;
+    default:
+      return `${sizing.method}: ${sizing.value}`;
+  }
+}
+
+// Dynamic post-save messaging based on strategy count
+function getPostSaveMessage(strategyCount: number): string {
+  if (strategyCount === 1) {
+    return "Great first strategy! Many successful traders use 2-3 strategies: trending markets, ranging markets, and high volatility.";
+  }
+  if (strategyCount === 2) {
+    return "You have good coverage. Most traders stop at 3 strategies and focus on execution.";
+  }
+  return "Ready to add another?";
+}
