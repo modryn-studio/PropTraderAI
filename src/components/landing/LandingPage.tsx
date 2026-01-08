@@ -30,7 +30,7 @@ function TerminalDemo() {
         setTimeout(() => setStep(i + 1), s.delay);
       });
     }
-  }, [text, isTyping]);
+  }, [text, isTyping, steps, demoStrategy.length]);
 
   const resetDemo = () => {
     setText('');

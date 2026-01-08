@@ -9,9 +9,6 @@ import {
   BarChart3,
   Settings,
   LogOut,
-  TrendingUp,
-  TrendingDown,
-  AlertTriangle,
 } from 'lucide-react';
 
 interface DashboardShellProps {
