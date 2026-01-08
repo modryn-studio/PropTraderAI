@@ -3,6 +3,7 @@
 import { User } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import {
   Activity,
   MessageSquare,
@@ -11,8 +12,8 @@ import {
   LogOut,
   Shield,
   TrendingUp,
-  AlertTriangle,
 } from 'lucide-react';
+import FeedbackButton from '@/components/feedback/FeedbackButton';
 
 interface DashboardShellProps {
   user: User;
@@ -21,6 +22,11 @@ interface DashboardShellProps {
 export default function DashboardShell({ user }: DashboardShellProps) {
   const router = useRouter();
   const supabase = createClient();
+
+  // Get user's first name or email prefix for greeting
+  const displayName = user.user_metadata?.full_name?.split(' ')[0] 
+    || user.email?.split('@')[0] 
+    || 'Trader';
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
@@ -36,8 +42,11 @@ export default function DashboardShell({ user }: DashboardShellProps) {
       {/* Header */}
       <header className="sticky top-0 z-40 bg-bg-primary/80 backdrop-blur-xl border-b border-line-subtle">
         <div className="px-4 py-4 flex items-center justify-between">
-          <div className="font-display font-bold text-lg">
-            PropTrader<span className="text-accent-cyan">.AI</span>
+          <div>
+            <div className="font-display font-bold text-lg">
+              PropTrader<span className="text-accent-cyan">.AI</span>
+            </div>
+            <p className="text-xs text-content-tertiary">Welcome back, {displayName}</p>
           </div>
           <button
             onClick={handleSignOut}
@@ -65,8 +74,15 @@ export default function DashboardShell({ user }: DashboardShellProps) {
               <p className="text-content-tertiary text-sm mb-6 max-w-sm mx-auto">
                 94% fail their first challenge. Connect Tradovate and we&apos;ll make sure you&apos;re not one of them.
               </p>
-              <button className="btn-primary mb-4">
-                Connect Tradovate
+              <button className="btn-primary mb-4 inline-flex items-center gap-2">
+                Connect
+                <Image 
+                  src="/tradovate-logo.png" 
+                  alt="Tradovate" 
+                  width={120} 
+                  height={24}
+                  className="h-5 w-auto"
+                />
               </button>
               <p className="text-xs text-content-tertiary">
                 Or <button className="text-accent-cyan underline">describe your strategy first</button>
@@ -244,6 +260,9 @@ export default function DashboardShell({ user }: DashboardShellProps) {
           ))}
         </div>
       </nav>
+
+      {/* Feedback Button - Dashboard position (high, above bottom nav) */}
+      <FeedbackButton mobilePosition="high" />
     </div>
   );
 }

@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
-import { Settings, ArrowLeft, User, Bell, Link2, Shield } from 'lucide-react';
+import { ArrowLeft, User, Bell, Link2, Shield } from 'lucide-react';
 
 export default async function SettingsPage() {
   const supabase = await createClient();

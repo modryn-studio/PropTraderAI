@@ -125,6 +125,26 @@ This roadmap consolidates PATH 1, PATH 2, and PATH 3 from the Build Specificatio
 - [ ] Alert/warning events
 - [ ] Session start/end events
 
+### Contextual Feedback Prompts
+Ask for feedback at high-emotion moments for honest, actionable insights.
+
+| Trigger | Prompt | Rationale |
+|---------|--------|-----------|
+| Challenge passed | "You passed! 🎯 What helped most?" | High emotion = honest feedback |
+| Violation prevented | "We caught this trade. Did we save you?" | Validate protection value |
+| 7 days inactive | "Haven't seen you trade. What's blocking you?" | Identify drop-off reasons |
+| After tilt alert | "Did this warning help or annoy you?" | Tune intervention aggressiveness |
+| First week complete | "How's it going so far?" | Early friction detection |
+| After 3 prevented trades | "We've stopped 3 trades. Too aggressive?" | Calibrate protection sensitivity |
+
+- [ ] Post-challenge-pass feedback prompt
+- [ ] Post-violation-prevented feedback prompt
+- [ ] Inactivity re-engagement prompt (7 days)
+- [ ] Tilt alert effectiveness feedback
+- [ ] First week check-in prompt
+- [ ] Protection calibration prompt
+- [ ] Feedback data analysis dashboard
+
 ### Tilt Detection
 - [ ] Rule-based tilt scoring
 - [ ] Time since last loss tracking
