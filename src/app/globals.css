@@ -510,12 +510,14 @@ body {
 }
 
 .hero-input::placeholder {
-  color: var(--text-dim);
+  color: var(--text-muted);
 }
 
-.hero-input:focus {
-  outline: none;
-  box-shadow: none;
+.hero-input:focus,
+.hero-input:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+  border-color: var(--border-subtle) !important;
 }
 
 .hero-btn {
@@ -918,12 +920,14 @@ body {
 }
 
 .cta-input::placeholder {
-  color: var(--text-dim);
+  color: var(--text-muted);
 }
 
-.cta-input:focus {
-  outline: none;
-  box-shadow: none;
+.cta-input:focus,
+.cta-input:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+  border-color: var(--border-subtle) !important;
 }
 
 .cta-btn {
