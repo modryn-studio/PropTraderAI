@@ -38,7 +38,7 @@ function setCookie(
     maxAge?: number
     path?: string
     domain?: string
-    sameSite?: 'strict' | 'lax' | 'none'
+    sameSite?: boolean | 'strict' | 'lax' | 'none'
     secure?: boolean
   }
 ) {
@@ -55,7 +55,7 @@ function setCookie(
   if (options?.domain) {
     cookie += `; domain=${options.domain}`
   }
-  if (options?.sameSite) {
+  if (options?.sameSite && typeof options.sameSite === 'string') {
     cookie += `; samesite=${options.sameSite}`
   }
   if (options?.secure) {
