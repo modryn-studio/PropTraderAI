@@ -1,16 +1,18 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Send, Loader2 } from 'lucide-react';
+import { Send } from 'lucide-react';
 
 interface ChatInputProps {
   onSubmit: (message: string) => void;
+  onStop?: () => void;
   disabled?: boolean;
   placeholder?: string;
 }
 
 export default function ChatInput({ 
-  onSubmit, 
+  onSubmit,
+  onStop,
   disabled = false,
   placeholder = "Describe your trading strategy..."
 }: ChatInputProps) {
@@ -124,19 +126,44 @@ export default function ChatInput({
               }}
             />
 
-            {/* Send button (inside textarea) */}
+            {/* Send/Stop button (inside textarea) */}
             <button
-              onClick={handleSubmit}
-              disabled={disabled || !value.trim()}
+              onClick={disabled ? onStop : handleSubmit}
+              disabled={!disabled && !value.trim()}
               className={`absolute right-2 bottom-2 p-2 rounded-lg transition-all duration-200 ${
-                disabled || !value.trim()
+                disabled
+                  ? 'text-text-secondary hover:text-text-primary cursor-pointer'
+                  : !value.trim()
                   ? 'text-content-tertiary cursor-not-allowed'
                   : 'text-accent-cyan hover:bg-accent-cyan/10'
               }`}
-              aria-label="Send message"
+              aria-label={disabled ? 'Stop generating' : 'Send message'}
             >
               {disabled ? (
-                <Loader2 className="w-5 h-5 animate-spin" />
+                // Stop icon: circle with square inside (ChatGPT/Claude style)
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 20 20"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <circle
+                    cx="10"
+                    cy="10"
+                    r="9"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                  />
+                  <rect
+                    x="6.5"
+                    y="6.5"
+                    width="7"
+                    height="7"
+                    rx="1"
+                    fill="currentColor"
+                  />
+                </svg>
               ) : (
                 <Send className="w-5 h-5" />
               )}

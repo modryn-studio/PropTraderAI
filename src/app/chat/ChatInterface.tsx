@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, RotateCcw } from 'lucide-react';
@@ -61,6 +61,9 @@ export default function ChatInterface({
   // Track the full conversation text for saving
   const [fullConversationText, setFullConversationText] = useState('');
   
+  // AbortController for canceling requests
+  const abortControllerRef = useRef<AbortController | null>(null);
+  
   // ESC to go back (power user keyboard shortcut)
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
@@ -72,11 +75,24 @@ export default function ChatInterface({
     return () => window.removeEventListener('keydown', handleEscape);
   }, [router, strategyComplete]);
 
+  const handleStopGeneration = useCallback(() => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+      setIsLoading(false);
+      setPendingMessage(null);
+    }
+  }, []);
+
   const handleSendMessage = useCallback(async (message: string) => {
     // Optimistic UI: show message immediately
     setPendingMessage(message);
     setIsLoading(true);
     setError(null);
+
+    // Create new AbortController for this request
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
 
     try {
       const response = await fetch('/api/strategy/parse', {
@@ -86,6 +102,7 @@ export default function ChatInterface({
           message,
           conversationId,
         }),
+        signal: controller.signal,
       });
 
       if (!response.ok) {
@@ -133,8 +150,13 @@ export default function ChatInterface({
       }
 
     } catch (err) {
+      // Ignore abort errors - user intentionally stopped generation
+      if (err instanceof Error && err.name === 'AbortError') {
+        return;
+      }
       setError(err instanceof Error ? err.message : 'Something went wrong');
     } finally {
+      abortControllerRef.current = null;
       setPendingMessage(null);
       setIsLoading(false);
     }
@@ -260,6 +282,7 @@ export default function ChatInterface({
       {!strategyComplete && (
         <ChatInput
           onSubmit={handleSendMessage}
+          onStop={handleStopGeneration}
           disabled={isLoading}
           placeholder={
             messages.length === 0
