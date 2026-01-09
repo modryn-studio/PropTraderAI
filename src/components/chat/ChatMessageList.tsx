@@ -91,6 +91,7 @@ export default function ChatMessageList({
               role: 'user',
               content: pendingMessage,
             }}
+            messageIndex={messages.length}
             isOptimistic
           />
         )}
