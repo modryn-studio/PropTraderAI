@@ -42,18 +42,7 @@ export default function ChatInput({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
-  const [isMobile, setIsMobile] = useState(false);
   const animationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-
-  // Detect if device is mobile
-  useEffect(() => {
-    const checkMobile = () => {
-      setIsMobile('ontouchstart' in window && window.innerWidth < 768);
-    };
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
-  }, []);
 
   // Handle iOS keyboard pushing content up
   useEffect(() => {
