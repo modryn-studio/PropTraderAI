@@ -3,6 +3,7 @@
 import { User } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import Image from 'next/image';
 import {
   Activity,
@@ -93,7 +94,7 @@ export default function DashboardShell({ user }: DashboardShellProps) {
                 />
               </button>
               <p className="text-xs text-[rgba(255,255,255,0.5)]">
-                Or <button className="text-[#00FFD1] underline">describe your strategy first</button>
+                Or <Link href="/chat" className="text-[#00FFD1] underline hover:text-[#00FFD1]/80 transition-colors">describe your strategy first</Link>
               </p>
             </div>
 

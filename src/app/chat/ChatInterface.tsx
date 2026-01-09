@@ -282,7 +282,7 @@ export default function ChatInterface({
               className="flex items-center gap-2 p-2 -ml-2 text-[rgba(255,255,255,0.5)] hover:text-white transition-colors group"
             >
               <ArrowLeft className="w-5 h-5" />
-              <span className="text-xs text-[rgba(255,255,255,0.5)] group-hover:text-[rgba(255,255,255,0.85)] font-mono">ESC</span>
+              <span className="hidden md:inline text-xs text-[rgba(255,255,255,0.5)] group-hover:text-[rgba(255,255,255,0.85)] font-mono">ESC</span>
             </Link>
             <div>
               <div className="font-mono font-bold text-lg text-white">Strategy Builder</div>
@@ -345,9 +345,10 @@ export default function ChatInterface({
           onSubmit={handleSendMessage}
           onStop={handleStopGeneration}
           disabled={isLoading}
+          showAnimation={messages.length === 0}
           placeholder={
             messages.length === 0
-              ? "Describe your trading strategy in plain English..."
+              ? ""
               : "Answer the question or add more details..."
           }
         />

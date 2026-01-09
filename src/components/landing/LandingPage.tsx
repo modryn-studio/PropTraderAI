@@ -8,8 +8,7 @@ import { SolutionSection } from "./SolutionSection";
 import { HowItWorksSection } from "./HowItWorksSection";
 import { CTASection } from "./CTASection";
 import { Footer } from "./Footer";
-import { Toaster, toast } from "@/components/ui/sonner";
-import { ThemeProvider } from "next-themes";
+import { toast } from "@/components/ui/sonner";
 
 export default function LandingPage() {
   const [email, setEmail] = useState("");
@@ -32,25 +31,22 @@ export default function LandingPage() {
   };
 
   return (
-    <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
-      <div className="landing-page">
-        <Header />
-        <HeroSection
-          onWaitlistSubmit={handleWaitlistSubmit}
-          email={email}
-          setEmail={setEmail}
-        />
-        <ProblemSection />
-        <SolutionSection />
-        <HowItWorksSection />
-        <CTASection
-          onWaitlistSubmit={handleWaitlistSubmit}
-          email={email}
-          setEmail={setEmail}
-        />
-        <Footer />
-        <Toaster position="bottom-right" />
-      </div>
-    </ThemeProvider>
+    <div className="landing-page">
+      <Header />
+      <HeroSection
+        onWaitlistSubmit={handleWaitlistSubmit}
+        email={email}
+        setEmail={setEmail}
+      />
+      <ProblemSection />
+      <SolutionSection />
+      <HowItWorksSection />
+      <CTASection
+        onWaitlistSubmit={handleWaitlistSubmit}
+        email={email}
+        setEmail={setEmail}
+      />
+      <Footer />
+    </div>
   );
 }

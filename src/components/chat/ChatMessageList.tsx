@@ -2,6 +2,8 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 export interface ChatMessage {
   id: string;
@@ -53,9 +55,9 @@ export default function ChatMessageList({
               <motion.span
                 animate={{ opacity: [1, 1, 0, 0] }}
                 transition={{ duration: 1.06, repeat: Infinity, times: [0, 0.5, 0.5, 1] }}
-                className="text-[#00FFD1] text-4xl font-mono relative z-10"
+                className="text-[#00FFD1] text-5xl font-mono relative z-10"
               >
-                █
+                _
               </motion.span>
             </div>
             
@@ -65,9 +67,6 @@ export default function ChatMessageList({
             <p className="text-[rgba(255,255,255,0.85)] text-sm max-w-md mx-auto">
               Describe your setup in plain English. I&apos;ll ask questions to make it precise.
             </p>
-            <div className="mt-6 text-xs text-[rgba(255,255,255,0.5)]">
-              Example: &quot;Trade pullbacks to 20 EMA when RSI is below 40 during NY session&quot;
-            </div>
           </motion.div>
         )}
 
@@ -349,28 +348,6 @@ function MessageBlock({
                           <div className="text-xs text-[rgba(255,255,255,0.5)]">Copy message text</div>
                         </div>
                       </button>
-                      <button
-                        onClick={() => {
-                          const selection = window.getSelection();
-                          const range = document.createRange();
-                          const messageElement = document.getElementById(`message-${message.id}`);
-                          if (messageElement) {
-                            range.selectNodeContents(messageElement);
-                            selection?.removeAllRanges();
-                            selection?.addRange(range);
-                          }
-                          setShowMobileMenu(false);
-                        }}
-                        className="w-full flex items-center gap-3 p-3 text-left hover:bg-[#121212] rounded-lg transition-colors"
-                      >
-                        <svg className="w-5 h-5 text-[#00FFD1]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                        </svg>
-                        <div>
-                          <div className="text-white font-medium">Select Text</div>
-                          <div className="text-xs text-[rgba(255,255,255,0.5)]">Select message content</div>
-                        </div>
-                      </button>
                     </div>
                   </>
                 )}
@@ -379,9 +356,40 @@ function MessageBlock({
           </div>
         </div>
       ) : (
-        // AI message: Full-width terminal style
-        <div id={`message-${message.id}`} className="text-white leading-relaxed whitespace-pre-wrap">
-          {message.content}
+        // AI message: Full-width terminal style with markdown rendering
+        <div id={`message-${message.id}`} className="text-white leading-relaxed prose prose-invert prose-sm max-w-none">
+          <ReactMarkdown
+            remarkPlugins={[remarkGfm]}
+            components={{
+              // Style bold text
+              strong: ({ children }) => (
+                <strong className="font-semibold text-white">{children}</strong>
+              ),
+              // Style italic text
+              em: ({ children }) => (
+                <em className="italic text-[rgba(255,255,255,0.85)]">{children}</em>
+              ),
+              // Style lists
+              ul: ({ children }) => (
+                <ul className="list-disc list-inside space-y-1 my-2">{children}</ul>
+              ),
+              ol: ({ children }) => (
+                <ol className="list-decimal list-inside space-y-1 my-2">{children}</ol>
+              ),
+              // Style paragraphs
+              p: ({ children }) => (
+                <p className="mb-3 last:mb-0">{children}</p>
+              ),
+              // Style code
+              code: ({ children }) => (
+                <code className="bg-[rgba(255,255,255,0.1)] px-1.5 py-0.5 rounded text-[#00FFD1] font-mono text-sm">
+                  {children}
+                </code>
+              ),
+            }}
+          >
+            {message.content}
+          </ReactMarkdown>
         </div>
       )}
     </motion.div>
