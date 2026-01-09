@@ -52,6 +52,7 @@ export default function ChatInterface({
   const [pendingMessage, setPendingMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showStartOverModal, setShowStartOverModal] = useState(false);
   
   // Strategy completion state
   const [strategyComplete, setStrategyComplete] = useState(false);
@@ -162,6 +163,21 @@ export default function ChatInterface({
     }
   }, [conversationId]);
 
+  const handleEditMessage = useCallback(async (messageIndex: number, newContent: string) => {
+    // Delete all messages after the edited message (branching)
+    const updatedMessages = messages.slice(0, messageIndex);
+    setMessages(updatedMessages);
+    
+    // Update the conversation text to match (remove everything after this point)
+    const conversationUpToEdit = updatedMessages
+      .map(msg => `${msg.role === 'user' ? 'User' : 'Assistant'}: ${msg.content}`)
+      .join('\n\n');
+    setFullConversationText(conversationUpToEdit + '\n\n');
+    
+    // Re-submit the edited message
+    await handleSendMessage(newContent);
+  }, [messages, handleSendMessage]);
+
   const handleSaveStrategy = useCallback(async (name: string) => {
     if (!conversationId || !strategyData) {
       throw new Error('No strategy to save');
@@ -195,7 +211,24 @@ export default function ChatInterface({
     setStrategyData(null);
   }, []);
 
-  const handleAddAnother = useCallback(() => {
+  const handleAddAnother = useCallback(async () => {
+    // Archive current conversation before starting new one (PATH 2: behavioral data)
+    if (conversationId) {
+      try {
+        await fetch('/api/strategy/abandon', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            conversationId,
+            reason: 'user_add_another',
+          }),
+        });
+      } catch (err) {
+        // Silent failure - don't block user from starting new conversation
+        console.error('Failed to archive conversation:', err);
+      }
+    }
+    
     // Reset everything for a new conversation
     setConversationId(null);
     setMessages([]);
@@ -203,13 +236,40 @@ export default function ChatInterface({
     setStrategyData(null);
     setFullConversationText('');
     setError(null);
-  }, []);
+  }, [conversationId]);
 
   const handleStartOver = useCallback(() => {
-    if (confirm('Start over? This will clear the current conversation.')) {
-      handleAddAnother();
+    setShowStartOverModal(true);
+  }, []);
+
+  const confirmStartOver = useCallback(async () => {
+    setShowStartOverModal(false);
+    
+    // Archive current conversation (PATH 2: behavioral data)
+    if (conversationId) {
+      try {
+        await fetch('/api/strategy/abandon', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            conversationId,
+            reason: 'user_restarted',
+          }),
+        });
+      } catch (err) {
+        // Silent failure - don't block user from restarting
+        console.error('Failed to archive conversation:', err);
+      }
     }
-  }, [handleAddAnother]);
+    
+    // Reset UI for new conversation
+    setConversationId(null);
+    setMessages([]);
+    setStrategyComplete(false);
+    setStrategyData(null);
+    setFullConversationText('');
+    setError(null);
+  }, [conversationId]);
 
   return (
     <div className="flex flex-col h-screen bg-bg-primary">
@@ -252,6 +312,7 @@ export default function ChatInterface({
           messages={messages}
           pendingMessage={pendingMessage || undefined}
           isLoading={isLoading}
+          onEditMessage={handleEditMessage}
         />
 
         {/* Strategy confirmation card */}
@@ -294,6 +355,37 @@ export default function ChatInterface({
 
       {/* Spacer for fixed input */}
       {!strategyComplete && <div className="h-32" />}
+
+      {/* Start Over Confirmation Modal */}
+      {showStartOverModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="bg-bg-secondary border border-border-default rounded-lg p-6 max-w-md w-full space-y-4 shadow-2xl">
+            <div>
+              <h3 className="text-lg font-semibold text-content-primary mb-2">
+                Start a new conversation?
+              </h3>
+              <p className="text-sm text-content-secondary">
+                Your current conversation will be cleared. This cannot be undone.
+              </p>
+            </div>
+            
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowStartOverModal(false)}
+                className="flex-1 px-4 py-2.5 bg-bg-tertiary text-content-primary rounded-md hover:bg-bg-tertiary/80 transition-colors font-medium"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmStartOver}
+                className="flex-1 px-4 py-2.5 bg-danger text-white rounded-md hover:bg-danger/90 transition-colors font-medium"
+              >
+                Start Over
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

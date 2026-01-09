@@ -8,6 +8,93 @@
 
 ## Build Sessions
 
+### Session 2: January 8, 2026 - Abandoned Conversations (PATH 2 Data Collection)
+
+**Duration:** ~1 hour  
+**Focus:** Implement behavioral data collection for abandoned strategy conversations
+
+#### What Was Built
+
+**1. Database Migration: Abandoned Status** ✅
+- Created `supabase/migrations/006_add_abandoned_status.sql`
+- Added `'abandoned'` status to `strategy_conversations` table
+- Added `abandoned_reason` column (tracks WHY: user_restarted, marked_stale, etc.)
+- Added `message_count` computed column (auto-calculates array length)
+- Created analytics indexes for Phase 2 queries
+
+**2. Database Functions** ✅
+- `abandon_conversation()` - Marks conversation as abandoned with reason
+- Updated `mark_stale_conversations()` - Now uses 'abandoned' status
+- `log_conversation_abandonment()` - Auto-logs to behavioral_data table
+- Analytics views: `v_abandonment_by_message_count`, `v_abandonment_triggers`
+
+**3. API Endpoint: `/api/strategy/abandon`** ✅
+- Created `src/app/api/strategy/abandon/route.ts`
+- Accepts conversationId and reason
+- Calls `abandon_conversation()` RPC function
+- Silent failure (doesn't block user experience)
+- Returns 200 even on error (prevents retry loops)
+
+**4. ChatInterface Updates** ✅
+- Updated `handleStartOver()` - Shows confirmation modal before clearing
+- Added `confirmStartOver()` - Calls `/api/strategy/abandon` after confirmation
+- Updated `handleAddAnother()` - Archives conversation with reason 'user_add_another'
+- **Added confirmation modal** - Prevents accidental clicks while maintaining direct, professional tone
+- **User sees:** "Start a new conversation? Your current conversation will be cleared."
+- **System does:** Archives old conversation after confirmation, logs behavioral event
+
+**5. Documentation Updates** ✅
+- Updated `docs/PATH2_Strategy.md` with comprehensive "Abandoned Conversations" section
+- Added analytics query examples (where users get stuck, what triggers abandonment)
+- Documented compound value: Month 1 → Year 2 insights
+- Outlined UX evolution across phases
+
+#### Why This Matters (PATH 2 Strategic Value)
+
+**The Insight:**
+- Abandoned conversations reveal WHERE users get confused
+- Most apps delete this data. We save it.
+- By Phase 2: "85% of restarts happen at message 3-4" → simplify those questions
+- By Year 2: "Our completion rate is 2.3x industry average"
+
+**Data Collected:**
+- Message count before abandonment
+- Last message content (what triggered confusion?)
+- Abandonment reason (user restarted vs navigated away vs stale)
+- Duration before abandonment
+- Automatic behavioral_data event
+
+**The Moat:**
+- Competitors won't think to track this
+- We start collecting Day 1
+- 6 months later, we have insights they can't replicate
+
+#### Technical Decisions
+
+**Why Confirmation Modal?**
+- ✅ Prevents accidental clicks (user concern)
+- ✅ Still archives conversation for PATH 2 data
+- ✅ Direct, professional messaging: "Your current conversation will be cleared"
+- ✅ Not playful or dismissive - respects user's work
+- ❌ Adds minimal friction but prevents data loss anxiety
+
+**Why Silent Archive (No "Saved" Message)?**
+- ✅ User doesn't need to know we're keeping abandoned conversations
+- ✅ Keeps UI simple
+- ✅ Can add "saved" messaging in Phase 2 if users request it
+
+**Why Return 200 Even on Error?**
+- Archive failure shouldn't block user from starting over
+- Silent failure in logs
+- Better UX > perfect data (we'll catch most events)
+
+**Why JSONB Arrays for Messages?**
+- Flexible: Can add metadata without schema changes
+- Queryable: Can analyze message content in SQL
+- Portable: Easy to export for ML training later
+
+---
+
 ### Session 1: January 8, 2026 - UX/UI Redesign & Foundation
 
 **Duration:** ~2 hours  

@@ -88,6 +88,141 @@ Start logging these from Day 1:
 | `revenge_trade_detected` | Trade within 10 min of loss + increased position size |
 | `session_start` | App opened or first interaction after 30+ min inactivity |
 | `session_end` | App closed or 30+ min of inactivity |
+| **`conversation_abandoned`** | **Strategy conversation abandoned (START OVER clicked or navigated away)** |
+
+---
+
+## Special Focus: Abandoned Conversations (THE HIDDEN GOLD)
+
+> **"Even abandoned conversations tell you: Where users get confused, What language patterns correlate with completion, Which strategy types are hardest to articulate"**
+
+### Why This Matters
+
+When a user clicks "Start Over" or abandons a strategy conversation, **that's valuable behavioral data**. Most apps would just delete it. We save it.
+
+### Implementation: Silent Archive with Confirmation
+
+**What the user sees:**
+- Clicks "Start Over" → Modal appears: "Start a new conversation? Your current conversation will be cleared."
+- **Cancel** or **Start Over** options
+- If confirmed: Chat clears → New conversation begins
+
+**What happens behind the scenes:**
+```typescript
+// When user confirms "Start Over"
+await fetch('/api/strategy/abandon', {
+  method: 'POST',
+  body: JSON.stringify({
+    conversationId,
+    reason: 'user_restarted'
+  })
+});
+
+// Database update:
+// - Status: 'in_progress' → 'abandoned'
+// - Abandoned_reason: 'user_restarted'
+// - Automatic behavioral_data log created
+// - Message count captured
+// - Last message preserved
+```
+
+**Why this approach:**
+- ✅ Prevents accidental clicks
+- ✅ Still archives conversation for PATH 2 data
+- ✅ Direct, professional messaging (not playful)
+- ✅ User knows conversation will be lost (even though we save it)
+
+### Abandoned Conversation Tracking
+
+**Database schema additions:**
+```sql
+-- In strategy_conversations table
+status TEXT CHECK (status IN ('in_progress', 'completed', 'abandoned')),
+abandoned_reason TEXT,  -- 'user_restarted', 'user_navigated_away', 'marked_stale'
+message_count INTEGER,  -- How many messages before abandonment?
+
+-- Automatic behavioral event logging
+CREATE TRIGGER trigger_log_conversation_abandonment
+  AFTER UPDATE ON strategy_conversations
+  FOR EACH ROW
+  WHEN (NEW.status = 'abandoned')
+  EXECUTE FUNCTION log_conversation_abandonment();
+```
+
+### Analytics You Can Run (Phase 2+)
+
+**Question: Where do users get stuck and restart?**
+```sql
+SELECT 
+  message_count,
+  COUNT(*) as restart_count,
+  ROUND(COUNT(*) * 100.0 / SUM(COUNT(*)) OVER (), 2) as percentage
+FROM strategy_conversations
+WHERE status = 'abandoned' 
+  AND abandoned_reason = 'user_restarted'
+GROUP BY message_count
+ORDER BY restart_count DESC;
+
+-- Hypothetical insight:
+-- "85% of restarts happen after message 3-4"
+-- → Your Socratic questions at turn 3-4 are confusing
+-- → ACTION: Simplify those questions or add examples
+```
+
+**Question: What content appears right before users give up?**
+```sql
+SELECT 
+  (messages[array_length(messages, 1)]->>'content')::TEXT as last_assistant_message,
+  COUNT(*) as abandon_count
+FROM strategy_conversations
+WHERE status = 'abandoned'
+  AND message_count >= 2
+GROUP BY last_assistant_message
+ORDER BY abandon_count DESC
+LIMIT 10;
+
+-- Hypothetical insight:
+-- Users abandon most often when Claude asks "Which EMA period?"
+-- → ACTION: Provide default suggestions ("Most traders use 9, 20, or 50")
+```
+
+**Question: Do certain strategy types get abandoned more?**
+```sql
+SELECT 
+  event_data->>'messageLength' as first_message_length,
+  CASE 
+    WHEN messages[1]->>'content' ILIKE '%scalp%' THEN 'Scalping'
+    WHEN messages[1]->>'content' ILIKE '%swing%' THEN 'Swing'
+    WHEN messages[1]->>'content' ILIKE '%ema%' THEN 'Indicator-based'
+    ELSE 'Other'
+  END as strategy_type,
+  COUNT(*) as abandon_count
+FROM strategy_conversations
+WHERE status = 'abandoned'
+GROUP BY strategy_type, first_message_length
+ORDER BY abandon_count DESC;
+
+-- Hypothetical insight:
+-- Scalping strategies get abandoned 3x more than swing strategies
+-- → ACTION: Add scalping-specific templates or examples
+```
+
+### The Compound Value
+
+**Month 1:** "3 users abandoned at message 4"  
+**Month 6:** "85% of abandons happen at message 3-4. Pattern: confusion about position sizing"  
+**Month 12:** "Updated onboarding reduced abandons by 47%. New pattern: users abandon when Claude asks about timeframes without examples"  
+**Year 2:** "Our completion rate (72%) is 2.3x industry average because we've optimized every friction point"
+
+### UX Options (By Phase)
+
+| Phase | Implementation | Why |
+|-------|----------------|-----|
+| **Phase 1A (NOW)** | Confirmation modal with archive | ✅ Prevents accidental loss, still collects data |
+| **Phase 2 (Weeks 9-16)** | Optional: Show "saved" in confirmation text | ✅ User knows work isn't lost |
+| **Phase 3 (Months 5+)** | Show "Recent Conversations" list | ✅ Power users can resume old conversations |
+
+**Current Implementation:** Confirmation modal prevents accidents while still archiving conversation for analytics.
 
 ---
 
@@ -95,7 +230,7 @@ Start logging these from Day 1:
 
 **Goal:** Identify when traders are emotionally compromised BEFORE they realize it.
 
-###Tilt Indicator Scoring System
+### Tilt Indicator Scoring System
 
 | Signal | Weight | Detection Method |
 |--------|--------|------------------|
