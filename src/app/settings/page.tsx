@@ -35,17 +35,17 @@ export default async function SettingsPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-bg-primary pb-20">
+    <div className="min-h-screen bg-[#000000] pb-20">
       {/* Header */}
-      <header className="sticky top-0 z-40 bg-bg-primary/80 backdrop-blur-xl border-b border-line-subtle">
+      <header className="app-header">
         <div className="px-4 py-4 flex items-center gap-3">
           <Link 
             href="/dashboard" 
-            className="p-2 -ml-2 text-content-tertiary hover:text-content-primary transition-colors"
+            className="p-2 -ml-2 text-[rgba(255,255,255,0.5)] hover:text-white transition-colors"
           >
             <ArrowLeft className="w-5 h-5" />
           </Link>
-          <div className="font-display font-bold text-lg">Settings</div>
+          <div className="font-mono font-bold text-lg text-white">Settings</div>
         </div>
       </header>
 
@@ -54,12 +54,12 @@ export default async function SettingsPage() {
         {/* User Info */}
         <div className="card">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-accent-cyan/10 rounded-full flex items-center justify-center">
-              <User className="w-6 h-6 text-accent-cyan" />
+            <div className="w-12 h-12 bg-[rgba(0,255,209,0.1)] flex items-center justify-center">
+              <User className="w-6 h-6 text-[#00FFD1]" />
             </div>
             <div>
-              <p className="font-display font-bold">{user.email}</p>
-              <p className="text-xs text-content-tertiary">Free Plan</p>
+              <p className="font-mono font-bold text-white">{user.email}</p>
+              <p className="text-xs text-[rgba(255,255,255,0.5)]">Free Plan</p>
             </div>
           </div>
         </div>
@@ -67,22 +67,22 @@ export default async function SettingsPage() {
         {/* Settings Groups */}
         {settingsGroups.map((group) => (
           <div key={group.title} className="card">
-            <h3 className="font-display font-bold text-sm text-content-tertiary mb-4">
+            <h3 className="font-mono font-bold text-sm text-[rgba(255,255,255,0.5)] mb-4">
               {group.title}
             </h3>
             <div className="space-y-3">
               {group.items.map((item) => (
                 <div
                   key={item.label}
-                  className="flex items-center gap-3 p-3 -mx-3 rounded-lg hover:bg-bg-tertiary transition-colors cursor-pointer"
+                  className="flex items-center gap-3 p-3 -mx-3 rounded-lg hover:bg-[#121212] transition-colors cursor-pointer"
                 >
-                  <item.icon className="w-5 h-5 text-content-tertiary" />
+                  <item.icon className="w-5 h-5 text-[rgba(255,255,255,0.5)]" />
                   <div className="flex-1">
-                    <p className="text-sm">{item.label}</p>
-                    <p className="text-xs text-content-tertiary">{item.description}</p>
+                    <p className="text-sm text-white">{item.label}</p>
+                    <p className="text-xs text-[rgba(255,255,255,0.5)]">{item.description}</p>
                   </div>
                   {item.comingSoon && (
-                    <span className="text-xs text-accent-purple bg-accent-purple/10 px-2 py-1 rounded">
+                    <span className="text-xs text-[#8b5cf6] bg-[rgba(139,92,246,0.1)] px-2 py-1 rounded">
                       Soon
                     </span>
                   )}
@@ -93,7 +93,7 @@ export default async function SettingsPage() {
         ))}
 
         {/* Version */}
-        <p className="text-center text-xs text-content-tertiary">
+        <p className="text-center text-xs text-[rgba(255,255,255,0.5)]">
           PropTrader.AI v0.1.0
         </p>
       </main>

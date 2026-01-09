@@ -36,7 +36,7 @@ export default function ChatMessageList({
   return (
     <div 
       ref={containerRef}
-      className="flex-1 overflow-y-auto bg-bg-primary"
+      className="flex-1 overflow-y-auto bg-[#000000]"
     >
       <div className="max-w-3xl mx-auto px-4 py-8">
         {/* Welcome message if no messages yet */}
@@ -48,24 +48,24 @@ export default function ChatMessageList({
           >
             {/* Terminal prompt with cyan glow and blinking cursor */}
             <div className="relative inline-flex items-center justify-center gap-1 mb-4">
-              <div className="absolute inset-0 blur-2xl bg-accent-cyan/30" />
-              <span className="text-accent-cyan text-5xl font-mono relative z-10">&gt;</span>
+              <div className="absolute inset-0 blur-2xl bg-[rgba(0,255,209,0.3)]" />
+              <span className="text-[#00FFD1] text-5xl font-mono relative z-10">&gt;</span>
               <motion.span
                 animate={{ opacity: [1, 1, 0, 0] }}
                 transition={{ duration: 1.06, repeat: Infinity, times: [0, 0.5, 0.5, 1] }}
-                className="text-accent-cyan text-4xl font-mono relative z-10"
+                className="text-[#00FFD1] text-4xl font-mono relative z-10"
               >
                 █
               </motion.span>
             </div>
             
-            <h2 className="text-xl font-display font-bold text-content-primary mb-2">
+            <h2 className="text-xl font-mono font-bold text-white mb-2">
               Turn your edge into executed trades
             </h2>
-            <p className="text-content-secondary text-sm max-w-md mx-auto">
+            <p className="text-[rgba(255,255,255,0.85)] text-sm max-w-md mx-auto">
               Describe your setup in plain English. I&apos;ll ask questions to make it precise.
             </p>
-            <div className="mt-6 text-xs text-content-tertiary">
+            <div className="mt-6 text-xs text-[rgba(255,255,255,0.5)]">
               Example: &quot;Trade pullbacks to 20 EMA when RSI is below 40 during NY session&quot;
             </div>
           </motion.div>
@@ -103,7 +103,7 @@ export default function ChatMessageList({
             animate={{ opacity: 1, y: 0 }}
             className="mb-8"
           >
-            <div className="flex items-center gap-2 text-content-tertiary text-sm mb-2">
+            <div className="flex items-center gap-2 text-[rgba(255,255,255,0.5)] text-sm mb-2">
               <span>Thinking...</span>
             </div>
             <div className="flex gap-1">
@@ -116,7 +116,7 @@ export default function ChatMessageList({
                     repeat: Infinity,
                     delay: i * 0.2,
                   }}
-                  className="w-2 h-2 bg-accent-cyan rounded-full"
+                  className="w-2 h-2 bg-[#00FFD1] rounded-full"
                 />
               ))}
             </div>
@@ -251,20 +251,20 @@ function MessageBlock({
                   value={editContent}
                   onChange={(e) => setEditContent(e.target.value)}
                   onKeyDown={handleKeyDown}
-                  className="w-full text-content-primary bg-accent-cyan/10 px-4 py-3 rounded-lg border border-accent-cyan/40 focus:border-accent-cyan focus:outline-none resize-none min-h-[44px]"
+                  className="w-full text-white bg-[rgba(0,255,209,0.1)] px-4 py-3 rounded-lg border border-[rgba(0,255,209,0.4)] focus:border-[#00FFD1] focus:outline-none resize-none min-h-[44px]"
                   rows={3}
                 />
                 <div className="flex gap-2 mt-2 justify-end">
                   <button
                     onClick={handleCancelEdit}
-                    className="px-3 py-1 text-xs text-content-secondary hover:text-content-primary transition-colors"
+                    className="px-3 py-1 text-xs text-[rgba(255,255,255,0.85)] hover:text-white transition-colors"
                   >
                     Cancel
                   </button>
                   <button
                     onClick={handleSaveEdit}
                     disabled={!editContent.trim() || editContent === message.content}
-                    className="px-3 py-1 text-xs bg-accent-cyan text-white rounded hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                    className="px-3 py-1 text-xs bg-[#00FFD1] text-black rounded-none hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                   >
                     Save
                   </button>
@@ -273,7 +273,7 @@ function MessageBlock({
             ) : (
               // View mode
               <>
-                <div className="inline-block text-content-primary bg-accent-cyan/10 px-4 py-3 rounded-lg border border-accent-cyan/20">
+                <div className="inline-block text-white bg-[rgba(0,255,209,0.1)] px-4 py-3 rounded-lg border border-[rgba(0,255,209,0.2)]">
                   {message.content}
                 </div>
                 
@@ -282,33 +282,33 @@ function MessageBlock({
                   <div className="hidden sm:flex absolute -bottom-6 right-0 items-center gap-1 text-xs">
                     {message.timestamp && (
                       <span 
-                        className="text-content-tertiary mr-2 cursor-default relative group/time"
+                        className="text-[rgba(255,255,255,0.5)] mr-2 cursor-default relative group/time"
                       >
                         {formatTimestamp(message.timestamp)}
-                        <span className="absolute top-full right-0 mt-1 px-2 py-1 bg-bg-tertiary rounded text-xs text-content-secondary whitespace-nowrap opacity-0 group-hover/time:opacity-100 transition-opacity pointer-events-none">
+                        <span className="absolute top-full right-0 mt-1 px-2 py-1 bg-[#121212] rounded text-xs text-[rgba(255,255,255,0.85)] whitespace-nowrap opacity-0 group-hover/time:opacity-100 transition-opacity pointer-events-none">
                           {formatFullDate(message.timestamp)}
                         </span>
                       </span>
                     )}
                     <button
                       onClick={handleEdit}
-                      className="group/btn p-1.5 text-content-tertiary hover:text-accent-cyan transition-colors relative"
+                      className="group/btn p-1.5 text-[rgba(255,255,255,0.5)] hover:text-[#00FFD1] transition-colors relative"
                     >
                       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                       </svg>
-                      <span className="absolute top-full right-0 mt-1 px-2 py-1 bg-bg-tertiary rounded text-xs text-content-secondary whitespace-nowrap opacity-0 group-hover/btn:opacity-100 transition-opacity pointer-events-none">
+                      <span className="absolute top-full right-0 mt-1 px-2 py-1 bg-[#121212] rounded text-xs text-[rgba(255,255,255,0.85)] whitespace-nowrap opacity-0 group-hover/btn:opacity-100 transition-opacity pointer-events-none">
                         edit
                       </span>
                     </button>
                     <button
                       onClick={handleCopy}
-                      className="group/btn p-1.5 text-content-tertiary hover:text-accent-cyan transition-colors relative"
+                      className="group/btn p-1.5 text-[rgba(255,255,255,0.5)] hover:text-[#00FFD1] transition-colors relative"
                     >
                       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
                       </svg>
-                      <span className="absolute top-full right-0 mt-1 px-2 py-1 bg-bg-tertiary rounded text-xs text-content-secondary whitespace-nowrap opacity-0 group-hover/btn:opacity-100 transition-opacity pointer-events-none">
+                      <span className="absolute top-full right-0 mt-1 px-2 py-1 bg-[#121212] rounded text-xs text-[rgba(255,255,255,0.85)] whitespace-nowrap opacity-0 group-hover/btn:opacity-100 transition-opacity pointer-events-none">
                         copy
                       </span>
                     </button>
@@ -324,29 +324,29 @@ function MessageBlock({
                       onClick={() => setShowMobileMenu(false)}
                     />
                     {/* Menu */}
-                    <div className="sm:hidden fixed bottom-0 left-0 right-0 bg-bg-secondary border-t border-line-default rounded-t-xl p-4 z-50 space-y-3">
+                    <div className="sm:hidden fixed bottom-0 left-0 right-0 bg-[#0a0a0a] border-t border-[rgba(255,255,255,0.1)] rounded-t-xl p-4 z-50 space-y-3">
                       <button
                         onClick={handleEdit}
-                        className="w-full flex items-center gap-3 p-3 text-left hover:bg-bg-tertiary rounded-lg transition-colors"
+                        className="w-full flex items-center gap-3 p-3 text-left hover:bg-[#121212] rounded-lg transition-colors"
                       >
-                        <svg className="w-5 h-5 text-accent-cyan" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <svg className="w-5 h-5 text-[#00FFD1]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                         </svg>
                         <div>
-                          <div className="text-content-primary font-medium">Edit</div>
-                          <div className="text-xs text-content-tertiary">Modify this message</div>
+                          <div className="text-white font-medium">Edit</div>
+                          <div className="text-xs text-[rgba(255,255,255,0.5)]">Modify this message</div>
                         </div>
                       </button>
                       <button
                         onClick={handleCopy}
-                        className="w-full flex items-center gap-3 p-3 text-left hover:bg-bg-tertiary rounded-lg transition-colors"
+                        className="w-full flex items-center gap-3 p-3 text-left hover:bg-[#121212] rounded-lg transition-colors"
                       >
-                        <svg className="w-5 h-5 text-accent-cyan" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <svg className="w-5 h-5 text-[#00FFD1]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
                         </svg>
                         <div>
-                          <div className="text-content-primary font-medium">Copy</div>
-                          <div className="text-xs text-content-tertiary">Copy message text</div>
+                          <div className="text-white font-medium">Copy</div>
+                          <div className="text-xs text-[rgba(255,255,255,0.5)]">Copy message text</div>
                         </div>
                       </button>
                       <button
@@ -361,14 +361,14 @@ function MessageBlock({
                           }
                           setShowMobileMenu(false);
                         }}
-                        className="w-full flex items-center gap-3 p-3 text-left hover:bg-bg-tertiary rounded-lg transition-colors"
+                        className="w-full flex items-center gap-3 p-3 text-left hover:bg-[#121212] rounded-lg transition-colors"
                       >
-                        <svg className="w-5 h-5 text-accent-cyan" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <svg className="w-5 h-5 text-[#00FFD1]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                         </svg>
                         <div>
-                          <div className="text-content-primary font-medium">Select Text</div>
-                          <div className="text-xs text-content-tertiary">Select message content</div>
+                          <div className="text-white font-medium">Select Text</div>
+                          <div className="text-xs text-[rgba(255,255,255,0.5)]">Select message content</div>
                         </div>
                       </button>
                     </div>
@@ -380,7 +380,7 @@ function MessageBlock({
         </div>
       ) : (
         // AI message: Full-width terminal style
-        <div id={`message-${message.id}`} className="text-content-primary leading-relaxed whitespace-pre-wrap">
+        <div id={`message-${message.id}`} className="text-white leading-relaxed whitespace-pre-wrap">
           {message.content}
         </div>
       )}

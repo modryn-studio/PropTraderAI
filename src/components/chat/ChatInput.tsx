@@ -98,7 +98,7 @@ export default function ChatInput({
   return (
     <div
       ref={containerRef}
-      className="fixed bottom-0 left-0 right-0 bg-bg-primary border-t border-line-subtle"
+      className="fixed bottom-0 left-0 right-0 bg-[#000000] border-t border-[rgba(255,255,255,0.1)]"
       style={{
         paddingBottom: `max(env(safe-area-inset-bottom, 0px), ${keyboardHeight}px)`,
       }}
@@ -132,10 +132,10 @@ export default function ChatInput({
               disabled={!disabled && !value.trim()}
               className={`absolute right-2 bottom-2 p-2 rounded-lg transition-all duration-200 ${
                 disabled
-                  ? 'text-text-secondary hover:text-text-primary cursor-pointer'
+                  ? 'text-[rgba(255,255,255,0.85)] hover:text-white cursor-pointer'
                   : !value.trim()
-                  ? 'text-content-tertiary cursor-not-allowed'
-                  : 'text-accent-cyan hover:bg-accent-cyan/10'
+                  ? 'text-[rgba(0,0,0,0.3)] cursor-not-allowed'
+                  : 'text-[#00FFD1] hover:bg-[rgba(0,255,209,0.1)]'
               }`}
               aria-label={disabled ? 'Stop generating' : 'Send message'}
             >
@@ -172,9 +172,9 @@ export default function ChatInput({
         </div>
 
         {/* Helper text - Terminal aesthetic (desktop only) */}
-        <div className="hidden sm:block mt-2 text-xs text-content-tertiary text-center sm:text-left font-mono">
-          <span className="text-accent-cyan">Enter ↵</span> to send, 
-          <span className="text-accent-cyan ml-1">Shift+Enter ↵↵</span> for new line
+        <div className="hidden sm:block mt-2 text-xs text-[rgba(255,255,255,0.5)] text-center sm:text-left font-mono">
+          <span className="text-[#00FFD1]">Enter ↵</span> to send, 
+          <span className="text-[#00FFD1] ml-1">Shift+Enter ↵↵</span> for new line
         </div>
       </div>
     </div>

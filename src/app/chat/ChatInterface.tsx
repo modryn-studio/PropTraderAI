@@ -272,22 +272,22 @@ export default function ChatInterface({
   }, [conversationId]);
 
   return (
-    <div className="flex flex-col h-screen bg-bg-primary">
+    <div className="flex flex-col h-screen bg-[#000000]">
       {/* Header */}
-      <header className="sticky top-0 z-40 bg-bg-primary/80 backdrop-blur-xl border-b border-line-subtle">
+      <header className="app-header">
         <div className="px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Link 
               href="/dashboard" 
-              className="flex items-center gap-2 p-2 -ml-2 text-content-tertiary hover:text-content-primary transition-colors group"
+              className="flex items-center gap-2 p-2 -ml-2 text-[rgba(255,255,255,0.5)] hover:text-white transition-colors group"
             >
               <ArrowLeft className="w-5 h-5" />
-              <span className="text-xs text-content-tertiary group-hover:text-content-secondary font-mono">ESC</span>
+              <span className="text-xs text-[rgba(255,255,255,0.5)] group-hover:text-[rgba(255,255,255,0.85)] font-mono">ESC</span>
             </Link>
             <div>
-              <div className="font-display font-bold text-lg">Strategy Builder</div>
+              <div className="font-mono font-bold text-lg text-white">Strategy Builder</div>
               {messages.length > 0 && (
-                <div className="text-xs text-content-tertiary">
+                <div className="text-xs text-[rgba(255,255,255,0.5)]">
                   {messages.length} messages
                 </div>
               )}
@@ -297,7 +297,7 @@ export default function ChatInterface({
           {messages.length > 0 && !strategyComplete && (
             <button
               onClick={handleStartOver}
-              className="p-2 text-content-tertiary hover:text-content-primary transition-colors"
+              className="p-2 text-[rgba(255,255,255,0.5)] hover:text-white transition-colors"
               title="Start over"
             >
               <RotateCcw className="w-5 h-5" />
@@ -333,8 +333,8 @@ export default function ChatInterface({
 
         {/* Error message */}
         {error && (
-          <div className="px-4 py-3 bg-loss/10 border-t border-loss/20">
-            <p className="text-loss text-sm">{error}</p>
+          <div className="px-4 py-3 bg-[rgba(181,50,61,0.1)] border-t border-[rgba(181,50,61,0.2)]">
+            <p className="text-[#b5323d] text-sm">{error}</p>
           </div>
         )}
       </div>
@@ -359,12 +359,12 @@ export default function ChatInterface({
       {/* Start Over Confirmation Modal */}
       {showStartOverModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="bg-bg-secondary border border-border-default rounded-lg p-6 max-w-md w-full space-y-4 shadow-2xl">
+          <div className="bg-[#0a0a0a] border border-[rgba(255,255,255,0.1)] rounded-lg p-6 max-w-md w-full space-y-4 shadow-2xl">
             <div>
-              <h3 className="text-lg font-semibold text-content-primary mb-2">
+              <h3 className="text-lg font-semibold text-white mb-2">
                 Start a new conversation?
               </h3>
-              <p className="text-sm text-content-secondary">
+              <p className="text-sm text-[rgba(255,255,255,0.85)]">
                 Your current conversation will be cleared. This cannot be undone.
               </p>
             </div>
@@ -372,13 +372,13 @@ export default function ChatInterface({
             <div className="flex gap-3">
               <button
                 onClick={() => setShowStartOverModal(false)}
-                className="flex-1 px-4 py-2.5 bg-bg-tertiary text-content-primary rounded-md hover:bg-bg-tertiary/80 transition-colors font-medium"
+                className="btn-secondary flex-1"
               >
                 Cancel
               </button>
               <button
                 onClick={confirmStartOver}
-                className="flex-1 px-4 py-2.5 bg-danger text-white rounded-md hover:bg-danger/90 transition-colors font-medium"
+                className="flex-1 px-4 py-2.5 bg-[#b5323d] text-white rounded-none hover:bg-[#b5323d]/90 transition-colors font-medium"
               >
                 Start Over
               </button>

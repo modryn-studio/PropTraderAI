@@ -67,17 +67,17 @@ export default function StrategyConfirmationCard({
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="border-t border-line-default bg-bg-secondary/50 p-6 mt-4 rounded-lg"
+        className="border-t border-[rgba(255,255,255,0.1)] bg-[rgba(10,10,10,0.5)] p-6 mt-4 rounded-lg"
       >
         <div className="flex items-start gap-3 mb-4">
-          <div className="w-10 h-10 rounded-full bg-profit/10 flex items-center justify-center">
-            <CheckCircle className="w-5 h-5 text-profit" />
+          <div className="w-10 h-10 rounded-full bg-[rgba(0,137,123,0.1)] flex items-center justify-center">
+            <CheckCircle className="w-5 h-5 text-[#00897b]" />
           </div>
           <div>
-            <h3 className="text-lg font-display font-bold text-content-primary mb-1">
+            <h3 className="text-lg font-mono font-bold text-white mb-1">
               Strategy saved!
             </h3>
-            <p className="text-content-secondary text-sm">
+            <p className="text-[rgba(255,255,255,0.85)] text-sm">
               &quot;{editedName}&quot; is ready to monitor.
             </p>
           </div>
@@ -86,7 +86,7 @@ export default function StrategyConfirmationCard({
         {/* Soft cap at 3 strategies */}
         {userStrategyCount < 3 && onAddAnother ? (
           <div className="space-y-3">
-            <p className="text-content-tertiary text-sm">
+            <p className="text-[rgba(255,255,255,0.5)] text-sm">
               {getPostSaveMessage(userStrategyCount)}
             </p>
             <button
@@ -98,7 +98,7 @@ export default function StrategyConfirmationCard({
             </button>
           </div>
         ) : (
-          <div className="text-content-tertiary text-sm">
+          <div className="text-[rgba(255,255,255,0.5)] text-sm">
             Focus on executing your strategies. More isn&apos;t always better.
           </div>
         )}
@@ -110,12 +110,12 @@ export default function StrategyConfirmationCard({
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="border-t border-line-default bg-bg-secondary/50 p-6 mt-4 rounded-lg space-y-6"
+      className="border-t border-[rgba(255,255,255,0.1)] bg-[rgba(10,10,10,0.5)] p-6 mt-4 rounded-lg space-y-6"
     >
       {/* Header */}
       <div className="flex items-start justify-between">
         <div>
-          <div className="text-xs text-accent-cyan font-data uppercase tracking-wider mb-1">
+          <div className="text-xs text-[#00FFD1] font-mono uppercase tracking-wider mb-1">
             Strategy Complete
           </div>
           
@@ -128,12 +128,12 @@ export default function StrategyConfirmationCard({
               onBlur={() => setIsEditing(false)}
               onKeyDown={(e) => e.key === 'Enter' && setIsEditing(false)}
               autoFocus
-              className="input-terminal text-lg font-display font-bold"
+              className="input-terminal text-lg font-mono font-bold"
             />
           ) : (
             <button
               onClick={() => setIsEditing(true)}
-              className="flex items-center gap-2 text-lg font-display font-bold text-content-primary hover:text-accent-cyan transition-colors group"
+              className="flex items-center gap-2 text-lg font-mono font-bold text-white hover:text-[#00FFD1] transition-colors group"
             >
               {editedName}
               <Edit3 className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -141,13 +141,13 @@ export default function StrategyConfirmationCard({
           )}
         </div>
         
-        <div className="px-3 py-1 bg-accent-purple/10 text-accent-purple text-xs font-data rounded-full">
+        <div className="px-3 py-1 bg-[rgba(139,92,246,0.1)] text-[#8b5cf6] text-xs font-mono rounded-full">
           {instrument}
         </div>
       </div>
 
       {/* Summary */}
-      <p className="text-content-secondary text-sm leading-relaxed">
+      <p className="text-[rgba(255,255,255,0.85)] text-sm leading-relaxed">
         {summary}
       </p>
 
@@ -158,12 +158,12 @@ export default function StrategyConfirmationCard({
           <RuleCard
             icon={<TrendingUp className="w-4 h-4" />}
             label="Entry"
-            color="text-profit"
-            bgColor="bg-profit/10"
+            color="text-[#00897b]"
+            bgColor="bg-[rgba(0,137,123,0.1)]"
           >
             <ul className="space-y-1">
               {parsedRules.entry_conditions.map((condition, i) => (
-                <li key={i} className="text-content-secondary text-sm">
+                <li key={i} className="text-[rgba(255,255,255,0.85)] text-sm">
                   {condition.description || formatEntryCondition(condition)}
                 </li>
               ))}
@@ -176,12 +176,12 @@ export default function StrategyConfirmationCard({
           <RuleCard
             icon={<TrendingDown className="w-4 h-4" />}
             label="Exit"
-            color="text-loss"
-            bgColor="bg-loss/10"
+            color="text-[#b5323d]"
+            bgColor="bg-[rgba(181,50,61,0.1)]"
           >
             <ul className="space-y-1">
               {parsedRules.exit_conditions.map((condition, i) => (
-                <li key={i} className="text-content-secondary text-sm">
+                <li key={i} className="text-[rgba(255,255,255,0.85)] text-sm">
                   {condition.description || formatExitCondition(condition)}
                 </li>
               ))}
@@ -194,12 +194,12 @@ export default function StrategyConfirmationCard({
           <RuleCard
             icon={<Clock className="w-4 h-4" />}
             label="Filters"
-            color="text-accent-blue"
-            bgColor="bg-accent-blue/10"
+            color="text-[#3b82f6]"
+            bgColor="bg-[rgba(59,130,246,0.1)]"
           >
             <ul className="space-y-1">
               {parsedRules.filters.map((filter, i) => (
-                <li key={i} className="text-content-secondary text-sm">
+                <li key={i} className="text-[rgba(255,255,255,0.85)] text-sm">
                   {filter.description || formatFilter(filter)}
                 </li>
               ))}
@@ -212,10 +212,10 @@ export default function StrategyConfirmationCard({
           <RuleCard
             icon={<Target className="w-4 h-4" />}
             label="Risk"
-            color="text-warning"
-            bgColor="bg-warning/10"
+            color="text-[#FFB800]"
+            bgColor="bg-[rgba(255,184,0,0.1)]"
           >
-            <p className="text-content-secondary text-sm">
+            <p className="text-[rgba(255,255,255,0.85)] text-sm">
               {formatPositionSizing(parsedRules.position_sizing)}
             </p>
           </RuleCard>
@@ -224,7 +224,7 @@ export default function StrategyConfirmationCard({
 
       {/* Error message */}
       {error && (
-        <div className="text-loss text-sm flex items-center gap-2">
+        <div className="text-[#b5323d] text-sm flex items-center gap-2">
           <Shield className="w-4 h-4" />
           {error}
         </div>
@@ -235,7 +235,7 @@ export default function StrategyConfirmationCard({
         <button
           onClick={onRefine}
           disabled={isSaving}
-          className="flex-1 py-3 border border-line-default rounded-lg text-content-secondary hover:text-content-primary hover:border-line-strong transition-colors"
+          className="btn-secondary flex-1 py-3"
         >
           Keep Refining
         </button>

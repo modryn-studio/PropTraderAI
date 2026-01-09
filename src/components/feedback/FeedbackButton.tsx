@@ -75,7 +75,7 @@ export default function FeedbackButton({
         animate={{ x: 0 }}
         transition={{ delay: 1.5, type: 'spring', stiffness: 100 }}
         onClick={() => setIsOpen(true)}
-        className="hidden md:flex fixed top-1/2 -translate-y-1/2 right-0 z-40 bg-bg-secondary/90 backdrop-blur-sm border-l border-t border-b border-line text-content-tertiary hover:text-accent-cyan hover:bg-bg-tertiary px-3 py-6 rounded-l-lg shadow-lg hover:px-4 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-accent-cyan items-center"
+        className="hidden md:flex fixed top-1/2 -translate-y-1/2 right-0 z-40 bg-[rgba(10,10,10,0.9)] backdrop-blur-sm border-l border-t border-b border-[rgba(255,255,255,0.1)] text-[rgba(255,255,255,0.5)] hover:text-[#00FFD1] hover:bg-[#121212] px-3 py-6 rounded-l-lg shadow-lg hover:px-4 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-[#00FFD1] items-center"
         aria-label="Send feedback"
         style={{ writingMode: 'vertical-rl' }}
       >
@@ -95,7 +95,7 @@ export default function FeedbackButton({
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 1.5 }}
           onClick={() => setIsOpen(true)}
-          className={`md:hidden fixed ${mobileBottomClass} right-4 z-40 bg-bg-secondary/90 backdrop-blur-sm border border-line text-content-tertiary hover:text-accent-cyan hover:bg-bg-tertiary rounded-full p-3 shadow-lg active:scale-95 transition-all focus:outline-none focus:ring-2 focus:ring-accent-cyan`}
+          className={`md:hidden fixed ${mobileBottomClass} right-4 z-40 bg-[rgba(10,10,10,0.9)] backdrop-blur-sm border border-[rgba(255,255,255,0.1)] text-[rgba(255,255,255,0.5)] hover:text-[#00FFD1] hover:bg-[#121212] rounded-full p-3 shadow-lg active:scale-95 transition-all focus:outline-none focus:ring-2 focus:ring-[#00FFD1]`}
           aria-label="Send feedback"
         >
           <MessageSquare className="w-5 h-5" />
@@ -121,22 +121,22 @@ export default function FeedbackButton({
               animate={{ x: 0 }}
               exit={{ x: '100%' }}
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="fixed top-0 right-0 h-full w-full max-w-md bg-bg-secondary border-l border-line shadow-2xl z-50 overflow-y-auto"
+              className="fixed top-0 right-0 h-full w-full max-w-md bg-[#0a0a0a] border-l border-[rgba(255,255,255,0.1)] shadow-2xl z-50 overflow-y-auto"
             >
               <div className="p-6 h-full flex flex-col">
                 {/* Header */}
                 <div className="flex items-start justify-between mb-6">
                   <div>
-                    <h3 className="font-display font-bold text-xl text-content-primary">
+                    <h3 className="font-mono font-bold text-xl text-white">
                       Send Feedback
                     </h3>
-                    <p className="text-sm text-content-tertiary mt-1">
+                    <p className="text-sm text-[rgba(255,255,255,0.5)] mt-1">
                       Help us build what you need
                     </p>
                   </div>
                   <button
                     onClick={() => setIsOpen(false)}
-                    className="text-content-tertiary hover:text-content-primary transition-colors p-1"
+                    className="text-[rgba(255,255,255,0.5)] hover:text-white transition-colors p-1"
                     aria-label="Close"
                   >
                     <X className="w-5 h-5" />
@@ -151,13 +151,13 @@ export default function FeedbackButton({
                     className="flex-1 flex items-center justify-center"
                   >
                     <div className="text-center">
-                      <div className="w-20 h-20 bg-accent-cyan/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <Send className="w-10 h-10 text-accent-cyan" />
+                      <div className="w-20 h-20 bg-[rgba(0,255,209,0.1)] flex items-center justify-center mx-auto mb-4">
+                        <Send className="w-10 h-10 text-[#00FFD1]" />
                       </div>
-                      <p className="text-lg text-content-primary font-medium">
+                      <p className="text-lg text-white font-medium">
                         Thanks for the feedback!
                       </p>
-                      <p className="text-sm text-content-tertiary mt-2">
+                      <p className="text-sm text-[rgba(255,255,255,0.5)] mt-2">
                         Every bit helps us help you pass.
                       </p>
                     </div>
@@ -166,7 +166,7 @@ export default function FeedbackButton({
                   <form onSubmit={handleSubmit} className="flex-1 flex flex-col">
                     {/* Feedback Type */}
                     <div className="mb-4">
-                      <label className="text-sm text-content-secondary block mb-2">
+                      <label className="text-sm text-[rgba(255,255,255,0.85)] block mb-2">
                         What type of feedback?
                       </label>
                       <div className="flex gap-2">
@@ -179,10 +179,10 @@ export default function FeedbackButton({
                             key={type.value}
                             type="button"
                             onClick={() => setFeedbackType(type.value as typeof feedbackType)}
-                            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                            className={`px-4 py-2 text-sm font-medium transition-all ${
                               feedbackType === type.value
-                                ? 'bg-accent-cyan text-bg-primary'
-                                : 'bg-bg-tertiary text-content-secondary hover:text-content-primary border border-line'
+                                ? 'bg-[#00FFD1] text-black'
+                                : 'bg-[#121212] text-[rgba(255,255,255,0.85)] hover:text-white border border-[rgba(255,255,255,0.1)]'
                             }`}
                           >
                             {type.label}
@@ -193,7 +193,7 @@ export default function FeedbackButton({
 
                     {/* Feedback Textarea */}
                     <div className="flex-1 mb-4">
-                      <label htmlFor="feedback" className="text-sm text-content-secondary block mb-2">
+                      <label htmlFor="feedback" className="text-sm text-[rgba(255,255,255,0.85)] block mb-2">
                         What&apos;s on your mind?
                       </label>
                       <textarea
@@ -207,7 +207,7 @@ export default function FeedbackButton({
                             ? "What would help you pass your challenge?"
                             : "Bug? Feature idea? General thoughts?"
                         }
-                        className="w-full h-48 bg-bg-tertiary border border-line rounded-lg px-4 py-3 text-content-primary placeholder:text-content-tertiary focus:outline-none focus:ring-2 focus:ring-accent-cyan focus:border-transparent resize-none"
+                        className="w-full h-48 bg-[#121212] border border-[rgba(255,255,255,0.1)] rounded-lg px-4 py-3 text-white placeholder:text-[rgba(255,255,255,0.5)] focus:outline-none focus:ring-2 focus:ring-[#00FFD1] focus:border-transparent resize-none"
                         disabled={isSubmitting}
                         autoFocus
                       />
@@ -215,7 +215,7 @@ export default function FeedbackButton({
 
                     {/* Email (Optional) */}
                     <div className="mb-4">
-                      <label htmlFor="email" className="text-sm text-content-secondary block mb-2">
+                      <label htmlFor="email" className="text-sm text-[rgba(255,255,255,0.85)] block mb-2">
                         Email (optional)
                       </label>
                       <input
@@ -224,17 +224,17 @@ export default function FeedbackButton({
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         placeholder="your@email.com"
-                        className="w-full bg-bg-tertiary border border-line rounded-lg px-4 py-3 text-content-primary placeholder:text-content-tertiary focus:outline-none focus:ring-2 focus:ring-accent-cyan focus:border-transparent"
+                        className="w-full bg-[#121212] border border-[rgba(255,255,255,0.1)] rounded-lg px-4 py-3 text-white placeholder:text-[rgba(255,255,255,0.5)] focus:outline-none focus:ring-2 focus:ring-[#00FFD1] focus:border-transparent"
                         disabled={isSubmitting}
                       />
-                      <p className="text-xs text-content-tertiary mt-1">
+                      <p className="text-xs text-[rgba(255,255,255,0.5)] mt-1">
                         Only if you want a reply
                       </p>
                     </div>
 
                     {/* Error */}
                     {error && (
-                      <p className="text-sm text-loss mb-4">{error}</p>
+                      <p className="text-sm text-[#b5323d] mb-4">{error}</p>
                     )}
 
                     {/* Submit */}
