@@ -18,6 +18,17 @@ export default function ChatInput({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const [isMobile, setIsMobile] = useState(false);
+
+  // Detect if device is mobile
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile('ontouchstart' in window && window.innerWidth < 768);
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   // Handle iOS keyboard pushing content up
   useEffect(() => {
@@ -66,10 +77,19 @@ export default function ChatInput({
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    // Submit on Enter (not Shift+Enter)
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSubmit();
+    // Desktop: Submit on Enter (not Shift+Enter)
+    // Mobile: Enter always creates new line, must use send button
+    if (e.key === 'Enter') {
+      if (isMobile) {
+        // On mobile, Enter creates new line (default behavior)
+        return;
+      } else {
+        // On desktop, Enter submits (unless Shift is held)
+        if (!e.shiftKey) {
+          e.preventDefault();
+          handleSubmit();
+        }
+      }
     }
   };
 
