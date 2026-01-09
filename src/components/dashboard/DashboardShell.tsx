@@ -52,6 +52,7 @@ export default function DashboardShell({ user }: DashboardShellProps) {
             onClick={handleSignOut}
             className="p-2 text-[rgba(255,255,255,0.5)] hover:text-white transition-colors"
             aria-label="Sign out"
+            title="Sign out of your account"
           >
             <LogOut className="w-5 h-5" />
           </button>
@@ -74,14 +75,21 @@ export default function DashboardShell({ user }: DashboardShellProps) {
               <p className="text-[rgba(255,255,255,0.5)] text-sm mb-6 max-w-sm mx-auto">
                 94% fail their first challenge. Connect Tradovate and we&apos;ll make sure you&apos;re not one of them.
               </p>
-              <button className="btn-primary mb-4 inline-flex items-center gap-2">
+              <button className="btn-primary mb-4 inline-flex items-center gap-2 group">
                 Connect
                 <Image 
                   src="/tradovate-logo.png" 
                   alt="Tradovate" 
                   width={120} 
                   height={24}
-                  className="h-5 w-auto"
+                  className="h-5 w-auto group-hover:hidden"
+                />
+                <Image 
+                  src="/tradovate-logo-darkbg.png" 
+                  alt="Tradovate" 
+                  width={120} 
+                  height={24}
+                  className="h-5 w-auto hidden group-hover:block"
                 />
               </button>
               <p className="text-xs text-[rgba(255,255,255,0.5)]">
