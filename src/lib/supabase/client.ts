@@ -1,11 +1,15 @@
 import { createBrowserClient } from '@supabase/ssr'
 
 type CookieOptions = {
-  maxAge?: number
-  path?: string
-  domain?: string
-  sameSite?: 'strict' | 'lax' | 'none'
-  secure?: boolean
+  name: string
+  value: string
+  options: {
+    maxAge?: number
+    path?: string
+    domain?: string
+    sameSite?: 'strict' | 'lax' | 'none'
+    secure?: boolean
+  }
 }
 
 export function createClient() {
@@ -14,28 +18,42 @@ export function createClient() {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        get(name: string) {
-          return getCookie(name)
+        getAll() {
+          return parseCookies()
         },
-        set(name: string, value: string, options: CookieOptions) {
-          setCookie(name, value, options)
-        },
-        remove(name: string, options: CookieOptions) {
-          setCookie(name, '', { ...options, maxAge: 0 })
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value, options }) => {
+            setCookie(name, value, options)
+          })
         },
       },
     }
   )
 }
 
-function getCookie(name: string): string | undefined {
-  if (typeof document === 'undefined') return undefined
-  const value = `; ${document.cookie}`
-  const parts = value.split(`; ${name}=`)
-  if (parts.length === 2) return parts.pop()?.split(';').shift()
+function parseCookies() {
+  if (typeof document === 'undefined') return []
+  
+  return document.cookie.split(';').reduce((cookies: Array<{ name: string; value: string }>, cookie) => {
+    const [name, value] = cookie.split('=').map(c => c.trim())
+    if (name && value) {
+      cookies.push({ name, value })
+    }
+    return cookies
+  }, [])
 }
 
-function setCookie(name: string, value: string, options: CookieOptions) {
+function setCookie(
+  name: string,
+  value: string,
+  options: {
+    maxAge?: number
+    path?: string
+    domain?: string
+    sameSite?: 'strict' | 'lax' | 'none'
+    secure?: boolean
+  }
+) {
   if (typeof document === 'undefined') return
   
   let cookie = `${name}=${value}`
