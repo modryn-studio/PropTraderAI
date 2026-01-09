@@ -73,3 +73,75 @@ Universal prohibitions across virtually all firms include high-frequency trading
 ## Conclusion
 
 TradersPost.io has operated openly since 2021 providing exactly the service PropTraderAI contemplates—automated trading for futures prop firm accounts. Their success demonstrates market demand, while their disclaimer-based liability model provides a template for navigating varying firm policies. The critical insight is that this is not a gray area: it's an established market segment with a clear industry leader, specific prop firms that explicitly permit automation, and an evolving regulatory environment trending toward greater acceptance. PropTraderAI's offering would enter a validated market rather than creating a new category—the question is positioning strategy, particularly whether to integrate broadly (like TradersPost) or focus exclusively on automation-friendly firms to minimize compliance risk.
+
+
+
+## TradersPost Workflow (Multi-Tool, Fragmented)
+
+**Step 1: Strategy Development (External)**
+- User must learn PineScript (TradingView) or TrendSpider's point-and-click builder
+- Write/code the strategy logic themselves OR purchase a third-party strategy
+- Backtest within TradingView/TrendSpider (separate subscription required)
+
+**Step 2: Alert Configuration (External)**
+- Configure TradingView alerts with specific webhook JSON syntax
+- Set up the correct message format TradersPost expects
+- Debug any formatting issues between platforms
+
+**Step 3: TradersPost Configuration (Middle Layer)**
+- Create TradersPost account, connect broker
+- Set up "strategies" that parse incoming webhooks
+- Map alerts to specific accounts and position sizing rules
+
+**Step 4: Broker/Prop Firm Connection**
+- Connect Tradovate or ProjectX separately
+- Link prop firm accounts through those platforms
+
+**Total tools required:** TradingView ($15-60/mo) + TradersPost ($49-299/mo) + Broker + Prop Firm = **4 platforms minimum**, plus PineScript knowledge or third-party strategy purchase.
+
+---
+
+## PropTraderAI Workflow (Unified, All-in-One)
+
+**Step 1-4 Combined: Single Platform**
+- User describes strategy in **natural language**: *"Enter long when price breaks above the 15-min high with volume confirmation"*
+- AI parses into executable logic
+- Backtest within the same interface
+- Connect Tradovate once
+- Execute
+
+**Total tools required:** PropTraderAI + Broker + Prop Firm = **3 platforms**, no coding knowledge required.
+
+---
+
+## The Competitive Advantage
+
+| Aspect | TradersPost | PropTraderAI |
+|--------|-------------|--------------|
+| **Strategy Creation** | External (TradingView/TrendSpider) | Built-in (Natural Language) |
+| **Coding Required** | Yes (PineScript) or buy signals | No |
+| **Backtesting** | External platform | Integrated |
+| **Learning Curve** | High (multiple tools) | Low (conversational) |
+| **Monthly Cost Stack** | $65-360+ (TV + TradersPost) | Single subscription |
+| **Target User** | Technical traders with existing strategies | Traders who *have* a strategy but can't code it |
+
+---
+
+## Your Real Market Positioning
+
+TradersPost serves traders who **already have coded strategies** and need execution infrastructure.
+
+PropTraderAI serves the **much larger market** of traders who:
+- Have a strategy in their head but can't code
+- Don't want to learn PineScript
+- Want one dashboard for everything
+- Are frustrated by the complexity of stitching together multiple tools
+
+This is the **94% who fail prop challenges** - not because they lack a strategy, but because they can't execute it consistently. Most of them aren't going to learn PineScript. They need someone to translate "I trade pullbacks to the 20 EMA during the morning session" into automated execution.
+
+**PropTraderAI's tagline captures it perfectly:** *"Your Strategy. Our Execution."*
+
+TradersPost says: *"Bring us your coded alerts."*
+PropTraderAI says: *"Tell us your strategy in plain English."*
+
+That's a fundamentally different value proposition targeting a fundamentally larger addressable market.
