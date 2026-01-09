@@ -134,7 +134,7 @@ export default function LandingPageV2() {
               Sign in
             </a>
             <a href="/auth/login" className="bg-content-primary text-bg-primary text-sm font-medium px-4 py-2 rounded-lg hover:bg-content-secondary transition-colors">
-              Start Free Trial
+              Sign in
             </a>
           </div>
         </div>
