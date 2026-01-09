@@ -95,10 +95,9 @@ export default function ChatMessageList({
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="mb-8 border-t border-border-subtle pt-6"
+            className="mb-8"
           >
-            <div className="flex items-center gap-2 text-accent-cyan font-mono text-sm mb-2">
-              <span>→</span>
+            <div className="flex items-center gap-2 text-content-tertiary text-sm mb-2">
               <span>Thinking...</span>
             </div>
             <div className="flex gap-1">
@@ -140,7 +139,7 @@ function MessageBlock({ message, isLatest: _isLatest, isOptimistic }: MessageBlo
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: isOptimistic ? 0.7 : 1, y: 0 }}
       transition={{ duration: 0.2 }}
-      className={`mb-8 ${!isUser ? 'border-t border-border-subtle pt-6' : ''}`}
+      className="mb-8"
     >
       {isUser ? (
         // User message: Right-aligned with cyan accent
@@ -153,14 +152,8 @@ function MessageBlock({ message, isLatest: _isLatest, isOptimistic }: MessageBlo
         </div>
       ) : (
         // AI message: Full-width terminal style
-        <div className="space-y-3">
-          <div className="flex items-center gap-2 text-accent-cyan font-mono text-sm">
-            <span>→</span>
-            <span>PropTraderAI</span>
-          </div>
-          <div className="text-content-primary leading-relaxed whitespace-pre-wrap">
-            {message.content}
-          </div>
+        <div className="text-content-primary leading-relaxed whitespace-pre-wrap">
+          {message.content}
         </div>
       )}
     </motion.div>
