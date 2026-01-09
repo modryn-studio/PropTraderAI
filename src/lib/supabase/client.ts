@@ -1,17 +1,5 @@
 import { createBrowserClient } from '@supabase/ssr'
 
-type CookieOptions = {
-  name: string
-  value: string
-  options: {
-    maxAge?: number
-    path?: string
-    domain?: string
-    sameSite?: 'strict' | 'lax' | 'none'
-    secure?: boolean
-  }
-}
-
 export function createClient() {
   return createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
