@@ -133,8 +133,13 @@ export default function LandingPage() {
             <a href="/auth/login" className="text-sm text-content-secondary hover:text-content-primary transition-colors hidden sm:block">
               Sign in
             </a>
-            <a href="/auth/login" className="bg-content-primary text-bg-primary text-sm font-medium px-4 py-2 rounded-lg hover:bg-content-secondary transition-colors">
+            {/* Mobile CTA */}
+            <a href="/auth/login" className="sm:hidden bg-content-primary text-bg-primary text-sm font-medium px-4 py-2 rounded-lg hover:bg-content-secondary transition-colors">
               Sign in
+            </a>
+            {/* Desktop CTA */}
+            <a href="/auth/login" className="hidden sm:inline-flex bg-content-primary text-bg-primary text-sm font-medium px-4 py-2 rounded-lg hover:bg-content-secondary transition-colors">
+              Start Free Trial
             </a>
           </div>
         </div>
