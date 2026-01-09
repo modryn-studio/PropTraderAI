@@ -1,5 +1,13 @@
 import { createBrowserClient } from '@supabase/ssr'
 
+type CookieOptions = {
+  maxAge?: number
+  path?: string
+  domain?: string
+  sameSite?: 'strict' | 'lax' | 'none'
+  secure?: boolean
+}
+
 export function createClient() {
   return createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -9,10 +17,10 @@ export function createClient() {
         get(name: string) {
           return getCookie(name)
         },
-        set(name: string, value: string, options: any) {
+        set(name: string, value: string, options: CookieOptions) {
           setCookie(name, value, options)
         },
-        remove(name: string, options: any) {
+        remove(name: string, options: CookieOptions) {
           setCookie(name, '', { ...options, maxAge: 0 })
         },
       },
@@ -27,7 +35,7 @@ function getCookie(name: string): string | undefined {
   if (parts.length === 2) return parts.pop()?.split(';').shift()
 }
 
-function setCookie(name: string, value: string, options: any) {
+function setCookie(name: string, value: string, options: CookieOptions) {
   if (typeof document === 'undefined') return
   
   let cookie = `${name}=${value}`
