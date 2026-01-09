@@ -166,12 +166,3 @@ function MessageBlock({ message, isLatest: _isLatest, isOptimistic }: MessageBlo
     </motion.div>
   );
 }
-
-        {/* Optimistic indicator */}
-        {isOptimistic && (
-          <span className="ml-2 text-xs text-content-tertiary">Sending...</span>
-        )}
-      </div>
-    </motion.div>
-  );
-}
