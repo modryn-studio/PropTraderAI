@@ -257,6 +257,57 @@ Firm rules are compiled from:
 
 ---
 
+## Relationship to MCP Server (PATH 3)
+
+These static firm rules serve as:
+
+1. **Phase 1A (Current)**: Primary data source for strategy validation
+2. **Phase 3+ (Future)**: Fallback when MCP server unavailable
+3. **Testing**: Offline reference for development and testing
+
+### How It Works
+
+Once the PropTraderAI MCP server is live (PATH 3), the skill will:
+
+1. **Check if MCP server is available**
+   - Attempt to call `get_firm_rules(firm_name)`
+   - If successful, use real-time data
+   
+2. **Use MCP for real-time data** (when available)
+   - Current challenge status (user's P&L, drawdown %)
+   - Latest promo codes and discounts
+   - Firm policy updates (like MyFundedFutures July 2025 automation policy)
+   - Contract limit increases based on profit milestones
+   
+3. **Fall back to Level 3 resources** (if MCP unavailable)
+   - Read static JSON files from this directory
+   - Use offline validation
+   - Warn user that real-time data unavailable
+
+### Why This Architecture
+
+✅ **Reliability**: Skill works even if MCP server is down  
+✅ **Performance**: No network latency for static rules  
+✅ **Offline Support**: Can test/develop without API access  
+✅ **Graceful Degradation**: Never fails completely  
+
+**Example Flow:**
+```
+User: "I'm with Topstep"
+
+Skill Logic:
+1. Try: MCP.get_firm_rules("topstep")
+   → Success: Use real-time data + user's challenge status
+   → Fail: Read firm_rules/topstep.json (static fallback)
+   
+2. Validate strategy against firm rules
+3. Proceed with strategy extraction
+```
+
+This ensures the skill works reliably in all scenarios.
+
+---
+
 ## Limitations & Disclaimers
 
 ### What This Database Covers

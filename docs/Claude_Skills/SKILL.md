@@ -172,6 +172,43 @@ Recommended max risk per trade: $1,000 (50% of daily limit)
 
 ---
 
+### Firm Rules Data Sources
+
+**Level 3 Resources (Primary)**:
+- Static JSON files in `firm_rules/` directory
+- Offline, fast, reliable fallback
+- Contains: Daily loss limits, max drawdown, position limits, automation policies
+- Updated manually based on official firm documentation
+
+**MCP Server (Optional Enhancement)**:
+- Real-time data when available (PATH 3)
+- User-specific challenge status (current P&L, drawdown %)
+- Latest policy updates (e.g., automation approvals)
+- Profit milestone tracking (contract limit increases)
+
+**Fallback Logic:**
+```
+async function getFirmRules(firmName: string) {
+  try {
+    // 1. Try MCP server first (if available)
+    const rules = await mcp.get_firm_rules(firmName);
+    if (rules) return { ...rules, source: 'mcp', realtime: true };
+  } catch {
+    // 2. Fall back to Level 3 static files
+    const staticRules = await readLevelResource(`firm_rules/${firmName}.json`);
+    return { ...staticRules, source: 'static', realtime: false };
+  }
+}
+```
+
+**Why This Architecture:**
+- ✅ Works offline (Level 3 always available)
+- ✅ Enhanced when MCP available (real-time data)
+- ✅ Graceful degradation (never fails completely)
+- ✅ Fast lookups (no network latency for static rules)
+
+---
+
 ## Trading Session Patterns
 
 Understanding session structure is critical for time filter validation.
