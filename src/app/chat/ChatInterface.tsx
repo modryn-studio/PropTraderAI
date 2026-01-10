@@ -15,6 +15,13 @@ import {
   processTimezones, 
   formatConversionSummary 
 } from '@/lib/utils/timezoneProcessor';
+
+interface ValidationWarning {
+  severity: 'error' | 'warning' | 'info';
+  type: string;
+  message: string;
+}
+
 interface ChatInterfaceProps {
   userId: string;
   userStrategyCount: number;
@@ -66,7 +73,7 @@ export default function ChatInterface({
   
   // Validation modal state
   const [showValidationModal, setShowValidationModal] = useState(false);
-  const [validationWarnings, setValidationWarnings] = useState<any[]>([]);
+  const [validationWarnings, setValidationWarnings] = useState<ValidationWarning[]>([]);
   const [validationIsValid, setValidationIsValid] = useState(true);
   const [pendingStrategyName, setPendingStrategyName] = useState<string | null>(null);
   
@@ -167,7 +174,7 @@ export default function ChatInterface({
         const detectedTimezone = extractTimezoneFromConversation(userMessages);
         const timezoneResult = processTimezones(data.parsedRules, {
           userTimezone: detectedTimezone || undefined,
-          profileTimezone: userProfile?.timezone as any || undefined,
+          profileTimezone: (userProfile?.timezone as keyof typeof import('@/lib/utils/timezone').TRADER_TIMEZONES) || undefined,
         });
         
         // Store conversion summary for display
@@ -206,7 +213,7 @@ export default function ChatInterface({
       setPendingMessage(null);
       setIsLoading(false);
     }
-  }, [conversationId]);
+  }, [conversationId, messages, userId, userProfile?.timezone]);
 
   const handleEditMessage = useCallback(async (messageIndex: number, newContent: string) => {
     // Delete all messages after the edited message (branching)
@@ -261,9 +268,9 @@ export default function ChatInterface({
             isValid: validationData.isValid,
             status: validationData.status,
             warningCount: validationData.warnings?.length || 0,
-            hardViolations: validationData.warnings?.filter((w: any) => w.severity === 'error').length || 0,
-            softWarnings: validationData.warnings?.filter((w: any) => w.severity === 'warning').length || 0,
-            violations: validationData.warnings?.map((w: any) => w.type) || [],
+            hardViolations: validationData.warnings?.filter((w: ValidationWarning) => w.severity === 'error').length || 0,
+            softWarnings: validationData.warnings?.filter((w: ValidationWarning) => w.severity === 'warning').length || 0,
+            violations: validationData.warnings?.map((w: ValidationWarning) => w.type) || [],
           },
         });
         
@@ -282,7 +289,7 @@ export default function ChatInterface({
 
     // If no firm or validation passed/bypassed, save directly
     await saveStrategyToDatabase(name);
-  }, [conversationId, strategyData, fullConversationText, userProfile]);
+  }, [conversationId, strategyData, userProfile, userId, saveStrategyToDatabase]);
 
   // Separate function for actual database save
   const saveStrategyToDatabase = useCallback(async (name: string) => {
@@ -387,8 +394,8 @@ export default function ChatInterface({
       eventType: 'validation_warnings_ignored',
       eventData: {
         warningCount: validationWarnings.length,
-        hardViolations: validationWarnings.filter((w: any) => w.type === 'hard_violation').length,
-        softWarnings: validationWarnings.filter((w: any) => w.type === 'soft_warning').length,
+        hardViolations: validationWarnings.filter((w: ValidationWarning) => w.severity === 'error').length,
+        softWarnings: validationWarnings.filter((w: ValidationWarning) => w.severity === 'warning').length,
         firmName: userProfile?.firm_name,
         accountSize: userProfile?.account_size,
       },

@@ -100,8 +100,6 @@ export function convertToExchangeTime(
   traderTimezone: keyof typeof TRADER_TIMEZONES,
   date?: Date // Optional: specific date for conversion (defaults to today)
 ): { exchangeTime: string; timezone: typeof EXCHANGE_TIMEZONE; isDST: boolean } {
-  const [hours, minutes] = time.split(':').map(Number);
-  
   // Use provided date or current date for DST determination
   const referenceDate = date || new Date();
   

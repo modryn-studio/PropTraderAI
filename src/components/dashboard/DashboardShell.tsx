@@ -48,7 +48,6 @@ export default function DashboardShell({
 
   // Determine user state from profile
   const hasBrokerConnected = profile?.broker_connected ?? false;
-  const hasFirmSelected = !!profile?.firm_name || !!profile?.account_type;
 
   // Handle firm selection - store and redirect to OAuth
   const handleFirmSelect = async (firmId: string) => {
@@ -62,10 +61,10 @@ export default function DashboardShell({
     
     // TODO: Implement actual Tradovate OAuth redirect
     // For Phase 1A, we'll simulate the flow
-    const oauthUrl = `/auth/tradovate?firm_selection=${firmSelectionParam}`;
+    // const oauthUrl = `/auth/tradovate?firm_selection=${firmSelectionParam}`;
     
     // For now, just show alert and update profile directly (placeholder)
-    console.log('Selected firm:', firmId);
+    console.log('Selected firm:', firmId, 'Selection:', firmSelectionParam);
     alert(`Connecting to Tradovate for ${firmId}...\n\nOAuth flow placeholder. In production, this will redirect to Tradovate.`);
     
     // Simulate successful connection for development

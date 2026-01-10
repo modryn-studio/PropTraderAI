@@ -29,7 +29,6 @@ export default function ValidationWarningsModal({
   firmName,
   accountSize,
   warnings,
-  isValid,
 }: ValidationWarningsModalProps) {
   if (!isOpen) return null;
 
