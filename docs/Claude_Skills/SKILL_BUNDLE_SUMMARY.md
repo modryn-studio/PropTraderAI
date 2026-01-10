@@ -174,43 +174,122 @@ From your top 12, these need automation policy verification:
 
 ## 🚀 How to Deploy
 
-### Option 1: Claude API (Production)
+### Option 1: Python SDK (Recommended)
 
-1. **Zip the bundle:**
-   ```bash
-   zip -r proptraderai-strategy-builder.zip proptraderai-strategy-builder/
-   ```
+**Using directory path:**
+```python
+from anthropic import Anthropic
+from anthropic.lib import files_from_dir
 
-2. **Upload via Skills API:**
-   ```bash
-   curl -X POST https://api.anthropic.com/v1/skills \
-     -H "x-api-key: $ANTHROPIC_API_KEY" \
-     -H "anthropic-version: 2023-06-01" \
-     -H "anthropic-beta: skills-2025-10-02" \
-     -F "file=@proptraderai-strategy-builder.zip"
-   ```
+client = Anthropic(api_key="your_api_key")
 
-3. **Use in API calls:**
-   ```javascript
-   const response = await anthropic.messages.create({
-     model: "claude-sonnet-4-20250514",
-     tools: [{ type: "code_execution", container: { skill_id: "proptraderai-strategy-builder" } }],
-     messages: [{ role: "user", content: "I want to automate my trading strategy" }]
-   });
-   ```
+skill = client.beta.skills.create(
+    display_title="PropTraderAI Strategy Builder",
+    files=files_from_dir("proptraderai-strategy-builder/"),
+    betas=["skills-2025-10-02"]
+)
 
-### Option 2: Claude.ai (Testing)
+print(f"Skill created: {skill.id}")
+```
 
-1. Zip the bundle (as above)
-2. Go to Settings → Features → Skills
-3. Upload `proptraderai-strategy-builder.zip`
-4. Test in a new conversation
+**Using zip file:**
+```python
+from anthropic import Anthropic
 
-### Option 3: Claude Code (Development)
+client = Anthropic(api_key="your_api_key")
 
-1. Copy directory to `~/.claude/skills/`
-2. Claude Code will auto-discover the skill
-3. Test locally during development
+# First, create the zip file
+import zipfile
+import os
+
+def zip_skill_folder(folder_path, output_zip):
+    with zipfile.ZipFile(output_zip, 'w', zipfile.ZIP_DEFLATED) as zipf:
+        for root, dirs, files in os.walk(folder_path):
+            for file in files:
+                file_path = os.path.join(root, file)
+                arcname = os.path.relpath(file_path, os.path.dirname(folder_path))
+                zipf.write(file_path, arcname)
+
+zip_skill_folder("proptraderai-strategy-builder", "proptraderai-strategy-builder.zip")
+
+# Upload the zip
+skill = client.beta.skills.create(
+    display_title="PropTraderAI Strategy Builder",
+    files=[("skill.zip", open("proptraderai-strategy-builder.zip", "rb"))],
+    betas=["skills-2025-10-02"]
+)
+```
+
+### Option 2: Curl (Individual File Upload)
+
+**⚠️ Important:** Must upload each file individually with proper filename parameter:
+
+```bash
+curl -X POST "https://api.anthropic.com/v1/skills" \
+  -H "x-api-key: $ANTHROPIC_API_KEY" \
+  -H "anthropic-version: 2023-06-01" \
+  -H "anthropic-beta: skills-2025-10-02" \
+  -F "display_title=PropTraderAI Strategy Builder" \
+  -F "files[]=@proptraderai-strategy-builder/SKILL.md;filename=proptraderai-strategy-builder/SKILL.md" \
+  -F "files[]=@proptraderai-strategy-builder/schemas/parsedRules.schema.json;filename=proptraderai-strategy-builder/schemas/parsedRules.schema.json" \
+  -F "files[]=@proptraderai-strategy-builder/firm_rules/README.md;filename=proptraderai-strategy-builder/firm_rules/README.md" \
+  -F "files[]=@proptraderai-strategy-builder/firm_rules/topstep.json;filename=proptraderai-strategy-builder/firm_rules/topstep.json" \
+  -F "files[]=@proptraderai-strategy-builder/firm_rules/myfundedfutures.json;filename=proptraderai-strategy-builder/firm_rules/myfundedfutures.json" \
+  -F "files[]=@proptraderai-strategy-builder/firm_rules/tradeify.json;filename=proptraderai-strategy-builder/firm_rules/tradeify.json" \
+  -F "files[]=@proptraderai-strategy-builder/firm_rules/alpha-futures.json;filename=proptraderai-strategy-builder/firm_rules/alpha-futures.json" \
+  -F "files[]=@proptraderai-strategy-builder/firm_rules/ftmo.json;filename=proptraderai-strategy-builder/firm_rules/ftmo.json" \
+  -F "files[]=@proptraderai-strategy-builder/firm_rules/fundednext.json;filename=proptraderai-strategy-builder/firm_rules/fundednext.json"
+```
+
+**Note:** All files must share common prefix (`proptraderai-strategy-builder/`) as the root directory.
+
+### Option 3: Use in API Calls
+
+Once uploaded, reference the skill in your API calls:
+
+```javascript
+const response = await anthropic.messages.create({
+  model: "claude-sonnet-4-20250514",
+  tools: [{ 
+    type: "code_execution", 
+    container: { 
+      skill_id: "proptraderai-strategy-builder"  // Skill ID from upload
+    } 
+  }],
+  messages: [{ 
+    role: "user", 
+    content: "I want to automate my ES trading strategy with Topstep" 
+  }],
+  betas: ["skills-2025-10-02"]
+});
+```
+
+### Option 4: Claude Console (Testing/Development)
+
+**For testing the skill:**
+
+1. **Place the folder in your workspace** where you're having the conversation
+2. **Claude Console auto-discovers** SKILL.md files with YAML frontmatter
+3. **Test naturally** - just start a conversation about trading strategies
+
+```bash
+# Your workspace structure:
+my-workspace/
+├── proptraderai-strategy-builder/
+│   ├── SKILL.md  # ✅ Has YAML frontmatter
+│   ├── schemas/
+│   └── firm_rules/
+└── [other files]
+
+# Claude Console will discover the skill automatically
+```
+
+**When discovered, Claude can:**
+- Access firm rules via `firm_rules/{firm_name}.json`
+- Validate output against `schemas/parsedRules.schema.json`
+- Follow all SKILL.md instructions
+
+**No upload needed** - Skills work from local workspace during Claude Console sessions.
 
 ---
 
