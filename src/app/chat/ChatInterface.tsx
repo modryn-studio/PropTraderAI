@@ -7,7 +7,7 @@ import { ArrowLeft, RotateCcw } from 'lucide-react';
 import ChatMessageList, { ChatMessage } from '@/components/chat/ChatMessageList';
 import ChatInput from '@/components/chat/ChatInput';
 import StrategyConfirmationCard from '@/components/chat/StrategyConfirmationCard';
-import ValidationWarningsModal from '@/components/chat/ValidationWarningsModal';
+import ValidationWarningsModal, { ValidationWarning } from '@/components/chat/ValidationWarningsModal';
 import { ParsedRules, ConversationMessage } from '@/lib/claude/client';
 import { logBehavioralEvent } from '@/lib/behavioral/logger';
 import { 
@@ -15,12 +15,6 @@ import {
   processTimezones, 
   formatConversionSummary 
 } from '@/lib/utils/timezoneProcessor';
-
-interface ValidationWarning {
-  severity: 'error' | 'warning' | 'info';
-  type: string;
-  message: string;
-}
 
 interface ChatInterfaceProps {
   userId: string;

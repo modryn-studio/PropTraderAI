@@ -1,13 +1,13 @@
 'use client';
 
-import { AlertTriangle, X, CheckCircle } from 'lucide-react';
+import { AlertTriangle, X, CheckCircle, Info } from 'lucide-react';
 
-interface ValidationWarning {
-  type: 'hard_violation' | 'soft_warning' | 'info';
-  field: string;
+// Matches the API response from /api/strategy/validate-firm-rules
+export interface ValidationWarning {
+  type: 'position_limit' | 'risk_limit' | 'consistency' | 'info';
+  severity: 'error' | 'warning' | 'info';
   message: string;
-  userValue?: string | number;
-  firmLimit?: string | number;
+  suggestion?: string;
 }
 
 interface ValidationWarningsModalProps {
@@ -32,9 +32,10 @@ export default function ValidationWarningsModal({
 }: ValidationWarningsModalProps) {
   if (!isOpen) return null;
 
-  const hasHardViolations = warnings.some(w => w.type === 'hard_violation');
-  const hardViolations = warnings.filter(w => w.type === 'hard_violation');
-  const softWarnings = warnings.filter(w => w.type === 'soft_warning');
+  const hasErrors = warnings.some(w => w.severity === 'error');
+  const errors = warnings.filter(w => w.severity === 'error');
+  const softWarnings = warnings.filter(w => w.severity === 'warning');
+  const infoItems = warnings.filter(w => w.severity === 'info');
 
   return (
     <>
@@ -54,15 +55,15 @@ export default function ValidationWarningsModal({
           <div className="flex items-start justify-between p-6 border-b border-[#2d3544]">
             <div className="flex items-start gap-3">
               <div className={`w-10 h-10 flex items-center justify-center rounded-lg ${
-                hasHardViolations 
+                hasErrors 
                   ? 'bg-[rgba(239,68,68,0.15)]' 
-                  : warnings.length > 0 
+                  : softWarnings.length > 0 
                     ? 'bg-[rgba(245,158,11,0.15)]' 
                     : 'bg-[rgba(16,185,129,0.15)]'
               }`}>
-                {hasHardViolations || warnings.length > 0 ? (
+                {hasErrors || softWarnings.length > 0 ? (
                   <AlertTriangle className={`w-5 h-5 ${
-                    hasHardViolations ? 'text-[#ef4444]' : 'text-[#f59e0b]'
+                    hasErrors ? 'text-[#ef4444]' : 'text-[#f59e0b]'
                   }`} />
                 ) : (
                   <CheckCircle className="w-5 h-5 text-[#10b981]" />
@@ -70,9 +71,9 @@ export default function ValidationWarningsModal({
               </div>
               <div>
                 <h2 className="font-mono font-bold text-lg text-white">
-                  {hasHardViolations 
+                  {hasErrors 
                     ? 'Rule Violations Detected' 
-                    : warnings.length > 0 
+                    : softWarnings.length > 0 
                       ? 'Potential Issues Found'
                       : 'Strategy Validated'}
                 </h2>
@@ -103,8 +104,8 @@ export default function ValidationWarningsModal({
               </div>
             )}
 
-            {/* Hard Violations */}
-            {hardViolations.length > 0 && (
+            {/* Critical Errors */}
+            {errors.length > 0 && (
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
                   <div className="h-px flex-1 bg-[rgba(239,68,68,0.3)]" />
@@ -114,26 +115,18 @@ export default function ValidationWarningsModal({
                   <div className="h-px flex-1 bg-[rgba(239,68,68,0.3)]" />
                 </div>
                 
-                {hardViolations.map((warning, idx) => (
+                {errors.map((warning, idx) => (
                   <div 
                     key={idx}
                     className="bg-[rgba(239,68,68,0.1)] border border-[rgba(239,68,68,0.3)] rounded-lg p-4"
                   >
-                    <p className="text-sm text-white font-medium mb-1">
-                      {warning.field}
-                    </p>
                     <p className="text-sm text-[rgba(255,255,255,0.85)] mb-2">
                       {warning.message}
                     </p>
-                    {warning.userValue && warning.firmLimit && (
-                      <div className="flex items-center gap-4 text-xs font-mono">
-                        <span className="text-[rgba(255,255,255,0.5)]">
-                          Your strategy: <span className="text-[#ef4444]">{warning.userValue}</span>
-                        </span>
-                        <span className="text-[rgba(255,255,255,0.5)]">
-                          Firm limit: <span className="text-white">{warning.firmLimit}</span>
-                        </span>
-                      </div>
+                    {warning.suggestion && (
+                      <p className="text-xs text-[rgba(255,255,255,0.6)] italic">
+                        💡 {warning.suggestion}
+                      </p>
                     )}
                   </div>
                 ))}
@@ -162,12 +155,41 @@ export default function ValidationWarningsModal({
                     key={idx}
                     className="bg-[rgba(245,158,11,0.05)] border border-[rgba(245,158,11,0.2)] rounded-lg p-4"
                   >
-                    <p className="text-sm text-white font-medium mb-1">
-                      {warning.field}
-                    </p>
                     <p className="text-sm text-[rgba(255,255,255,0.85)]">
                       {warning.message}
                     </p>
+                    {warning.suggestion && (
+                      <p className="text-xs text-[rgba(255,255,255,0.6)] mt-2 italic">
+                        💡 {warning.suggestion}
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Info Items */}
+            {infoItems.length > 0 && (errors.length > 0 || softWarnings.length > 0) && (
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <div className="h-px flex-1 bg-[rgba(99,102,241,0.3)]" />
+                  <span className="text-xs font-mono text-[#6366f1] uppercase">
+                    Information
+                  </span>
+                  <div className="h-px flex-1 bg-[rgba(99,102,241,0.3)]" />
+                </div>
+                
+                {infoItems.map((item, idx) => (
+                  <div 
+                    key={idx}
+                    className="bg-[rgba(99,102,241,0.05)] border border-[rgba(99,102,241,0.2)] rounded-lg p-4"
+                  >
+                    <div className="flex items-start gap-2">
+                      <Info className="w-4 h-4 text-[#6366f1] mt-0.5 flex-shrink-0" />
+                      <p className="text-sm text-[rgba(255,255,255,0.85)]">
+                        {item.message}
+                      </p>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -185,7 +207,7 @@ export default function ValidationWarningsModal({
 
           {/* Footer - Actions */}
           <div className="p-6 border-t border-[#2d3544] space-y-2">
-            {warnings.length === 0 ? (
+            {!hasErrors && softWarnings.length === 0 ? (
               <button
                 onClick={onSaveAnyway}
                 className="w-full btn-primary"
@@ -204,7 +226,7 @@ export default function ValidationWarningsModal({
                   onClick={onSaveAnyway}
                   className="w-full bg-transparent border border-[rgba(255,255,255,0.2)] text-[rgba(255,255,255,0.85)] px-4 py-3 rounded-md hover:bg-[rgba(255,255,255,0.05)] transition-colors font-medium"
                 >
-                  {hasHardViolations ? 'Save Anyway (Not Recommended)' : 'Save Anyway'}
+                  {hasErrors ? 'Save Anyway (Not Recommended)' : 'Save Anyway'}
                 </button>
               </>
             )}
