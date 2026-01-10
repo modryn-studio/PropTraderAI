@@ -17,6 +17,13 @@ export default async function ChatPage() {
     .select('*', { count: 'exact', head: true })
     .eq('user_id', user.id);
 
+  // Get user profile with firm info for validation
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('firm_name, account_size, account_type, timezone')
+    .eq('id', user.id)
+    .single();
+
   // Check for existing in-progress conversation to resume
   const { data: activeConversation } = await supabase
     .from('strategy_conversations')
@@ -31,6 +38,7 @@ export default async function ChatPage() {
     <ChatInterface 
       userId={user.id}
       userStrategyCount={strategyCount || 0}
+      userProfile={profile}
       existingConversation={activeConversation ? {
         id: activeConversation.id,
         messages: activeConversation.messages || [],

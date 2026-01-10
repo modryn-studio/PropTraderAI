@@ -6,7 +6,11 @@
  * 
  * Extracted from: Claude Skills bundle (SKILL.md Section 1.4)
  * Updated: January 10, 2026
+ * Enhanced: DST support via date-fns-tz
  */
+
+import { toZonedTime, fromZonedTime, format as formatTz } from 'date-fns-tz';
+import { parse } from 'date-fns';
 
 /**
  * Supported trader timezones
@@ -88,48 +92,62 @@ export function parseTimezone(input: string): keyof typeof TRADER_TIMEZONES | nu
 /**
  * Convert time from trader's timezone to exchange timezone
  * 
- * Note: This is a simplified conversion that doesn't account for DST.
- * For production, use a library like date-fns-tz or luxon.
+ * DST-aware conversion using date-fns-tz.
+ * Uses current date to determine proper DST offsets.
  */
 export function convertToExchangeTime(
   time: string, // Format: "HH:MM" in 24-hour format
-  traderTimezone: keyof typeof TRADER_TIMEZONES
-): { exchangeTime: string; timezone: typeof EXCHANGE_TIMEZONE } {
-  // Timezone offset differences from UTC (simplified, ignores DST)
-  const UTC_OFFSETS: Record<keyof typeof TRADER_TIMEZONES, number> = {
-    'America/New_York': -5,
-    'America/Chicago': -6,
-    'America/Los_Angeles': -8,
-    'America/Denver': -7,
-    'Europe/London': 0,
-    'Europe/Paris': 1,
-    'Europe/Berlin': 1,
-    'Asia/Singapore': 8,
-    'Asia/Hong_Kong': 8,
-    'Australia/Sydney': 11,
-  };
-
+  traderTimezone: keyof typeof TRADER_TIMEZONES,
+  date?: Date // Optional: specific date for conversion (defaults to today)
+): { exchangeTime: string; timezone: typeof EXCHANGE_TIMEZONE; isDST: boolean } {
   const [hours, minutes] = time.split(':').map(Number);
   
-  // Convert to UTC
-  const traderOffset = UTC_OFFSETS[traderTimezone];
-  const utcHours = hours - traderOffset;
+  // Use provided date or current date for DST determination
+  const referenceDate = date || new Date();
   
-  // Convert from UTC to exchange time
-  const exchangeOffset = UTC_OFFSETS[EXCHANGE_TIMEZONE];
-  let exchangeHours = utcHours + exchangeOffset;
+  // Create a date object with the trader's local time
+  const traderDateStr = `${referenceDate.getFullYear()}-${String(referenceDate.getMonth() + 1).padStart(2, '0')}-${String(referenceDate.getDate()).padStart(2, '0')}T${time}:00`;
+  const traderDate = parse(traderDateStr, "yyyy-MM-dd'T'HH:mm:ss", referenceDate);
   
-  // Handle day boundaries
-  if (exchangeHours < 0) exchangeHours += 24;
-  if (exchangeHours >= 24) exchangeHours -= 24;
+  // Convert trader's local time to UTC
+  const utcDate = fromZonedTime(traderDate, traderTimezone);
   
-  // Format back to HH:MM
-  const exchangeTime = `${String(exchangeHours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+  // Convert UTC to exchange timezone
+  const exchangeDate = toZonedTime(utcDate, EXCHANGE_TIMEZONE);
+  
+  // Format as HH:MM
+  const exchangeTime = formatTz(exchangeDate, 'HH:mm', { timeZone: EXCHANGE_TIMEZONE });
+  
+  // Determine if DST is active in trader's timezone
+  const isDST = isDaylightSavingTime(traderDate, traderTimezone);
   
   return {
     exchangeTime,
     timezone: EXCHANGE_TIMEZONE,
+    isDST,
   };
+}
+
+/**
+ * Check if a date is during Daylight Saving Time in a timezone
+ */
+function isDaylightSavingTime(date: Date, timezone: string): boolean {
+  // Get offset in January (standard time) and July (likely DST)
+  const jan = new Date(date.getFullYear(), 0, 1);
+  const jul = new Date(date.getFullYear(), 6, 1);
+  
+  const janUtc = fromZonedTime(jan, timezone);
+  const julUtc = fromZonedTime(jul, timezone);
+  
+  const janOffset = (janUtc.getTime() - jan.getTime()) / (1000 * 60);
+  const julOffset = (julUtc.getTime() - jul.getTime()) / (1000 * 60);
+  
+  const dateUtc = fromZonedTime(date, timezone);
+  const dateOffset = (dateUtc.getTime() - date.getTime()) / (1000 * 60);
+  
+  // DST is active if current offset differs from standard time offset
+  const standardOffset = Math.max(janOffset, julOffset);
+  return dateOffset !== standardOffset;
 }
 
 /**

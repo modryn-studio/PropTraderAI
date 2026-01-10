@@ -34,9 +34,36 @@ export async function GET(request: Request) {
       }
     )
 
-    const { error } = await supabase.auth.exchangeCodeForSession(code)
+    const { data: { user }, error } = await supabase.auth.exchangeCodeForSession(code)
     
-    if (!error) {
+    if (!error && user) {
+      // Check if user has pending firm selection from onboarding
+      const pendingSelection = searchParams.get('firm_selection');
+      
+      if (pendingSelection) {
+        try {
+          const { firmId, accountType } = JSON.parse(decodeURIComponent(pendingSelection));
+          
+          // TODO: Fetch account details from Tradovate API
+          // For now, we'll set a default and update later when Tradovate integration is complete
+          const accountSize = 50000; // Default, will be replaced by Tradovate API
+          
+          // Update user profile with firm selection and broker connection
+          await supabase
+            .from('profiles')
+            .update({
+              firm_name: firmId === 'personal' ? null : firmId,
+              account_type: accountType,
+              account_size: firmId === 'personal' ? null : accountSize,
+              broker_connected: true,
+              broker_connected_at: new Date().toISOString(),
+            })
+            .eq('id', user.id);
+        } catch (err) {
+          console.error('Failed to save firm selection:', err);
+        }
+      }
+      
       const response = NextResponse.redirect(`${origin}${next}`)
       return response
     }

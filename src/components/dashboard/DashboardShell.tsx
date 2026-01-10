@@ -4,7 +4,6 @@ import { User } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import Image from 'next/image';
 import {
   Activity,
   MessageSquare,
@@ -15,12 +14,25 @@ import {
   TrendingUp,
 } from 'lucide-react';
 import FeedbackButton from '@/components/feedback/FeedbackButton';
+import { PropFirmGrid } from '@/components/dashboard/PropFirmCard';
 
 interface DashboardShellProps {
   user: User;
+  profile?: {
+    account_type?: string | null;
+    firm_name?: string | null;
+    broker_connected?: boolean;
+  } | null;
+  hasActiveStrategy?: boolean;
+  hasActiveChallenge?: boolean;
 }
 
-export default function DashboardShell({ user }: DashboardShellProps) {
+export default function DashboardShell({ 
+  user, 
+  profile,
+  hasActiveStrategy = false,
+  hasActiveChallenge = false,
+}: DashboardShellProps) {
   const router = useRouter();
   const supabase = createClient();
 
@@ -34,9 +46,46 @@ export default function DashboardShell({ user }: DashboardShellProps) {
     router.push('/');
   };
 
-  // Check if user has connected broker (placeholder - will be from DB)
-  const hasBrokerConnected = false;
-  const hasActiveChallenge = false;
+  // Determine user state from profile
+  const hasBrokerConnected = profile?.broker_connected ?? false;
+  const hasFirmSelected = !!profile?.firm_name || !!profile?.account_type;
+
+  // Handle firm selection - store and redirect to OAuth
+  const handleFirmSelect = async (firmId: string) => {
+    const firmSelection = {
+      firmId,
+      accountType: firmId === 'personal' ? 'personal' : 'prop_firm',
+    };
+    
+    // Encode firm selection for OAuth callback
+    const firmSelectionParam = encodeURIComponent(JSON.stringify(firmSelection));
+    
+    // TODO: Implement actual Tradovate OAuth redirect
+    // For Phase 1A, we'll simulate the flow
+    const oauthUrl = `/auth/tradovate?firm_selection=${firmSelectionParam}`;
+    
+    // For now, just show alert and update profile directly (placeholder)
+    console.log('Selected firm:', firmId);
+    alert(`Connecting to Tradovate for ${firmId}...\n\nOAuth flow placeholder. In production, this will redirect to Tradovate.`);
+    
+    // Simulate successful connection for development
+    if (confirm('Simulate successful Tradovate connection?')) {
+      const supabase = createClient();
+      await supabase
+        .from('profiles')
+        .update({
+          firm_name: firmId === 'personal' ? null : firmId,
+          account_type: firmId === 'personal' ? 'personal' : 'prop_firm',
+          account_size: firmId === 'personal' ? null : 50000, // Default for dev
+          broker_connected: true,
+          broker_connected_at: new Date().toISOString(),
+        })
+        .eq('id', user.id);
+      
+      // Reload page to reflect changes
+      router.refresh();
+    }
+  };
 
   return (
     <div className="min-h-screen bg-[#000000] pb-20">
@@ -62,43 +111,37 @@ export default function DashboardShell({ user }: DashboardShellProps) {
 
       {/* Main Content - ONE THING AT A TIME */}
       <main className="px-4 py-6 space-y-6 max-w-[1400px] mx-auto">
-        {/* New User Flow - No Broker Connected */}
+        
+        {/* ========================================
+            STEP 1: New User - Connect Prop Firm
+            Shows when: No broker connected
+        ======================================== */}
         {!hasBrokerConnected && (
           <>
-            {/* HERO CARD: Primary action - Connect to start */}
-            <div className="card text-center py-12">
-              <div className="w-16 h-16 bg-[rgba(0,255,209,0.15)] flex items-center justify-center mx-auto mb-4">
-                <TrendingUp className="w-8 h-8 text-[#00FFD1]" />
+            {/* HERO: Prop Firm Selection Grid */}
+            <div className="card py-8">
+              <div className="text-center mb-6">
+                <div className="w-16 h-16 bg-[rgba(0,255,209,0.15)] flex items-center justify-center mx-auto mb-4">
+                  <TrendingUp className="w-8 h-8 text-[#00FFD1]" />
+                </div>
+                <h2 className="font-mono font-bold text-xl mb-2 text-white">
+                  Ready to pass your challenge?
+                </h2>
+                <p className="text-[rgba(255,255,255,0.5)] text-sm max-w-md mx-auto">
+                  94% fail their first challenge. Connect your prop firm and we&apos;ll make sure you&apos;re not one of them.
+                </p>
               </div>
-              <h3 className="font-mono font-bold text-xl mb-2 text-white">
-                Ready to pass your challenge?
-              </h3>
-              <p className="text-[rgba(255,255,255,0.5)] text-sm mb-6 max-w-sm mx-auto">
-                94% fail their first challenge. Connect Tradovate and we&apos;ll make sure you&apos;re not one of them.
-              </p>
-              <button className="btn-primary mb-4 inline-flex items-center gap-2 group">
-                Connect
-                <Image 
-                  src="/tradovate-logo.png" 
-                  alt="Tradovate" 
-                  width={120} 
-                  height={24}
-                  className="h-5 w-auto group-hover:hidden"
-                />
-                <Image 
-                  src="/tradovate-logo-darkbg.png" 
-                  alt="Tradovate" 
-                  width={120} 
-                  height={24}
-                  className="h-5 w-auto hidden group-hover:block"
-                />
-              </button>
-              <p className="text-xs text-[rgba(255,255,255,0.5)]">
+              
+              {/* Firm Cards Grid */}
+              <PropFirmGrid onSelectFirm={handleFirmSelect} />
+              
+              {/* Secondary link */}
+              <p className="text-xs text-[rgba(255,255,255,0.5)] text-center mt-6">
                 Or <Link href="/chat" className="text-[#00FFD1] underline hover:text-[#00FFD1]/80 transition-colors">describe your strategy first</Link>
               </p>
             </div>
 
-            {/* SECONDARY: What we protect against (Day 1 messaging) - Scroll to see */}
+            {/* SECONDARY: What we protect against (Day 1 messaging) */}
             <div className="card border-l-4 border-l-[#FFB800]">
               <div className="flex items-start gap-3">
                 <Shield className="w-6 h-6 text-[#FFB800] flex-shrink-0 mt-0.5" />
@@ -131,26 +174,29 @@ export default function DashboardShell({ user }: DashboardShellProps) {
           </>
         )}
 
-        {/* Connected User Flow - Has broker but no active challenge */}
-        {hasBrokerConnected && !hasActiveChallenge && (
+        {/* ========================================
+            STEP 2: Connected User - Describe Strategy
+            Shows when: Broker connected, no active strategy
+        ======================================== */}
+        {hasBrokerConnected && !hasActiveStrategy && (
           <>
-            {/* HERO CARD: Next step - Create strategy */}
+            {/* HERO: Create strategy prompt */}
             <div className="card text-center py-12">
               <div className="w-16 h-16 bg-[rgba(139,92,246,0.15)] flex items-center justify-center mx-auto mb-4">
                 <MessageSquare className="w-8 h-8 text-[#8b5cf6]" />
               </div>
               <h3 className="font-mono font-bold text-xl mb-2 text-white">
-                Tradovate Connected
+                {profile?.firm_name ? `Connected to ${profile.firm_name}` : 'Tradovate Connected'}
               </h3>
               <p className="text-[rgba(255,255,255,0.5)] text-sm mb-6 max-w-sm mx-auto">
                 Now describe your strategy in plain English. We&apos;ll handle the execution.
               </p>
-              <button className="btn-primary">
+              <Link href="/chat" className="btn-primary inline-block">
                 Describe Your Strategy
-              </button>
+              </Link>
             </div>
 
-            {/* SECONDARY: Protection status - Scroll to see */}
+            {/* SECONDARY: Protection status */}
             <div className="card border-l-4 border-l-[#00897b]">
               <div className="flex items-start gap-3">
                 <Shield className="w-6 h-6 text-[#00897b] flex-shrink-0 mt-0.5" />
@@ -179,7 +225,10 @@ export default function DashboardShell({ user }: DashboardShellProps) {
           </>
         )}
 
-        {/* Active Challenge Flow - ONE metric at a time */}
+        {/* ========================================
+            STEP 3: Active Challenge - Today's P&L
+            Shows when: Has active strategy/challenge
+        ======================================== */}
         {hasActiveChallenge && (
           <>
             {/* HERO CARD: Today's P&L - The main thing */}

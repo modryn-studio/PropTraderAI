@@ -7,11 +7,23 @@ import { ArrowLeft, RotateCcw } from 'lucide-react';
 import ChatMessageList, { ChatMessage } from '@/components/chat/ChatMessageList';
 import ChatInput from '@/components/chat/ChatInput';
 import StrategyConfirmationCard from '@/components/chat/StrategyConfirmationCard';
+import ValidationWarningsModal from '@/components/chat/ValidationWarningsModal';
 import { ParsedRules, ConversationMessage } from '@/lib/claude/client';
-
+import { logBehavioralEvent } from '@/lib/behavioral/logger';
+import { 
+  extractTimezoneFromConversation, 
+  processTimezones, 
+  formatConversionSummary 
+} from '@/lib/utils/timezoneProcessor';
 interface ChatInterfaceProps {
   userId: string;
   userStrategyCount: number;
+  userProfile: {
+    firm_name: string | null;
+    account_size: number | null;
+    account_type: string | null;
+    timezone: string | null;
+  } | null;
   existingConversation: {
     id: string;
     messages: ConversationMessage[];
@@ -26,14 +38,12 @@ interface StrategyData {
 }
 
 export default function ChatInterface({
-  userId: _userId,
+  userId,
   userStrategyCount,
+  userProfile,
   existingConversation,
 }: ChatInterfaceProps) {
   const router = useRouter();
-  
-  // Reserved for future behavioral logging client-side
-  void _userId;
   
   // Conversation state
   const [conversationId, setConversationId] = useState<string | null>(
@@ -54,10 +64,17 @@ export default function ChatInterface({
   const [error, setError] = useState<string | null>(null);
   const [showStartOverModal, setShowStartOverModal] = useState(false);
   
+  // Validation modal state
+  const [showValidationModal, setShowValidationModal] = useState(false);
+  const [validationWarnings, setValidationWarnings] = useState<any[]>([]);
+  const [validationIsValid, setValidationIsValid] = useState(true);
+  const [pendingStrategyName, setPendingStrategyName] = useState<string | null>(null);
+  
   // Strategy completion state
   const [strategyComplete, setStrategyComplete] = useState(false);
   const [strategyData, setStrategyData] = useState<StrategyData | null>(null);
   const [currentStrategyCount, setCurrentStrategyCount] = useState(userStrategyCount);
+  const [timezoneConversionSummary, setTimezoneConversionSummary] = useState<string>('');
 
   // Track the full conversation text for saving
   const [fullConversationText, setFullConversationText] = useState('');
@@ -141,11 +158,39 @@ export default function ChatInterface({
 
       // Check if strategy is complete
       if (data.complete) {
+        // Process timezone conversions before displaying strategy
+        const userMessages = messages
+          .filter(msg => msg.role === 'user')
+          .map(msg => msg.content);
+        userMessages.push(message); // Include current message
+        
+        const detectedTimezone = extractTimezoneFromConversation(userMessages);
+        const timezoneResult = processTimezones(data.parsedRules, {
+          userTimezone: detectedTimezone || undefined,
+          profileTimezone: userProfile?.timezone as any || undefined,
+        });
+        
+        // Store conversion summary for display
+        const summary = formatConversionSummary(timezoneResult);
+        setTimezoneConversionSummary(summary);
+        
+        // If conversions were made, log for PATH 2
+        if (timezoneResult.conversions.length > 0) {
+          await logBehavioralEvent(userId, {
+            eventType: 'timezone_conversion_applied',
+            eventData: {
+              detectedTimezone,
+              conversions: timezoneResult.conversions,
+              warnings: timezoneResult.warnings,
+            },
+          });
+        }
+        
         setStrategyComplete(true);
         setStrategyData({
           strategyName: data.strategyName,
           summary: data.summary,
-          parsedRules: data.parsedRules,
+          parsedRules: timezoneResult.processedRules, // Use processed rules with converted times
           instrument: data.instrument,
         });
       }
@@ -179,6 +224,68 @@ export default function ChatInterface({
   }, [messages, handleSendMessage]);
 
   const handleSaveStrategy = useCallback(async (name: string) => {
+    if (!conversationId || !strategyData) {
+      throw new Error('No strategy to save');
+    }
+
+    // If user has a prop firm, validate before saving
+    if (userProfile?.firm_name && userProfile?.account_size) {
+      // Store the name for later (after validation)
+      setPendingStrategyName(name);
+      
+      try {
+        const validationResponse = await fetch('/api/strategy/validate-firm-rules', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            firmName: userProfile.firm_name,
+            accountSize: userProfile.account_size,
+            parsedRules: strategyData.parsedRules,
+            instrument: strategyData.instrument,
+          }),
+        });
+
+        if (!validationResponse.ok) {
+          throw new Error('Validation failed');
+        }
+
+        const validationData = await validationResponse.json();
+        
+        // Log validation event for PATH 2 behavioral analytics
+        await logBehavioralEvent(userId, {
+          eventType: 'strategy_validated',
+          eventData: {
+            firmName: userProfile.firm_name,
+            accountSize: userProfile.account_size,
+            instrument: strategyData.instrument,
+            isValid: validationData.isValid,
+            status: validationData.status,
+            warningCount: validationData.warnings?.length || 0,
+            hardViolations: validationData.warnings?.filter((w: any) => w.severity === 'error').length || 0,
+            softWarnings: validationData.warnings?.filter((w: any) => w.severity === 'warning').length || 0,
+            violations: validationData.warnings?.map((w: any) => w.type) || [],
+          },
+        });
+        
+        // Show modal with warnings (if any)
+        setValidationWarnings(validationData.warnings || []);
+        setValidationIsValid(validationData.isValid);
+        setShowValidationModal(true);
+        
+        // Don't save yet - wait for user to confirm in modal
+        return;
+      } catch (err) {
+        console.error('Validation error:', err);
+        // If validation fails, proceed with save anyway (non-blocking)
+      }
+    }
+
+    // If no firm or validation passed/bypassed, save directly
+    await saveStrategyToDatabase(name);
+  }, [conversationId, strategyData, fullConversationText, userProfile]);
+
+  // Separate function for actual database save
+  const saveStrategyToDatabase = useCallback(async (name: string) => {
     if (!conversationId || !strategyData) {
       throw new Error('No strategy to save');
     }
@@ -235,6 +342,7 @@ export default function ChatInterface({
     setStrategyComplete(false);
     setStrategyData(null);
     setFullConversationText('');
+    setTimezoneConversionSummary('');
     setError(null);
   }, [conversationId]);
 
@@ -268,8 +376,45 @@ export default function ChatInterface({
     setStrategyComplete(false);
     setStrategyData(null);
     setFullConversationText('');
+    setTimezoneConversionSummary('');
     setError(null);
   }, [conversationId]);
+
+  // Validation modal handlers
+  const handleValidationSaveAnyway = useCallback(async () => {
+    // Log that user ignored warnings (PATH 2 behavioral data)
+    await logBehavioralEvent(userId, {
+      eventType: 'validation_warnings_ignored',
+      eventData: {
+        warningCount: validationWarnings.length,
+        hardViolations: validationWarnings.filter((w: any) => w.type === 'hard_violation').length,
+        softWarnings: validationWarnings.filter((w: any) => w.type === 'soft_warning').length,
+        firmName: userProfile?.firm_name,
+        accountSize: userProfile?.account_size,
+      },
+    });
+    
+    setShowValidationModal(false);
+    if (pendingStrategyName) {
+      await saveStrategyToDatabase(pendingStrategyName);
+      setPendingStrategyName(null);
+    }
+  }, [userId, pendingStrategyName, validationWarnings, userProfile, saveStrategyToDatabase]);
+
+  const handleValidationRevise = useCallback(async () => {
+    // Log that user chose to revise (PATH 2 behavioral data)
+    await logBehavioralEvent(userId, {
+      eventType: 'strategy_revision_after_validation',
+      eventData: {
+        warningCount: validationWarnings.length,
+        firmName: userProfile?.firm_name,
+      },
+    });
+    
+    setShowValidationModal(false);
+    setPendingStrategyName(null);
+    // User returns to confirmation card to refine
+  }, [userId, validationWarnings, userProfile]);
 
   return (
     <div className="flex flex-col h-screen bg-[#000000]">
@@ -327,6 +472,7 @@ export default function ChatInterface({
               onRefine={handleRefine}
               userStrategyCount={currentStrategyCount}
               onAddAnother={handleAddAnother}
+              timezoneConversionSummary={timezoneConversionSummary}
             />
           </div>
         )}
@@ -386,6 +532,20 @@ export default function ChatInterface({
             </div>
           </div>
         </div>
+      )}
+
+      {/* Validation Warnings Modal */}
+      {userProfile?.firm_name && userProfile?.account_size && (
+        <ValidationWarningsModal
+          isOpen={showValidationModal}
+          onClose={() => setShowValidationModal(false)}
+          onSaveAnyway={handleValidationSaveAnyway}
+          onRevise={handleValidationRevise}
+          firmName={userProfile.firm_name}
+          accountSize={userProfile.account_size}
+          warnings={validationWarnings}
+          isValid={validationIsValid}
+        />
       )}
     </div>
   );

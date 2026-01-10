@@ -24,6 +24,7 @@ interface StrategyConfirmationCardProps {
   onRefine: () => void;
   userStrategyCount: number;
   onAddAnother?: () => void;
+  timezoneConversionSummary?: string;
 }
 
 export default function StrategyConfirmationCard({
@@ -35,6 +36,7 @@ export default function StrategyConfirmationCard({
   onRefine,
   userStrategyCount,
   onAddAnother,
+  timezoneConversionSummary,
 }: StrategyConfirmationCardProps) {
   const [editedName, setEditedName] = useState(strategyName);
   const [isEditing, setIsEditing] = useState(false);
@@ -150,6 +152,26 @@ export default function StrategyConfirmationCard({
       <p className="text-[rgba(255,255,255,0.85)] text-sm leading-relaxed">
         {summary}
       </p>
+
+      {/* Timezone Conversion Info (if any) */}
+      {timezoneConversionSummary && (
+        <div className="bg-[rgba(59,130,246,0.05)] border border-[rgba(59,130,246,0.2)] rounded-lg p-4">
+          <div className="flex items-start gap-2">
+            <Clock className="w-4 h-4 text-[#3b82f6] mt-0.5 flex-shrink-0" />
+            <div className="text-xs space-y-1">
+              <div className="text-[#3b82f6] font-mono uppercase tracking-wider mb-2">
+                Times Converted
+              </div>
+              <div className="text-[rgba(255,255,255,0.7)] whitespace-pre-line leading-relaxed">
+                {timezoneConversionSummary}
+              </div>
+              <div className="text-[rgba(255,255,255,0.5)] italic mt-2">
+                All times stored in Exchange Time (America/Chicago)
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Parsed Rules - Human Readable */}
       <div className="grid gap-4">

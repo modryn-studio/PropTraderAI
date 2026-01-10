@@ -19,6 +19,7 @@ export type BehavioralEventType =
   | 'strategy_activated'
   | 'strategy_paused'
   | 'screenshot_analyzed'
+  | 'timezone_conversion_applied'
   
   // Strategy chat events (Strategy Builder)
   | 'strategy_chat_message_sent'
@@ -28,6 +29,11 @@ export type BehavioralEventType =
   | 'multi_strategy_cta_shown'
   | 'multi_strategy_cta_clicked'
   | 'dashboard_add_strategy_clicked'
+  
+  // Validation events (Firm rules)
+  | 'strategy_validated'
+  | 'validation_warnings_ignored'
+  | 'strategy_revision_after_validation'
   
   // Protection events (PATH 2 core)
   | 'pre_trade_check'

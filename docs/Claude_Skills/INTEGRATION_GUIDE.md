@@ -2,121 +2,141 @@
 
 **Implementation:** Option B+ (Selective Enhancement)  
 **Status:** ✅ Complete  
-**Date:** January 10, 2026
+**Date:** January 10, 2026  
+**Last Updated:** January 10, 2026 - Integrated with onboarding flow
 
 ---
 
 ## 📋 What Was Implemented
 
-### ✅ Static Utilities Extracted (No Skills API)
+### ✅ Integrated into Production Flow
 
-1. **Firm Rules Loader** (`src/lib/firm-rules/loader.ts`)
-2. **Firm Rules Data** (`src/lib/firm-rules/data/*.json`) - 6 prop firms
-3. **Timezone Converter** (`src/lib/utils/timezone.ts`)
-4. **Validation API** (`src/app/api/strategy/validate-firm-rules/route.ts`)
+1. **Firm Rules Loader** (`src/lib/firm-rules/loader.ts`) - ✅ Used by validation API
+2. **Firm Rules Data** (`src/lib/firm-rules/data/*.json`) - ✅ 6 prop firms loaded
+3. **Timezone Converter** (`src/lib/utils/timezone.ts`) - ✅ Integrated into ChatInterface
+4. **Timezone Processor** (`src/lib/utils/timezoneProcessor.ts`) - ✅ Converts times automatically
+5. **Validation API** (`src/app/api/strategy/validate-firm-rules/route.ts`) - ✅ Called from ChatInterface
+6. **Validation Modal** (`src/components/chat/ValidationWarningsModal.tsx`) - ✅ Shows warnings to users
+7. **Behavioral Logging** - ✅ Logs validation + timezone events
 
 ### ❌ What We Did NOT Do
 
 - Replace existing `/chat` system
-- Use Anthropic Skills API
+- Use Anthropic Skills API (reserved for PATH 3)
 - Modify `parseStrategy()` function
-- Change any existing flows
+- Change any existing Socratic dialogue flows
 
 ---
 
-## 🎯 How To Use
+## 🎯 Current Integration (As Implemented)
 
-### 1. Post-Strategy Validation (Recommended Usage)
+### Onboarding Flow
 
-**After Claude completes strategy parsing**, validate against prop firm rules:
+**User Journey:**
+1. User signs up → Lands on dashboard
+2. Sees **"Connect Your Prop Firm"** hero card with firm logos
+3. Selects firm (Topstep, Tradeify, MFF, Alpha, or Personal Account)
+4. Redirects to Tradovate OAuth
+5. **After OAuth:** Account size automatically captured from Tradovate API
+6. Profile updated with `firm_name`, `account_type`, `account_size`, `broker_connected`
+
+**Key Change from Original Guide:**
+- ❌ No manual firm detection from conversation
+- ✅ Explicit firm selection cards at onboarding
+- ✅ Account size auto-captured from Tradovate (not user input)
+
+### Strategy Validation Flow
+
+**After user completes strategy conversation:**
 
 ```typescript
-// In your strategy confirmation handler
-// (e.g., after user clicks "Confirm Strategy" in ChatInterface)
+// In ChatInterface.tsx (ALREADY IMPLEMENTED)
 
-const validateStrategy = async (strategyData) => {
-  const response = await fetch('/api/strategy/validate-firm-rules', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      firmName: 'topstep',  // From user profile or conversation
-      accountSize: 50000,    // From user profile or conversation
-      parsedRules: strategyData.parsedRules,
-      instrument: strategyData.instrument,
-    }),
-  });
-
-  const validation = await response.json();
-  
-  if (!validation.isValid) {
-    // Show errors to user
-    console.error('Validation errors:', validation.warnings);
-  } else if (validation.status === 'warnings') {
-    // Show warnings but allow proceed
-    console.warn('Validation warnings:', validation.warnings);
-  } else {
-    // All good!
-    console.log('Strategy validated successfully');
-  }
-  
-  return validation;
-};
+1. User clicks "Save Strategy"
+2. If userProfile has firm_name + account_size:
+   - Call /api/strategy/validate-firm-rules
+   - Log validation event (PATH 2 behavioral data)
+   - Show ValidationWarningsModal with results
+   - User chooses: Revise or Save Anyway
+   - Log user's decision
+3. Save strategy to database
 ```
 
----
-
-### 2. Detecting Firm from Conversation
-
-**During chat, detect if user mentions their prop firm:**
-
-```typescript
-import { detectFirmFromMessage } from '@/lib/firm-rules/loader';
-
-// In your chat handler
-const firmDetected = detectFirmFromMessage(userMessage);
-
-if (firmDetected) {
-  console.log(`User is with ${firmDetected}`);
-  // Store in user profile or session
-  // Use for validation later
-}
-
-// Example detections:
-detectFirmFromMessage("I'm trading with Topstep") // 'topstep'
-detectFirmFromMessage("My funded futures account") // 'myfundedfutures'
-detectFirmFromMessage("FTMO challenge") // 'ftmo'
-```
+**Behavioral Events Logged:**
+- `strategy_validated` - Results of validation check
+- `validation_warnings_ignored` - User saved despite warnings
+- `strategy_revision_after_validation` - User chose to revise
 
 ---
 
-### 3. Timezone Conversion
+## 🔄 Data Flow Architecture
 
-**Convert user's local time to exchange time:**
+### Profile Storage (Hybrid Approach)
+
+### Profile Storage (Hybrid Approach)
+
+| Table | Field | Source | Purpose |
+|-------|-------|--------|---------|
+| **profiles** | `firm_name` | User selection (onboarding) | Current firm context |
+| **profiles** | `account_size` | **Tradovate API** | Actual account balance |
+| **profiles** | `account_type` | User selection | 'prop_firm' or 'personal' |
+| **profiles** | `broker_connected` | OAuth success | Connection status |
+| **challenges** | `firm_name` | Copied from profile | Historical record |
+| **challenges** | `account_size` | Snapshot at creation | Challenge-specific |
+| **strategies** | `challenge_id` | Links to challenge | Strategy→Challenge link |
+
+**Validation uses `profiles.firm_name` + `profiles.account_size`** from user's current setup.
+
+---
+
+## 📊 Validation Warnings Reference
+
+### 🔴 Hard Violations (Block Save, Red Alert)
+
+| Check | Condition | Example |
+|-------|-----------|---------|
+| **Position Limit Exceeded** | `user_contracts > firm_max_contracts` | Strategy: 10 ES → Topstep limit: 5 ES<br>**"Position size exceeds Topstep limit"** |
+| **Risk Too High** | `single_trade_risk > 50% of daily_limit` | Risk: $1,250 → Daily limit: $2,000<br>**"Risk per trade exceeds 50% of daily loss limit"** |
+
+### 🟡 Soft Warnings (Allow Save, Amber)
+
+| Check | Condition | Example |
+|-------|-----------|---------|
+| **Trading at Max** | `user_contracts == firm_max_contracts` | Using exact firm limit, no scaling room |
+| **Risk 33-50%** | `single_trade_risk > 33% of daily_limit` | Only 2-3 trades allowed per day |
+| **Automation Policy** | Firm has restrictions | "Contact support required" |
+
+### ℹ️ Info Messages
+
+- Consistency rule requirements
+- Drawdown type explanation
+- Automation policy details
+
+---
+
+## 🔧 Manual Usage (If Needed)
+
+## 🔧 Manual Usage (If Needed)
+
+### Direct API Call (For Custom Integrations)
 
 ```typescript
-import { parseTimezone, convertToExchangeTime } from '@/lib/utils/timezone';
-
-// User says: "I trade 9:30 AM to 11:30 AM Pacific Time"
-const userTimezone = parseTimezone('PT'); // 'America/Los_Angeles'
-
-const startTime = convertToExchangeTime('09:30', userTimezone);
-// { exchangeTime: '11:30', timezone: 'America/Chicago' }
-
-const endTime = convertToExchangeTime('11:30', userTimezone);
-// { exchangeTime: '13:30', timezone: 'America/Chicago' }
-
-// Store exchangeTime in parsedRules
-parsedRules.filters.push({
-  type: 'time_window',
-  start: startTime.exchangeTime,
-  end: endTime.exchangeTime,
-  timezone: startTime.timezone,
+const response = await fetch('/api/strategy/validate-firm-rules', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    firmName: 'topstep',
+    accountSize: 50000,
+    parsedRules: strategyData.parsedRules,
+    instrument: strategyData.instrument,
+  }),
 });
+
+const validation = await response.json();
+// { isValid, status, warnings[], firmRules }
 ```
 
----
-
-### 4. Loading Firm Rules Directly
+### Loading Firm Rules Directly
 
 **If you need to access firm rules in your code:**
 
@@ -140,113 +160,31 @@ if (firmRules) {
 }
 ```
 
----
-
-## 🚀 Recommended Integration Points
-
-### Option A: Add Validation Step to ChatInterface
-
-After user confirms strategy, before saving:
-
-```typescript
-// src/app/chat/ChatInterface.tsx
-
-const handleConfirmStrategy = async () => {
-  // Detect firm from conversation history
-  const firmName = detectFirmFromConversation(messages);
-  
-  if (firmName) {
-    // Validate strategy
-    const validation = await validateStrategy({
-      firmName,
-      accountSize: userAccountSize,
-      parsedRules: strategyData.parsedRules,
-      instrument: strategyData.instrument,
-    });
-    
-    if (!validation.isValid) {
-      // Show validation errors
-      setValidationErrors(validation.warnings);
-      return;
-    }
-  }
-  
-  // Proceed with save
-  await saveStrategy();
-};
-```
-
----
-
-### Option B: Add Firm Selection Step
-
-Add a step before strategy parsing:
-
-```typescript
-// Before starting chat
-<FirmSelectionModal
-  onSelect={(firm, accountSize) => {
-    setUserFirm(firm);
-    setAccountSize(accountSize);
-    startChat();
-  }}
-/>
-
-// Then use in validation
-const validation = await validateStrategy({
-  firmName: userFirm,
-  accountSize: accountSize,
-  // ...
-});
-```
-
----
-
-### Option C: Background Validation (Non-Blocking)
-
-Validate in background, show info later:
-
-```typescript
-// After strategy is saved
-const validation = await validateStrategy(strategyData);
-
-if (validation.warnings.length > 0) {
-  // Show non-blocking notification
-  toast.warning(`${validation.warnings.length} validation notes`, {
-    onClick: () => showValidationDetails(validation.warnings),
-  });
 }
 ```
 
 ---
 
-## 📊 Validation Response Structure
+## 🚀 What's Working Now
 
-```typescript
-interface ValidationResponse {
-  isValid: boolean;
-  status: 'valid' | 'warnings' | 'invalid';
-  warnings: ValidationWarning[];
-  firmRules: {
-    firmName: string;
-    accountSize: number;
-    profitTarget: number;
-    dailyLossLimit: number | null;
-    maxDrawdown: number;
-    drawdownType: string;
-    maxContracts: Record<string, number>;
-    consistencyRule: number;
-    automationPolicy: string;
-  };
-}
+✅ **Firm selection cards** with logos on dashboard  
+✅ **OAuth callback** stores firm + account size in profile  
+✅ **Validation API** checks strategy against firm rules  
+✅ **Validation modal** shows warnings with severity levels  
+✅ **Behavioral logging** captures validation events and user decisions  
+✅ **Hybrid storage** - profile (current) + challenges (historical)
 
-interface ValidationWarning {
-  type: 'position_limit' | 'risk_limit' | 'consistency' | 'info';
-  severity: 'error' | 'warning' | 'info';
-  message: string;
-  suggestion?: string;
-}
-```
+---
+
+## ⏳ Not Yet Integrated (Phase 1B+)
+
+### 🚧 Remaining Phase 1B Tasks
+
+✅ **Timezone conversion** - Complete! Integrated into ChatInterface  
+⚠️ **Actual Tradovate OAuth** - Currently simulated, needs real OAuth flow  
+⚠️ **Account size from Tradovate API** - Placeholder default (50K), needs API call
+
+**See:** `docs/TIMEZONE_CONVERSION.md` for timezone feature documentation
 
 ---
 
@@ -287,19 +225,21 @@ export async function parseStrategyWithSkill(message: string) {
 
 ## ✅ Summary
 
-**Current State:**
-- ✅ Firm rules available as static JSON
-- ✅ Validation API ready to use
-- ✅ Timezone conversion utilities available
-- ✅ `/chat` system unchanged and working perfectly
+**Phase 1A Complete:**
+- ✅ Firm selection cards with visual design
+- ✅ Profile storage (firm_name, account_type, account_size, broker_connected)
+- ✅ Validation API integrated into chat flow
+- ✅ Validation modal shows warnings with proper severity
+- ✅ Behavioral logging for validation events
+- ✅ User can save despite warnings (advisory, not blocking)
 
-**Next Steps:**
-1. Add firm detection to chat flow
-2. Add validation step after strategy confirmation
-3. Display validation warnings to user
-4. Track validation results in behavioral_data
+**Next Steps (Phase 1B):**
+1. ✅ Integrate timezone conversion into strategy parsing - Complete!
+2. ⏳ Implement real Tradovate OAuth flow
+3. ⏳ Fetch actual account size from Tradovate API
+4. ⏳ Add account size selector for prop firms with multiple tiers
 
 **PATH 3 (Future):**
-- Upload Skills bundle to Anthropic
-- Add SKILL_ID to .env
-- Use for external API / MCP server only
+- Upload Skills bundle to Anthropic for external API use
+- Add SKILL_ID to .env for MCP server / white-label partners
+
