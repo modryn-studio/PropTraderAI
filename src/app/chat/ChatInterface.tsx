@@ -183,14 +183,15 @@ export default function ChatInterface({
         
         // If conversions were made, log for PATH 2
         if (timezoneResult.conversions.length > 0) {
-          await logBehavioralEvent(userId, {
-            eventType: 'timezone_conversion_applied',
-            eventData: {
+          await logBehavioralEvent(
+            userId,
+            'timezone_conversion_applied',
+            {
               detectedTimezone,
               conversions: timezoneResult.conversions,
               warnings: timezoneResult.warnings,
-            },
-          });
+            }
+          );
         }
         
         setStrategyComplete(true);
@@ -259,9 +260,10 @@ export default function ChatInterface({
         const validationData = await validationResponse.json();
         
         // Log validation event for PATH 2 behavioral analytics
-        await logBehavioralEvent(userId, {
-          eventType: 'strategy_validated',
-          eventData: {
+        await logBehavioralEvent(
+          userId,
+          'strategy_validated',
+          {
             firmName: userProfile.firm_name,
             accountSize: userProfile.account_size,
             instrument: strategyData.instrument,
@@ -271,8 +273,8 @@ export default function ChatInterface({
             hardViolations: validationData.warnings?.filter((w: ValidationWarning) => w.severity === 'error').length || 0,
             softWarnings: validationData.warnings?.filter((w: ValidationWarning) => w.severity === 'warning').length || 0,
             violations: validationData.warnings?.map((w: ValidationWarning) => w.type) || [],
-          },
-        });
+          }
+        );
         
         // Show modal with warnings (if any)
         setValidationWarnings(validationData.warnings || []);
@@ -390,16 +392,17 @@ export default function ChatInterface({
   // Validation modal handlers
   const handleValidationSaveAnyway = useCallback(async () => {
     // Log that user ignored warnings (PATH 2 behavioral data)
-    await logBehavioralEvent(userId, {
-      eventType: 'validation_warnings_ignored',
-      eventData: {
+    await logBehavioralEvent(
+      userId,
+      'validation_warnings_ignored',
+      {
         warningCount: validationWarnings.length,
         hardViolations: validationWarnings.filter((w: ValidationWarning) => w.severity === 'error').length,
         softWarnings: validationWarnings.filter((w: ValidationWarning) => w.severity === 'warning').length,
         firmName: userProfile?.firm_name,
         accountSize: userProfile?.account_size,
-      },
-    });
+      }
+    );
     
     setShowValidationModal(false);
     if (pendingStrategyName) {
@@ -410,13 +413,14 @@ export default function ChatInterface({
 
   const handleValidationRevise = useCallback(async () => {
     // Log that user chose to revise (PATH 2 behavioral data)
-    await logBehavioralEvent(userId, {
-      eventType: 'strategy_revision_after_validation',
-      eventData: {
+    await logBehavioralEvent(
+      userId,
+      'strategy_revision_after_validation',
+      {
         warningCount: validationWarnings.length,
         firmName: userProfile?.firm_name,
-      },
-    });
+      }
+    );
     
     setShowValidationModal(false);
     setPendingStrategyName(null);
