@@ -231,6 +231,34 @@ export default function ChatInterface({
     await handleSendMessage(newContent);
   }, [messages, handleSendMessage]);
 
+  // Separate function for actual database save (defined first so it can be used below)
+  const saveStrategyToDatabase = useCallback(async (name: string) => {
+    if (!conversationId || !strategyData) {
+      throw new Error('No strategy to save');
+    }
+
+    const response = await fetch('/api/strategy/save', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        conversationId,
+        name,
+        naturalLanguage: fullConversationText,
+        parsedRules: strategyData.parsedRules,
+        instrument: strategyData.instrument,
+        summary: strategyData.summary,
+      }),
+    });
+
+    if (!response.ok) {
+      const data = await response.json();
+      throw new Error(data.error || 'Failed to save strategy');
+    }
+
+    const data = await response.json();
+    setCurrentStrategyCount(data.userStrategyCount);
+  }, [conversationId, strategyData, fullConversationText]);
+
   const handleSaveStrategy = useCallback(async (name: string) => {
     if (!conversationId || !strategyData) {
       throw new Error('No strategy to save');
@@ -292,34 +320,6 @@ export default function ChatInterface({
     // If no firm or validation passed/bypassed, save directly
     await saveStrategyToDatabase(name);
   }, [conversationId, strategyData, userProfile, userId, saveStrategyToDatabase]);
-
-  // Separate function for actual database save
-  const saveStrategyToDatabase = useCallback(async (name: string) => {
-    if (!conversationId || !strategyData) {
-      throw new Error('No strategy to save');
-    }
-
-    const response = await fetch('/api/strategy/save', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        conversationId,
-        name,
-        naturalLanguage: fullConversationText,
-        parsedRules: strategyData.parsedRules,
-        instrument: strategyData.instrument,
-        summary: strategyData.summary,
-      }),
-    });
-
-    if (!response.ok) {
-      const data = await response.json();
-      throw new Error(data.error || 'Failed to save strategy');
-    }
-
-    const data = await response.json();
-    setCurrentStrategyCount(data.userStrategyCount);
-  }, [conversationId, strategyData, fullConversationText]);
 
   const handleRefine = useCallback(() => {
     // Clear completion state so user can continue chatting
