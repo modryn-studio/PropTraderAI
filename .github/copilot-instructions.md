@@ -235,6 +235,82 @@ Hosting:
 
 ---
 
+## 🧩 Claude Skills Integration (Extracted Utilities)
+
+### Current Implementation (Phase 1A)
+
+**Strategy:** Extracted valuable utilities from Claude Skills bundle WITHOUT replacing existing `/chat` system.
+
+**What We Did:**
+1. ✅ Copied firm rules JSON files to `src/lib/firm-rules/data/`
+2. ✅ Created `src/lib/firm-rules/loader.ts` - Static firm rules loader
+3. ✅ Created `src/lib/utils/timezone.ts` - Timezone conversion utilities
+4. ✅ Created `src/app/api/strategy/validate-firm-rules/route.ts` - Post-parsing validation
+
+**What We Did NOT Do:**
+- ❌ Replace existing `/chat` Socratic dialogue system
+- ❌ Use Anthropic Skills API in current flow (too expensive, less control)
+- ❌ Modify `src/lib/claude/client.ts` parseStrategy function
+
+### Firm Rules Validation Flow
+
+**AFTER strategy is parsed, validate against prop firm rules:**
+
+```typescript
+// In your chat completion handler (after Claude returns parsedRules)
+const response = await fetch('/api/strategy/validate-firm-rules', {
+  method: 'POST',
+  body: JSON.stringify({
+    firmName: 'topstep',
+    accountSize: 50000,
+    parsedRules: strategyData.parsedRules,
+    instrument: strategyData.instrument
+  })
+});
+
+const validation = await response.json();
+// validation.isValid, validation.warnings, validation.firmRules
+```
+
+**Supported Firms:**
+- `topstep` - Most established, TopstepX API
+- `myfundedfutures` - Updated July 2025 automation allowed
+- `tradeify` - One-time fee, ownership verification
+- `alpha-futures` - Allows bots/EAs
+- `ftmo` - Largest international
+- `fundednext` - Multiple challenge types
+
+### Timezone Conversion Usage
+
+```typescript
+import { parseTimezone, convertToExchangeTime } from '@/lib/utils/timezone';
+
+// User says "I trade 9:30 AM to 11:30 AM Pacific Time"
+const timezone = parseTimezone('PT'); // Returns 'America/Los_Angeles'
+const converted = convertToExchangeTime('09:30', timezone);
+// Returns { exchangeTime: '11:30', timezone: 'America/Chicago' }
+```
+
+### Future Use: Skills API (PATH 3)
+
+**When to activate Skills API:**
+1. **Public API** - External developers pay for domain knowledge access
+2. **MCP Server** - Fallback firm rules when database unavailable
+3. **White-label** - Partners use our Skills bundle
+
+**Environment Variables:**
+```bash
+PROPTRADERAI_SKILL_ID=  # Populated after upload to Anthropic
+PROPTRADERAI_SKILL_VERSION=latest
+```
+
+**Skills Bundle Location:**
+`docs/Claude_Skills/proptraderai-strategy-builder/`
+
+**Do NOT use Skills API in Phase 1A** - utilities already extracted as static code.
+
+---
+
 ## 📊 PATH 2: Behavioral Data Collection (CRITICAL)
 
 ### Start Logging From Day 1
