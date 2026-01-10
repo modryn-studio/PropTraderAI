@@ -4,6 +4,7 @@ import { User } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import {
   Activity,
   MessageSquare,
@@ -14,7 +15,6 @@ import {
   TrendingUp,
 } from 'lucide-react';
 import FeedbackButton from '@/components/feedback/FeedbackButton';
-import { PropFirmGrid } from '@/components/dashboard/PropFirmCard';
 
 interface DashboardShellProps {
   user: User;
@@ -117,25 +117,31 @@ export default function DashboardShell({
         ======================================== */}
         {!hasBrokerConnected && (
           <>
-            {/* HERO: Prop Firm Selection Grid */}
-            <div className="card py-8">
-              <div className="text-center mb-6">
-                <div className="w-16 h-16 bg-[rgba(0,255,209,0.15)] flex items-center justify-center mx-auto mb-4">
-                  <TrendingUp className="w-8 h-8 text-[#00FFD1]" />
-                </div>
-                <h2 className="font-mono font-bold text-xl mb-2 text-white">
-                  Ready to pass your challenge?
-                </h2>
-                <p className="text-[rgba(255,255,255,0.5)] text-sm max-w-md mx-auto">
-                  94% fail their first challenge. Connect your prop firm and we&apos;ll make sure you&apos;re not one of them.
-                </p>
+            {/* HERO CARD: Primary action - Connect to start */}
+            <div className="card text-center py-12">
+              <div className="w-16 h-16 bg-[rgba(0,255,209,0.15)] flex items-center justify-center mx-auto mb-4">
+                <TrendingUp className="w-8 h-8 text-[#00FFD1]" />
               </div>
-              
-              {/* Firm Cards Grid */}
-              <PropFirmGrid onSelectFirm={handleFirmSelect} />
-              
-              {/* Secondary link */}
-              <p className="text-xs text-[rgba(255,255,255,0.5)] text-center mt-6">
+              <h3 className="font-mono font-bold text-xl mb-2 text-white">
+                Ready to pass your challenge?
+              </h3>
+              <p className="text-[rgba(255,255,255,0.5)] text-sm mb-6 max-w-sm mx-auto">
+                94% fail their first challenge. Connect Tradovate and we&apos;ll make sure you&apos;re not one of them.
+              </p>
+              <button 
+                onClick={() => handleFirmSelect('tradovate')}
+                className="btn-primary mb-4 inline-flex items-center gap-2"
+              >
+                CONNECT
+                <Image
+                  src="/tradovate-logo.png"
+                  alt="Tradovate"
+                  width={120}
+                  height={24}
+                  className="h-5 w-auto"
+                />
+              </button>
+              <p className="text-xs text-[rgba(255,255,255,0.5)]">
                 Or <Link href="/chat" className="text-[#00FFD1] underline hover:text-[#00FFD1]/80 transition-colors">describe your strategy first</Link>
               </p>
             </div>
