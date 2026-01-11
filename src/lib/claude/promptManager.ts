@@ -1,6 +1,5 @@
 import { STRATEGY_ANIMATION_PROMPT } from '@/components/strategy-animation/claude-prompt';
 import { REQUIRED_COMPONENTS } from '@/lib/strategy/strategyValidator';
-import type { StrategyRule } from '@/lib/utils/ruleExtractor';
 
 /**
  * Prompt Manager for Dynamic Claude Prompts

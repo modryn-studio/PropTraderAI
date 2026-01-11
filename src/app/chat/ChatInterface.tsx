@@ -20,7 +20,7 @@ import { shouldExpectAnimation } from '@/lib/claude/promptManager';
 import { logAnimationGenerated } from '@/lib/behavioral/animationLogger';
 import StrategySummaryPanel, { StrategyRule } from '@/components/strategy/StrategySummaryPanel';
 import StrategyReadinessGate, { type GateMode } from '@/components/strategy/StrategyReadinessGate';
-import { validateStrategy, canProceedToBacktest, type ValidationResult } from '@/lib/strategy/strategyValidator';
+import { validateStrategy, type ValidationResult } from '@/lib/strategy/strategyValidator';
 import { useResponsiveBreakpoints } from '@/lib/hooks/useResponsiveBreakpoints';
 import { 
   extractFromMessage,
@@ -500,7 +500,7 @@ export default function ChatInterface({
 
     // If no firm or validation passed/bypassed, save directly
     await saveStrategyToDatabase(name);
-  }, [conversationId, strategyData, userProfile, userId, saveStrategyToDatabase]);
+  }, [conversationId, strategyData, userProfile, userId, saveStrategyToDatabase, accumulatedRules, currentValidation]);
 
   const handleRefine = useCallback(() => {
     // Clear completion state so user can continue chatting

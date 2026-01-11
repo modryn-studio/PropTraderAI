@@ -164,7 +164,7 @@ export function validateStrategy(rules: StrategyRule[]): ValidationResult {
     });
   } else {
     // Validate entry quality
-    const entryValidation = validateEntry(components.entry, rules);
+    const entryValidation = validateEntry(components.entry);
     errors.push(...entryValidation.filter(v => v.severity === 'error'));
     warnings.push(...entryValidation.filter(v => v.severity === 'warning'));
   }
@@ -400,7 +400,7 @@ function parseRulesToComponents(rules: StrategyRule[]): StrategyComponents {
 /**
  * Validate entry criteria quality
  */
-function validateEntry(entry: EntryComponent, _allRules: StrategyRule[]): ValidationIssue[] {
+function validateEntry(entry: EntryComponent): ValidationIssue[] {
   const issues: ValidationIssue[] = [];
 
   // Check for vague entries

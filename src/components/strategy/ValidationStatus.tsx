@@ -15,7 +15,6 @@
 import { motion } from 'framer-motion';
 import { CheckCircle2, AlertCircle, AlertTriangle, Circle, ChevronRight } from 'lucide-react';
 import type { ValidationResult, ValidationIssue } from '@/lib/strategy/strategyValidator';
-import { REQUIRED_COMPONENTS } from '@/lib/strategy/strategyValidator';
 
 interface ValidationStatusProps {
   validation: ValidationResult;

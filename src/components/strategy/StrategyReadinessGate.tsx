@@ -415,7 +415,7 @@ function MissingComponents({ validation, mode, onNavigate }: MissingComponentsPr
         <p className="text-[10px] font-mono text-[rgba(255,255,255,0.5)] leading-relaxed">
           <strong className="text-[#00FFD1]">Professional Standard:</strong> Every strategy
           requires entry criteria, stop-loss, profit target, position sizing, and instrument
-          specification. This isn't bureaucracy—it's how prop firms ensure consistent execution.
+          specification. This isn&apos;t bureaucracy—it&apos;s how prop firms ensure consistent execution.
         </p>
       </div>
     </div>
