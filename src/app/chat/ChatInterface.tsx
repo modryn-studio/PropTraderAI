@@ -658,9 +658,13 @@ export default function ChatInterface({
         />
       )}
 
-      {/* Messages area - scrollable (with left margin for summary panel on desktop) */}
+      {/* Messages area - scrollable (with margins for sidebars on desktop) */}
       <div className={`flex-1 overflow-hidden flex flex-col ${
-        !isMobile && (streamedRules.length > 0 || strategyRules.length > 0) ? 'md:ml-80' : ''
+        !isMobile && (streamedRules.length > 0 || strategyRules.length > 0)
+          ? isAnimationExpanded && animationConfig
+            ? 'ml-80 mr-[400px]' // Both sidebars visible
+            : 'ml-80' // Summary only
+          : ''
       }`}>
         <ChatMessageList
           messages={messages}

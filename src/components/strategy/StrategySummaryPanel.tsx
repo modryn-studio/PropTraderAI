@@ -4,7 +4,11 @@ import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronRight, ChevronDown, Eye, EyeOff, List, X } from 'lucide-react';
 import { useResponsiveBreakpoints, useKeyboardVisible } from '@/lib/hooks/useResponsiveBreakpoints';
-import { StrategyRule } from '@/lib/utils/ruleExtractor';
+import type { StrategyRule } from '@/lib/utils/ruleExtractor';
+import { lazy, Suspense } from 'react';
+import type { AnimationConfig } from '@/components/strategy-animation/taxonomy';
+
+const StrategyVisualizer = lazy(() => import('@/components/strategy-animation/StrategyVisualizer'));
 
 export type { StrategyRule };
 
@@ -12,7 +16,7 @@ interface StrategySummaryPanelProps {
   strategyName?: string;
   rules: StrategyRule[];
   isVisible?: boolean;
-  animationConfig?: object | null;
+  animationConfig?: AnimationConfig | null;
   isAnimationExpanded?: boolean;
   onToggleAnimation?: () => void;
 }
@@ -173,7 +177,7 @@ interface MobileSummaryPanelProps {
   onClose: () => void;
   hasNewRules: boolean;
   isKeyboardVisible: boolean;
-  animationConfig?: object | null;
+  animationConfig?: AnimationConfig | null;
 }
 
 function MobileSummaryPanel({
@@ -301,28 +305,29 @@ function MobileSummaryPanel({
 
               {/* Embedded Animation Preview (if exists) */}
               {animationConfig && (
-                <div 
-                  className="mx-4 mt-4 border border-[rgba(255,255,255,0.1)] rounded-lg overflow-hidden"
-                >
-                  <div className="bg-[rgba(255,255,255,0.02)] px-3 py-2 flex items-center justify-between">
+                <div className="mx-4 mt-4 border border-[rgba(255,255,255,0.1)] rounded-lg overflow-hidden">
+                  <div className="bg-[rgba(255,255,255,0.02)] px-3 py-2 border-b border-[rgba(255,255,255,0.1)]">
                     <span className="text-xs font-mono text-[rgba(255,255,255,0.5)]">
                       Strategy Preview
                     </span>
-                    <span className="text-[10px] font-mono text-[#00FFD1]">
-                      Tap to expand
-                    </span>
                   </div>
-                  {/* Mini animation container - would render StrategyVisualizer here */}
-                  <div className="h-32 bg-[rgba(0,0,0,0.5)] flex items-center justify-center">
-                    <div className="text-center">
-                      <div className="w-8 h-8 mx-auto mb-2 rounded-full bg-[#00FFD1]/20 flex items-center justify-center">
-                        <svg className="w-4 h-4 text-[#00FFD1]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
+                  {/* Render actual StrategyVisualizer */}
+                  <div className="p-4 bg-[rgba(0,0,0,0.5)]">
+                    <Suspense fallback={
+                      <div className="h-32 flex items-center justify-center">
+                        <div className="text-center">
+                          <div className="w-8 h-8 mx-auto mb-2 rounded-full bg-[#00FFD1]/20 flex items-center justify-center animate-pulse">
+                            <svg className="w-4 h-4 text-[#00FFD1]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                          </div>
+                          <span className="text-[10px] text-[rgba(255,255,255,0.5)]">Loading preview...</span>
+                        </div>
                       </div>
-                      <span className="text-[10px] text-[rgba(255,255,255,0.5)]">Preview available</span>
-                    </div>
+                    }>
+                      <StrategyVisualizer config={animationConfig as AnimationConfig} />
+                    </Suspense>
                   </div>
                 </div>
               )}
