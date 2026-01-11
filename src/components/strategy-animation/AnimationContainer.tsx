@@ -119,17 +119,16 @@ export default function AnimationContainer({
 
   // Handle mobile panel close
   const handleMobileClose = useCallback(() => {
-    if (viewStartTime && userId && config) {
-      const duration = Date.now() - viewStartTime;
-      
-      // Log quick dismissals (< 5 seconds)
-      if (duration < 5000) {
-        logAnimationEvent(userId, 'animation_dismissed_quickly', {
-          view_duration_ms: duration,
-          type: config.type,
-          direction: config.direction,
-        });
-      }
+    const duration = viewStartTime ? Date.now() - viewStartTime : 0;
+    
+    // Log all dismissals with duration context
+    if (userId && config) {
+      logAnimationEvent(userId, duration < 5000 ? 'animation_dismissed_quickly' : 'animation_viewed', {
+        view_duration_ms: duration,
+        type: config.type,
+        direction: config.direction,
+        was_quick_dismissal: duration < 5000,
+      });
     }
     
     setIsMobileExpanded(false);

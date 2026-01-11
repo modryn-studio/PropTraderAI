@@ -98,7 +98,12 @@ export default function ChatInterface({
       }
     };
     window.addEventListener('keydown', handleEscape);
-    return () => window.removeEventListener('keydown', handleEscape);
+    
+    // Cleanup animation state on unmount
+    return () => {
+      window.removeEventListener('keydown', handleEscape);
+      setAnimationConfig(null);
+    };
   }, [router, strategyComplete]);
 
   const handleStopGeneration = useCallback(() => {
@@ -189,21 +194,26 @@ export default function ChatInterface({
               if (data.type === 'text') {
                 // Update streamed content
                 streamedContent += data.content;
-                setMessages(prev => prev.map(msg => 
-                  msg.id === assistantMsgId 
-                    ? { ...msg, content: streamedContent }
-                    : msg
-                ));
                 
                 // Try to extract animation config mid-stream
-                if (expectAnimation && !animationConfig) {
+                let displayText = streamedContent;
+                if (expectAnimation) {
                   const extracted = tryExtractFromStream(streamedContent);
-                  if (extracted.extractedSuccessfully && extracted.config) {
+                  // Always use cleanText for display (removes [ANIMATION_START]...[ANIMATION_END] markers)
+                  displayText = extracted.cleanText;
+                  
+                  if (extracted.extractedSuccessfully && extracted.config && !animationConfig) {
                     setAnimationConfig(extracted.config);
                     const sessionTime = Date.now() - sessionStartRef.current;
                     logAnimationGenerated(userId, extracted.config, sessionTime).catch(console.error);
                   }
                 }
+                
+                setMessages(prev => prev.map(msg => 
+                  msg.id === assistantMsgId 
+                    ? { ...msg, content: displayText }
+                    : msg
+                ));
               } else if (data.type === 'complete') {
                 // Update conversation ID if new
                 if (!conversationId && data.conversationId) {
@@ -279,6 +289,9 @@ export default function ChatInterface({
     // Delete all messages after the edited message (branching)
     const updatedMessages = messages.slice(0, messageIndex);
     setMessages(updatedMessages);
+    
+    // Clear animation when branching conversation
+    setAnimationConfig(null);
     
     // Update the conversation text to match (remove everything after this point)
     const conversationUpToEdit = updatedMessages
