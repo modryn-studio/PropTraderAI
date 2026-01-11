@@ -18,6 +18,7 @@ export type BehavioralEventType =
   | 'strategy_updated'
   | 'strategy_activated'
   | 'strategy_paused'
+  | 'strategy_saved_incomplete'
   | 'screenshot_analyzed'
   | 'timezone_conversion_applied'
   
