@@ -19,6 +19,8 @@ import { AnimationLoader, AnimationConfig, tryExtractFromStream } from '@/compon
 import { shouldExpectAnimation } from '@/lib/claude/promptManager';
 import { logAnimationGenerated } from '@/lib/behavioral/animationLogger';
 import StrategySummaryPanel, { StrategyRule } from '@/components/strategy/StrategySummaryPanel';
+import StrategyReadinessGate, { type GateMode } from '@/components/strategy/StrategyReadinessGate';
+import { validateStrategy, canProceedToBacktest, type ValidationResult } from '@/lib/strategy/strategyValidator';
 import { useResponsiveBreakpoints } from '@/lib/hooks/useResponsiveBreakpoints';
 import { 
   extractFromMessage,
@@ -102,6 +104,13 @@ export default function ChatInterface({
   
   // Summary Panel state (V2: single accumulated state)
   const [accumulatedRules, setAccumulatedRules] = useState<StrategyRule[]>([]);
+  
+  // Validation state (from StrategySummaryPanel)
+  const [currentValidation, setCurrentValidation] = useState<ValidationResult | null>(null);
+  
+  // Readiness Gate state
+  const [showReadinessGate, setShowReadinessGate] = useState(false);
+  const [gateMode, setGateMode] = useState<GateMode>('save');
   
   // Animation expand/collapse state (controlled by Summary Panel)
   const [isAnimationExpanded, setIsAnimationExpanded] = useState(false);
@@ -416,9 +425,24 @@ export default function ChatInterface({
     setCurrentStrategyCount(data.userStrategyCount);
   }, [conversationId, strategyData, fullConversationText]);
 
+  // Handler for validation changes from StrategySummaryPanel
+  const handleValidationChange = useCallback((validation: ValidationResult) => {
+    setCurrentValidation(validation);
+  }, []);
+
   const handleSaveStrategy = useCallback(async (name: string) => {
     if (!conversationId || !strategyData) {
       throw new Error('No strategy to save');
+    }
+
+    // Check strategy completeness validation (SOFT BLOCK for save - show warning)
+    const validation = currentValidation || validateStrategy(accumulatedRules);
+    if (!validation.isComplete || validation.errors.length > 0) {
+      // Store the name and show the readiness gate (soft block)
+      setPendingStrategyName(name);
+      setGateMode('save');
+      setShowReadinessGate(true);
+      return;
     }
 
     // If user has a prop firm, validate before saving
@@ -522,6 +546,27 @@ export default function ChatInterface({
     setShowStartOverModal(true);
   }, []);
 
+  // Handler for "Save Draft Anyway" from readiness gate (soft block bypass)
+  const handleSaveAnyway = useCallback(async () => {
+    setShowReadinessGate(false);
+    
+    // Log that user bypassed validation (PATH 2 behavioral data)
+    await logBehavioralEvent(
+      userId,
+      'strategy_saved_incomplete',
+      {
+        completionScore: currentValidation?.completionScore || 0,
+        missingComponents: currentValidation?.requiredMissing.map(m => m.field) || [],
+        errors: currentValidation?.errors.map(e => e.message) || [],
+      }
+    );
+    
+    if (pendingStrategyName) {
+      await saveStrategyToDatabase(pendingStrategyName);
+      setPendingStrategyName(null);
+    }
+  }, [userId, pendingStrategyName, currentValidation, saveStrategyToDatabase]);
+
   const confirmStartOver = useCallback(async () => {
     setShowStartOverModal(false);
     
@@ -551,6 +596,7 @@ export default function ChatInterface({
     setTimezoneConversionSummary('');
     setAnimationConfig(null);
     setAccumulatedRules([]);
+    setCurrentValidation(null);
     setIsAnimationExpanded(false);
     setWasAnimationManuallySet(false);
     sessionStartRef.current = Date.now();
@@ -639,6 +685,7 @@ export default function ChatInterface({
         animationConfig={animationConfig}
         isAnimationExpanded={isAnimationExpanded}
         onToggleAnimation={handleToggleAnimation}
+        onValidationChange={handleValidationChange}
       />
 
       {/* Strategy Animation Visualization (desktop: right sidebar, mobile: embedded in summary) */}
@@ -746,7 +793,26 @@ export default function ChatInterface({
         </div>
       )}
 
-      {/* Validation Warnings Modal */}
+      {/* Strategy Readiness Gate (completeness validation) */}
+      {currentValidation && (
+        <StrategyReadinessGate
+          validation={currentValidation}
+          mode={gateMode}
+          isOpen={showReadinessGate}
+          onClose={() => setShowReadinessGate(false)}
+          onProceedAnyway={gateMode === 'save' ? handleSaveAnyway : undefined}
+          onProceed={() => {
+            setShowReadinessGate(false);
+            // If complete, proceed to prop firm validation or save
+            if (pendingStrategyName) {
+              // Re-trigger save (will now pass completeness check)
+              handleSaveStrategy(pendingStrategyName);
+            }
+          }}
+        />
+      )}
+
+      {/* Prop Firm Validation Warnings Modal */}
       {userProfile?.firm_name && userProfile?.account_size && (
         <ValidationWarningsModal
           isOpen={showValidationModal}

@@ -1,12 +1,14 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronRight, ChevronDown, Eye, EyeOff, List, X } from 'lucide-react';
 import { useResponsiveBreakpoints, useKeyboardVisible } from '@/lib/hooks/useResponsiveBreakpoints';
 import type { StrategyRule } from '@/lib/utils/ruleExtractor';
 import { lazy, Suspense } from 'react';
 import type { AnimationConfig } from '@/components/strategy-animation/taxonomy';
+import { validateStrategy, type ValidationResult } from '@/lib/strategy/strategyValidator';
+import ValidationStatus from './ValidationStatus';
 
 const StrategyVisualizer = lazy(() => import('@/components/strategy-animation/StrategyVisualizer'));
 
@@ -19,6 +21,7 @@ interface StrategySummaryPanelProps {
   animationConfig?: AnimationConfig | null;
   isAnimationExpanded?: boolean;
   onToggleAnimation?: () => void;
+  onValidationChange?: (validation: ValidationResult) => void;
 }
 
 /**
@@ -40,12 +43,21 @@ export default function StrategySummaryPanel({
   animationConfig,
   isAnimationExpanded,
   onToggleAnimation,
+  onValidationChange,
 }: StrategySummaryPanelProps) {
   const { isMobile } = useResponsiveBreakpoints();
   const isKeyboardVisible = useKeyboardVisible();
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [hasNewRules, setHasNewRules] = useState(false);
   const prevRuleCount = useRef(rules.length);
+
+  // Real-time validation (memoized)
+  const validation = useMemo(() => validateStrategy(rules), [rules]);
+
+  // Notify parent of validation changes
+  useEffect(() => {
+    onValidationChange?.(validation);
+  }, [validation, onValidationChange]);
 
   // Detect new rules for FAB indicator
   useEffect(() => {
@@ -75,6 +87,7 @@ export default function StrategySummaryPanel({
         hasNewRules={hasNewRules}
         isKeyboardVisible={isKeyboardVisible}
         animationConfig={animationConfig}
+        validation={validation}
       />
     );
   }
@@ -103,7 +116,11 @@ export default function StrategySummaryPanel({
 
       {/* Rules List - Scrollable */}
       <div className="flex-1 overflow-y-auto custom-scrollbar">
-        <div className="px-4 py-4 space-y-3">
+        <div className="px-4 py-4 space-y-4">
+          {/* Validation Status (progressive reveal - only show after first rule) */}
+          <ValidationStatus validation={validation} />
+          
+          {/* Strategy Rules by Category */}
           <RulesCategoryList rules={rules} />
         </div>
       </div>
@@ -178,6 +195,7 @@ interface MobileSummaryPanelProps {
   hasNewRules: boolean;
   isKeyboardVisible: boolean;
   animationConfig?: AnimationConfig | null;
+  validation: ValidationResult;
 }
 
 function MobileSummaryPanel({
@@ -189,6 +207,7 @@ function MobileSummaryPanel({
   hasNewRules,
   isKeyboardVisible,
   animationConfig,
+  validation,
 }: MobileSummaryPanelProps) {
   // Don't show FAB when keyboard is visible
   const showFAB = !isOpen && !isKeyboardVisible;
@@ -333,7 +352,11 @@ function MobileSummaryPanel({
               )}
 
               {/* Scrollable Rules Content */}
-              <div className="flex-1 overflow-y-auto px-4 py-4">
+              <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
+                {/* Validation Status */}
+                <ValidationStatus validation={validation} />
+                
+                {/* Strategy Rules by Category */}
                 <RulesCategoryList rules={rules} />
               </div>
 

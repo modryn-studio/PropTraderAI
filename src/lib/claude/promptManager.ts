@@ -1,10 +1,13 @@
 import { STRATEGY_ANIMATION_PROMPT } from '@/components/strategy-animation/claude-prompt';
+import { REQUIRED_COMPONENTS } from '@/lib/strategy/strategyValidator';
+import type { StrategyRule } from '@/lib/utils/ruleExtractor';
 
 /**
  * Prompt Manager for Dynamic Claude Prompts
  * 
- * Handles conditional injection of animation prompts based on conversation state.
- * Per user decision: Only inject animation prompt AFTER enough strategy clarity.
+ * Handles conditional injection of:
+ * 1. Animation prompts (after enough strategy clarity)
+ * 2. Validation context (when strategy is incomplete - based on message analysis)
  */
 
 /**
@@ -16,6 +19,75 @@ interface StrategyClarity {
   hasEntryCondition: boolean;   // Some form of entry trigger
   hasTimeframe: boolean;        // Scalp, swing, day trade
   hasInstrument: boolean;       // Futures contract mentioned
+}
+
+/**
+ * Required component detection from conversation
+ * Maps to the 5 required professional strategy components
+ */
+interface RequiredComponentsDetected {
+  hasEntry: boolean;
+  hasStopLoss: boolean;
+  hasProfitTarget: boolean;
+  hasPositionSizing: boolean;
+  hasInstrument: boolean;
+}
+
+/**
+ * Analyze messages for the 5 required strategy components
+ * Used for validation context injection
+ */
+export function analyzeRequiredComponents(messages: { role: string; content: string }[]): RequiredComponentsDetected {
+  const allContent = messages
+    .filter(m => m.role === 'user' || m.role === 'assistant')
+    .map(m => m.content.toLowerCase())
+    .join(' ');
+
+  return {
+    hasEntry: /\b(entry|enter|trigger|when\s+.*\s+break|pullback|cross|setup|open\s+position)\b/.test(allContent),
+    hasStopLoss: /\b(stop\s*loss|stop|stoploss|sl|risk.*tick|tick.*risk|below\s+.*\s+entry|exit.*loss)\b/.test(allContent),
+    hasProfitTarget: /\b(target|take\s*profit|tp|profit\s*target|risk.*reward|r:r|1:2|2:1|exit.*profit)\b/.test(allContent),
+    hasPositionSizing: /\b(position\s*size|size|contracts?|risk\s*%|risk\s*percent|1%|2%|risk\s*per\s*trade)\b/.test(allContent),
+    hasInstrument: /\b(es|nq|nasdaq|s&p|spx|emini|e-mini|micro|mes|mnq|futures|contract)\b/.test(allContent),
+  };
+}
+
+/**
+ * Generate validation context prompt based on missing components
+ */
+function generateValidationContext(components: RequiredComponentsDetected): string {
+  const missing: string[] = [];
+  
+  if (!components.hasEntry) {
+    missing.push(`- ${REQUIRED_COMPONENTS.entry.name}: ${REQUIRED_COMPONENTS.entry.examples.join(', ')}`);
+  }
+  if (!components.hasStopLoss) {
+    missing.push(`- ${REQUIRED_COMPONENTS.stopLoss.name}: ${REQUIRED_COMPONENTS.stopLoss.examples.join(', ')}`);
+  }
+  if (!components.hasProfitTarget) {
+    missing.push(`- ${REQUIRED_COMPONENTS.profitTarget.name}: ${REQUIRED_COMPONENTS.profitTarget.examples.join(', ')}`);
+  }
+  if (!components.hasPositionSizing) {
+    missing.push(`- ${REQUIRED_COMPONENTS.positionSizing.name}: ${REQUIRED_COMPONENTS.positionSizing.examples.join(', ')}`);
+  }
+  if (!components.hasInstrument) {
+    missing.push(`- ${REQUIRED_COMPONENTS.instrument.name}: ${REQUIRED_COMPONENTS.instrument.examples.join(', ')}`);
+  }
+  
+  if (missing.length === 0) {
+    return ''; // All components present
+  }
+  
+  const completedCount = 5 - missing.length;
+  const completionPercent = Math.round((completedCount / 5) * 100);
+  
+  return `
+[VALIDATION CONTEXT - ${completionPercent}% Complete]
+The strategy is missing these required components. Guide the user to define them:
+${missing.join('\n')}
+
+Focus on the FIRST missing component. Be direct and specific. One question at a time.
+`;
 }
 
 /**
@@ -69,16 +141,29 @@ export function shouldInjectAnimationPrompt(
  * 
  * @param basePrompt - The core strategy parsing system prompt
  * @param messages - Conversation history
- * @returns Combined system prompt (possibly with animation instructions)
+ * @returns Combined system prompt (possibly with animation and validation context)
  */
 export function getSystemPrompt(
   basePrompt: string,
   messages: { role: string; content: string }[]
 ): string {
-  if (shouldInjectAnimationPrompt(messages)) {
-    return `${basePrompt}\n\n${STRATEGY_ANIMATION_PROMPT}`;
+  let prompt = basePrompt;
+  
+  // Analyze conversation to detect which required components have been mentioned
+  const components = analyzeRequiredComponents(messages);
+  const validationContext = generateValidationContext(components);
+  
+  // Inject validation context if strategy is incomplete
+  if (validationContext) {
+    prompt = `${prompt}\n\n${validationContext}`;
   }
-  return basePrompt;
+  
+  // Inject animation prompt after enough clarity
+  if (shouldInjectAnimationPrompt(messages)) {
+    prompt = `${prompt}\n\n${STRATEGY_ANIMATION_PROMPT}`;
+  }
+  
+  return prompt;
 }
 
 /**
