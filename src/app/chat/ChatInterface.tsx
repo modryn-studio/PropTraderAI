@@ -18,6 +18,18 @@ import {
 import { AnimationLoader, AnimationConfig, tryExtractFromStream } from '@/components/strategy-animation';
 import { shouldExpectAnimation } from '@/lib/claude/promptManager';
 import { logAnimationGenerated } from '@/lib/behavioral/animationLogger';
+import StrategySummaryPanel, { StrategyRule } from '@/components/strategy/StrategySummaryPanel';
+import { useResponsiveBreakpoints } from '@/lib/hooks/useResponsiveBreakpoints';
+import { 
+  extractRulesFromStream, 
+  mapParsedRulesToStrategyRules, 
+  mergeRules 
+} from '@/lib/utils/ruleExtractor';
+import { 
+  detectAnimationTrigger, 
+  saveAnimationPreference,
+  loadAnimationPreference 
+} from '@/lib/utils/animationTriggers';
 
 interface ChatInterfaceProps {
   userId: string;
@@ -87,6 +99,17 @@ export default function ChatInterface({
   const [animationConfig, setAnimationConfig] = useState<AnimationConfig | null>(null);
   const sessionStartRef = useRef<number>(Date.now());
   
+  // Summary Panel state
+  const [strategyRules, setStrategyRules] = useState<StrategyRule[]>([]);
+  const [streamedRules, setStreamedRules] = useState<StrategyRule[]>([]);
+  const [strategyName, setStrategyName] = useState<string>('');
+  
+  // Animation expand/collapse state (controlled by Summary Panel)
+  const [isAnimationExpanded, setIsAnimationExpanded] = useState(false);
+  const [wasAnimationManuallySet, setWasAnimationManuallySet] = useState(false);
+  const { isMobile, defaultAnimationExpanded, animationAutoExpandable } = useResponsiveBreakpoints();
+  const prevRuleCountRef = useRef(0);
+  
   // AbortController for canceling requests
   const abortControllerRef = useRef<AbortController | null>(null);
   
@@ -105,6 +128,49 @@ export default function ChatInterface({
       setAnimationConfig(null);
     };
   }, [router, strategyComplete]);
+
+  // Load saved animation preference when conversation ID changes
+  useEffect(() => {
+    if (conversationId) {
+      const pref = loadAnimationPreference(conversationId);
+      if (pref) {
+        setIsAnimationExpanded(pref.isExpanded);
+        setWasAnimationManuallySet(pref.wasManuallySet);
+      } else {
+        // Default based on screen size
+        setIsAnimationExpanded(defaultAnimationExpanded);
+        setWasAnimationManuallySet(false);
+      }
+    }
+  }, [conversationId, defaultAnimationExpanded]);
+
+  // Handle animation toggle from Summary Panel
+  const handleToggleAnimation = useCallback(() => {
+    const newValue = !isAnimationExpanded;
+    setIsAnimationExpanded(newValue);
+    setWasAnimationManuallySet(true);
+    
+    if (conversationId) {
+      saveAnimationPreference(conversationId, newValue, true);
+    }
+  }, [isAnimationExpanded, conversationId]);
+
+  // Auto-expand animation at key moments (only if not manually set)
+  const handleAnimationAutoExpand = useCallback((shouldExpand: boolean) => {
+    if (!wasAnimationManuallySet && animationAutoExpandable && shouldExpand) {
+      setIsAnimationExpanded(true);
+      if (conversationId) {
+        saveAnimationPreference(conversationId, true, false);
+      }
+    }
+  }, [wasAnimationManuallySet, animationAutoExpandable, conversationId]);
+
+  // Smart minimize: only auto-minimize if not manually set
+  const handleSmartMinimize = useCallback(() => {
+    if (!wasAnimationManuallySet) {
+      setIsAnimationExpanded(false);
+    }
+  }, [wasAnimationManuallySet]);
 
   const handleStopGeneration = useCallback(() => {
     if (abortControllerRef.current) {
@@ -204,6 +270,23 @@ export default function ChatInterface({
                   setAnimationConfig(extracted.config);
                   const sessionTime = Date.now() - sessionStartRef.current;
                   logAnimationGenerated(userId, extracted.config, sessionTime).catch(console.error);
+                  
+                  // Check for animation auto-expand trigger in response
+                  const triggerResult = detectAnimationTrigger(streamedContent);
+                  if (triggerResult.shouldExpand) {
+                    handleAnimationAutoExpand(true);
+                  }
+                }
+                
+                // Extract rules from streaming response for Summary Panel
+                const newStreamedRules = extractRulesFromStream(displayText);
+                if (newStreamedRules.length > 0) {
+                  setStreamedRules(newStreamedRules);
+                }
+                
+                // Extract strategy name from response
+                if (!strategyName && displayText.toLowerCase().includes('opening range breakout')) {
+                  setStrategyName('Opening Range Breakout (ORB)');
                 }
                 
                 setMessages(prev => prev.map(msg => 
@@ -245,6 +328,15 @@ export default function ChatInterface({
                       }
                     );
                   }
+                  
+                  // Map final parsed rules to Summary Panel format
+                  const finalRules = mapParsedRulesToStrategyRules(
+                    timezoneResult.processedRules,
+                    data.strategyName,
+                    data.instrument
+                  );
+                  setStrategyRules(mergeRules(streamedRules, finalRules));
+                  setStrategyName(data.strategyName || strategyName);
                   
                   setStrategyComplete(true);
                   setStrategyData({
@@ -422,7 +514,13 @@ export default function ChatInterface({
     setFullConversationText('');
     setTimezoneConversionSummary('');
     setAnimationConfig(null);
+    setStrategyRules([]);
+    setStreamedRules([]);
+    setStrategyName('');
+    setIsAnimationExpanded(false);
+    setWasAnimationManuallySet(false);
     sessionStartRef.current = Date.now();
+    prevRuleCountRef.current = 0;
     setError(null);
   }, [conversationId]);
 
@@ -458,7 +556,13 @@ export default function ChatInterface({
     setFullConversationText('');
     setTimezoneConversionSummary('');
     setAnimationConfig(null);
+    setStrategyRules([]);
+    setStreamedRules([]);
+    setStrategyName('');
+    setIsAnimationExpanded(false);
+    setWasAnimationManuallySet(false);
     sessionStartRef.current = Date.now();
+    prevRuleCountRef.current = 0;
     setError(null);
   }, [conversationId]);
 
@@ -535,15 +639,36 @@ export default function ChatInterface({
         </div>
       </header>
 
-      {/* Strategy Animation Visualization (desktop: sidebar, mobile: FAB) */}
-      {animationConfig && (
+      {/* Strategy Summary Panel (desktop: left sidebar, mobile: FAB + slide-up) */}
+      <StrategySummaryPanel
+        strategyName={strategyName || strategyData?.strategyName}
+        rules={strategyRules.length > 0 ? strategyRules : streamedRules}
+        isVisible={streamedRules.length > 0 || strategyRules.length > 0}
+        animationConfig={animationConfig}
+        isAnimationExpanded={isAnimationExpanded}
+        onToggleAnimation={handleToggleAnimation}
+      />
+
+      {/* Strategy Animation Visualization (desktop: right sidebar, mobile: embedded in summary) */}
+      {animationConfig && !isMobile && (
         <AnimationLoader 
           config={animationConfig}
+          isExpanded={isAnimationExpanded}
+          onExpandedChange={(expanded) => {
+            setIsAnimationExpanded(expanded);
+            setWasAnimationManuallySet(true);
+            if (conversationId) {
+              saveAnimationPreference(conversationId, expanded, true);
+            }
+          }}
+          wasManuallySet={wasAnimationManuallySet}
         />
       )}
 
-      {/* Messages area - scrollable */}
-      <div className="flex-1 overflow-hidden flex flex-col">
+      {/* Messages area - scrollable (with left margin for summary panel on desktop) */}
+      <div className={`flex-1 overflow-hidden flex flex-col ${
+        !isMobile && (streamedRules.length > 0 || strategyRules.length > 0) ? 'md:ml-80' : ''
+      }`}>
         <ChatMessageList
           messages={messages}
           pendingMessage={pendingMessage || undefined}
