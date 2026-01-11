@@ -22,11 +22,9 @@ interface StrategyVisualizerProps {
  */
 export default function StrategyVisualizer({
   config,
-  autoPlay = true,
   loop = true,
   onComplete,
 }: StrategyVisualizerProps) {
-  const [isPlaying, setIsPlaying] = useState(autoPlay);
   const [currentPhase, setCurrentPhase] = useState<'setup' | 'action' | 'complete'>('setup');
   const [animationKey, setAnimationKey] = useState(0);
   
@@ -62,6 +60,7 @@ export default function StrategyVisualizer({
   }, [height, direction]);
 
   // Deterministic random for consistent animations
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const seededRandom = useMemo(() => {
     let seed = type.length + direction.length;
     return () => {
@@ -207,8 +206,6 @@ export default function StrategyVisualizer({
 
   // Animation lifecycle
   useEffect(() => {
-    if (!isPlaying) return;
-    
     setCurrentPhase('setup');
     
     const setupTimer = setTimeout(() => {
@@ -231,7 +228,7 @@ export default function StrategyVisualizer({
       clearTimeout(setupTimer);
       clearTimeout(completeTimer);
     };
-  }, [isPlaying, duration, loop, onComplete, animationKey]);
+  }, [duration, loop, onComplete, animationKey]);
 
   return (
     <div className="relative w-full max-w-2xl mx-auto bg-[#0A0A0A] border border-[rgba(255,255,255,0.1)] rounded-lg p-4">

@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
-import { parseStrategyStream, ConversationMessage, ParsedRules } from '@/lib/claude/client';
+import { parseStrategyStream, ConversationMessage } from '@/lib/claude/client';
 import { logBehavioralEvent } from '@/lib/behavioral/logger';
 
 interface ParseRequest {
@@ -110,6 +110,7 @@ export async function POST(request: Request) {
     const readableStream = new ReadableStream({
       async start(controller) {
         let fullText = '';
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         let toolInput: any = null;
         let isComplete = false;
 
@@ -117,8 +118,10 @@ export async function POST(request: Request) {
           for await (const chunk of stream) {
             // Handle text deltas
             if (chunk.type === 'content_block_delta') {
-              if (chunk.delta.type === 'text_delta') {
-                const text = chunk.delta.text;
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              if ((chunk.delta as any).type === 'text_delta') {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const text = (chunk.delta as any).text;
                 fullText += text;
                 
                 // Send text chunk to client
@@ -158,19 +161,24 @@ export async function POST(request: Request) {
 
           // Check if strategy is complete
           const toolUse = finalMessage.content.find(
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             (block: any) => block.type === 'tool_use' && block.name === 'confirm_strategy'
           );
 
-          if (toolUse && toolUse.input) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          if (toolUse && (toolUse as any).input) {
             isComplete = true;
-            parsedToolInput = toolUse.input;
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            parsedToolInput = (toolUse as any).input;
           }
 
           // Get final text content
           const textBlock = finalMessage.content.find(
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             (block: any) => block.type === 'text'
           );
-          const finalText = textBlock?.text || fullText;
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const finalText = (textBlock as any)?.text || fullText;
 
           // Save conversation to database
           const now = new Date().toISOString();

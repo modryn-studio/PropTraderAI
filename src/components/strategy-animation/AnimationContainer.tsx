@@ -15,8 +15,6 @@ interface AnimationContainerProps {
   desktopPosition?: 'sidebar' | 'inline';
   /** Auto-hide after X seconds of inactivity */
   autoHideDuration?: number;
-  /** Track animation update count for logging */
-  updateCount?: number;
 }
 
 /**
@@ -32,7 +30,6 @@ export default function AnimationContainer({
   config,
   desktopPosition = 'sidebar',
   autoHideDuration,
-  updateCount = 0,
 }: AnimationContainerProps) {
   const { userId } = useUser();
   const [isMobileExpanded, setIsMobileExpanded] = useState(false);
@@ -87,7 +84,7 @@ export default function AnimationContainer({
     if (config) {
       setHasLogged(false);
     }
-  }, [config?.type, config?.direction]);
+  }, [config, config?.type, config?.direction]);
 
   // Auto-hide logic (optional)
   useEffect(() => {

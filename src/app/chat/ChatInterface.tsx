@@ -17,7 +17,7 @@ import {
 } from '@/lib/utils/timezoneProcessor';
 import { AnimationLoader, AnimationConfig, tryExtractFromStream } from '@/components/strategy-animation';
 import { shouldExpectAnimation } from '@/lib/claude/promptManager';
-import { logAnimationGenerated, logAnimationFailed } from '@/lib/behavioral/animationLogger';
+import { logAnimationGenerated } from '@/lib/behavioral/animationLogger';
 
 interface ChatInterfaceProps {
   userId: string;

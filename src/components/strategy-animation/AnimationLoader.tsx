@@ -7,7 +7,6 @@ const AnimationContainer = lazy(() => import('./AnimationContainer'));
 
 interface AnimationLoaderProps {
   config: AnimationConfig | null;
-  updateCount?: number;
 }
 
 /**
@@ -18,7 +17,6 @@ interface AnimationLoaderProps {
  */
 export default function AnimationLoader({ 
   config,
-  updateCount = 0,
 }: AnimationLoaderProps) {
   // Don't render anything if no config (prevents loading unused components)
   if (!config) return null;
@@ -28,7 +26,6 @@ export default function AnimationLoader({
       <AnimationContainer 
         config={config} 
         desktopPosition="sidebar"
-        updateCount={updateCount}
       />
     </Suspense>
   );
