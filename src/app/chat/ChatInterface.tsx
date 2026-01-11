@@ -195,18 +195,15 @@ export default function ChatInterface({
                 // Update streamed content
                 streamedContent += data.content;
                 
-                // Try to extract animation config mid-stream
-                let displayText = streamedContent;
-                if (expectAnimation) {
-                  const extracted = tryExtractFromStream(streamedContent);
-                  // Always use cleanText for display (removes [ANIMATION_START]...[ANIMATION_END] markers)
-                  displayText = extracted.cleanText;
-                  
-                  if (extracted.extractedSuccessfully && extracted.config && !animationConfig) {
-                    setAnimationConfig(extracted.config);
-                    const sessionTime = Date.now() - sessionStartRef.current;
-                    logAnimationGenerated(userId, extracted.config, sessionTime).catch(console.error);
-                  }
+                // Always try to extract and clean animation markers from display
+                const extracted = tryExtractFromStream(streamedContent);
+                const displayText = extracted.cleanText; // This removes markers even if config not yet extracted
+                
+                // Set animation config if successfully extracted and not already set
+                if (expectAnimation && extracted.extractedSuccessfully && extracted.config && !animationConfig) {
+                  setAnimationConfig(extracted.config);
+                  const sessionTime = Date.now() - sessionStartRef.current;
+                  logAnimationGenerated(userId, extracted.config, sessionTime).catch(console.error);
                 }
                 
                 setMessages(prev => prev.map(msg => 

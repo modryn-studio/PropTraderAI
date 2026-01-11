@@ -153,6 +153,16 @@ export default function AnimationContainer({
             transition={{ type: 'spring', damping: 25 }}
             className="fixed top-16 right-6 w-[400px] z-40"
           >
+            {/* Clickable expand tab when minimized */}
+            {isDesktopMinimized && (
+              <button
+                onClick={() => setIsDesktopMinimized(false)}
+                className="absolute -left-10 top-0 w-10 h-full bg-[#0A0A0A] border border-[rgba(255,255,255,0.1)] border-r-0 rounded-l-lg flex items-center justify-center hover:bg-[#1a1a1a] transition-colors cursor-pointer"
+              >
+                <Maximize2 className="w-4 h-4 text-[rgba(255,255,255,0.7)]" />
+              </button>
+            )}
+            
             <div className="bg-[#000000] border border-[rgba(255,255,255,0.1)] rounded-lg shadow-2xl overflow-hidden">
               {/* Header */}
               <div className="flex items-center justify-between px-4 py-2 border-b border-[rgba(255,255,255,0.1)] bg-[#0A0A0A]">
