@@ -21,9 +21,10 @@ import { logAnimationGenerated } from '@/lib/behavioral/animationLogger';
 import StrategySummaryPanel, { StrategyRule } from '@/components/strategy/StrategySummaryPanel';
 import { useResponsiveBreakpoints } from '@/lib/hooks/useResponsiveBreakpoints';
 import { 
-  extractRulesFromStream, 
-  mapParsedRulesToStrategyRules, 
-  mergeRules 
+  extractFromMessage,
+  isConfirmation,
+  mapParsedRulesToStrategyRules,
+  accumulateRules
 } from '@/lib/utils/ruleExtractor';
 import { 
   detectAnimationTrigger, 
@@ -99,10 +100,8 @@ export default function ChatInterface({
   const [animationConfig, setAnimationConfig] = useState<AnimationConfig | null>(null);
   const sessionStartRef = useRef<number>(Date.now());
   
-  // Summary Panel state
-  const [strategyRules, setStrategyRules] = useState<StrategyRule[]>([]);
-  const [streamedRules, setStreamedRules] = useState<StrategyRule[]>([]);
-  const [strategyName, setStrategyName] = useState<string>('');
+  // Summary Panel state (V2: single accumulated state)
+  const [accumulatedRules, setAccumulatedRules] = useState<StrategyRule[]>([]);
   
   // Animation expand/collapse state (controlled by Summary Panel)
   const [isAnimationExpanded, setIsAnimationExpanded] = useState(false);
@@ -183,6 +182,9 @@ export default function ChatInterface({
       timestamp: new Date().toISOString(),
     };
     setMessages(prev => [...prev, userMsg]);
+    
+    // V2: Extract rules from user message IMMEDIATELY (they're stating facts)
+    setAccumulatedRules(prev => extractFromMessage(message, 'user', prev));
     
     setIsLoading(true);
     setError(null);
@@ -271,15 +273,9 @@ export default function ChatInterface({
                   }
                 }
                 
-                // Extract rules from streaming response for Summary Panel
-                const newStreamedRules = extractRulesFromStream(displayText);
-                if (newStreamedRules.length > 0) {
-                  setStreamedRules(newStreamedRules);
-                }
-                
-                // Extract strategy name from response
-                if (!strategyName && displayText.toLowerCase().includes('opening range breakout')) {
-                  setStrategyName('Opening Range Breakout (ORB)');
+                // V2: Extract rules from Claude ONLY if confirmation (not a question)
+                if (isConfirmation(displayText)) {
+                  setAccumulatedRules(prev => extractFromMessage(displayText, 'assistant', prev));
                 }
                 
                 setMessages(prev => prev.map(msg => 
@@ -328,8 +324,7 @@ export default function ChatInterface({
                     data.strategyName,
                     data.instrument
                   );
-                  setStrategyRules(mergeRules(streamedRules, finalRules));
-                  setStrategyName(data.strategyName || strategyName);
+                  setAccumulatedRules(prev => accumulateRules(prev, finalRules));
                   
                   setStrategyComplete(true);
                   setStrategyData({
@@ -365,7 +360,7 @@ export default function ChatInterface({
       setPendingMessage(null);
       setIsLoading(false);
     }
-  }, [conversationId, messages, userId, userProfile?.timezone, animationConfig]);
+  }, [conversationId, messages, userId, userProfile?.timezone, animationConfig, handleAnimationAutoExpand]);
 
   const handleEditMessage = useCallback(async (messageIndex: number, newContent: string) => {
     // Delete all messages after the edited message (branching)
@@ -507,9 +502,7 @@ export default function ChatInterface({
     setFullConversationText('');
     setTimezoneConversionSummary('');
     setAnimationConfig(null);
-    setStrategyRules([]);
-    setStreamedRules([]);
-    setStrategyName('');
+    setAccumulatedRules([]);
     setIsAnimationExpanded(false);
     setWasAnimationManuallySet(false);
     sessionStartRef.current = Date.now();
@@ -549,9 +542,7 @@ export default function ChatInterface({
     setFullConversationText('');
     setTimezoneConversionSummary('');
     setAnimationConfig(null);
-    setStrategyRules([]);
-    setStreamedRules([]);
-    setStrategyName('');
+    setAccumulatedRules([]);
     setIsAnimationExpanded(false);
     setWasAnimationManuallySet(false);
     sessionStartRef.current = Date.now();
@@ -634,9 +625,9 @@ export default function ChatInterface({
 
       {/* Strategy Summary Panel (desktop: left sidebar, mobile: FAB + slide-up) */}
       <StrategySummaryPanel
-        strategyName={strategyName || strategyData?.strategyName}
-        rules={strategyRules.length > 0 ? strategyRules : streamedRules}
-        isVisible={streamedRules.length > 0 || strategyRules.length > 0}
+        strategyName={accumulatedRules.find(r => r.label === 'Strategy')?.value || strategyData?.strategyName}
+        rules={accumulatedRules}
+        isVisible={accumulatedRules.length > 0}
         animationConfig={animationConfig}
         isAnimationExpanded={isAnimationExpanded}
         onToggleAnimation={handleToggleAnimation}
@@ -660,7 +651,7 @@ export default function ChatInterface({
 
       {/* Messages area - scrollable (with margins for sidebars on desktop) */}
       <div className={`flex-1 overflow-hidden flex flex-col ${
-        !isMobile && (streamedRules.length > 0 || strategyRules.length > 0)
+        !isMobile && accumulatedRules.length > 0
           ? isAnimationExpanded && animationConfig
             ? 'ml-80 mr-[400px]' // Both sidebars visible
             : 'ml-80' // Summary only

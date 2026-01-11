@@ -1,43 +1,17 @@
 /**
  * ENHANCED RULE EXTRACTOR V2
  * 
- * Implements smarter extraction:
- * 1. Extract from user messages IMMEDIATELY (they're declaring facts)
- * 2. Extract from Claude ONLY on confirmations (not questions)
- * 3. Accumulate progressively (merge, not replace)
- * 4. Update existing rules when user changes mind
+ * Implements Scenario B: Extract from User Messages + Claude Confirmations
+ * 
+ * Key improvements:
+ * 1. Detects confirmation vs question in Claude's responses
+ * 2. Accumulates rules progressively (merge, not replace)
+ * 3. Updates existing rules when user changes mind
+ * 4. Focuses ONLY on core strategy parameters (no commentary)
+ * 5. Reduces cognitive load
  */
 
-// ============================================================================
-// DEBUG LOGGING (Conditional)
-// ============================================================================
-
-const DEBUG_EXTRACTION = process.env.NODE_ENV === 'development' || 
-                         process.env.NEXT_PUBLIC_DEBUG_RULES === 'true';
-
-function debugLog(message: string, data?: unknown) {
-  if (DEBUG_EXTRACTION) {
-    console.log(`[RuleExtractor] ${message}`, data || '');
-  }
-}
-
-// ============================================================================
-// TYPES
-// ============================================================================
-
-export interface StrategyRule {
-  label: string;
-  value: string;
-  category: 'setup' | 'entry' | 'exit' | 'risk' | 'timeframe' | 'filters';
-}
-
-interface ExtractionPattern {
-  regex: RegExp;
-  category: StrategyRule['category'];
-  label: string;
-  valueTransform?: (match: RegExpMatchArray) => string | null;
-  confidenceScore?: number; // 0-1, higher = more confident
-}
+import type { StrategyRule } from '@/lib/utils/ruleExtractor';
 
 // ============================================================================
 // CONFIRMATION DETECTION
@@ -48,6 +22,8 @@ interface ExtractionPattern {
  * vs a QUESTION (skip extraction)
  */
 export function isConfirmation(text: string): boolean {
+  const lower = text.toLowerCase();
+  
   // Confirmation phrases (Claude agreeing/confirming)
   const confirmationPatterns = [
     /^(good|great|perfect|nice|solid|smart|excellent|got it|right)/i,
@@ -69,24 +45,29 @@ export function isConfirmation(text: string): boolean {
   
   // Check for questions first (higher priority)
   if (questionPatterns.some(p => p.test(text))) {
-    debugLog('isConfirmation: false (question detected)', text.substring(0, 100));
     return false;
   }
   
   // Check for confirmations
-  const result = confirmationPatterns.some(p => p.test(text));
-  debugLog(`isConfirmation: ${result}`, text.substring(0, 100));
-  return result;
+  return confirmationPatterns.some(p => p.test(text));
 }
 
 // ============================================================================
-// ENHANCED PATTERN MATCHING
+// ENHANCED PATTERN MATCHING (Core Parameters Only)
 // ============================================================================
 
+interface ExtractionPattern {
+  regex: RegExp;
+  category: StrategyRule['category'];
+  label: string;
+  valueTransform?: (match: RegExpMatchArray) => string | null;
+  confidenceScore?: number; // 0-1, higher = more confident
+}
+
 /**
- * Enhanced patterns - handles conversational input like "I trade NQ"
+ * Enhanced patterns - more conversational, handles "im trading NQ" style
  */
-const EXTRACTION_PATTERNS: ExtractionPattern[] = [
+const ENHANCED_EXTRACTION_PATTERNS: ExtractionPattern[] = [
   // ========== SETUP ==========
   
   // Pattern detection
@@ -102,7 +83,7 @@ const EXTRACTION_PATTERNS: ExtractionPattern[] = [
     category: 'setup', 
     label: 'Pattern',
     valueTransform: () => 'Pullback Entry',
-    confidenceScore: 0.8
+    confidenceScore: 0.8 // Lower because might be in a question
   },
   { 
     regex: /ema\s+pullback/gi, 
@@ -114,7 +95,7 @@ const EXTRACTION_PATTERNS: ExtractionPattern[] = [
   
   // Instrument (handles "I trade NQ", "im trading NQ", "on NQ")
   { 
-    regex: /(?:i\s+)?(?:trade|trading|on)\s+(NQ|ES|MNQ|MES|YM|RTY|CL|GC)/gi, 
+    regex: /(?:trade|trading|on)\s+(NQ|ES|MNQ|MES|YM|RTY|CL|GC)/gi, 
     category: 'setup', 
     label: 'Instrument',
     valueTransform: (m) => m[1].toUpperCase(),
@@ -125,7 +106,7 @@ const EXTRACTION_PATTERNS: ExtractionPattern[] = [
     category: 'setup', 
     label: 'Instrument',
     valueTransform: (m) => m[1].toUpperCase(),
-    confidenceScore: 0.7
+    confidenceScore: 0.7 // Lower confidence (might be mentioned in passing)
   },
   
   // Direction
@@ -153,6 +134,7 @@ const EXTRACTION_PATTERNS: ExtractionPattern[] = [
   
   // ========== ENTRY ==========
   
+  // Entry triggers
   { 
     regex: /break(?:out)?\s+(?:above|below)\s+(?:the\s+)?(.+?)(?:\n|$|,|\.|range)/gi, 
     category: 'entry', 
@@ -181,6 +163,7 @@ const EXTRACTION_PATTERNS: ExtractionPattern[] = [
   
   // ========== EXIT ==========
   
+  // Profit targets
   { 
     regex: /target(?:\s+is)?\s*[:\-]?\s*(.+?)(?:\n|$|,|\.(?=\s))/gi, 
     category: 'exit', 
@@ -209,12 +192,14 @@ const EXTRACTION_PATTERNS: ExtractionPattern[] = [
   
   // ========== RISK ==========
   
+  // Stop loss
   { 
     regex: /stop(?:\s+loss)?(?:\s+(?:is|at|goes|placement))?\s*[:\-]?\s*(.+?)(?:\n|$|,|\.(?=\s))/gi, 
     category: 'risk', 
     label: 'Stop Loss',
     valueTransform: (m) => {
       const value = m[1]?.trim();
+      // Filter out non-stop-loss content
       if (!value || value.length > 50) return null;
       if (value.toLowerCase().includes('question')) return null;
       return value;
@@ -266,6 +251,7 @@ const EXTRACTION_PATTERNS: ExtractionPattern[] = [
   
   // ========== TIMEFRAME ==========
   
+  // Range periods (handles "first 15 min", "first 15min", "15 minutes")
   { 
     regex: /(?:first|opening)\s+(\d+)[\s-]?min(?:ute)?s?/gi, 
     category: 'timeframe', 
@@ -299,6 +285,7 @@ const EXTRACTION_PATTERNS: ExtractionPattern[] = [
   
   // ========== FILTERS ==========
   
+  // EMA/MA filters
   { 
     regex: /(\d+)[\s-]?(?:ema|sma|ma)(?!\s+traders)/gi, 
     category: 'filters', 
@@ -312,6 +299,7 @@ const EXTRACTION_PATTERNS: ExtractionPattern[] = [
     confidenceScore: 0.9
   },
   
+  // VWAP filter
   { 
     regex: /\bvwap\b(?:\s+(?:confirmation|filter|above|below))?/gi, 
     category: 'filters', 
@@ -327,6 +315,7 @@ const EXTRACTION_PATTERNS: ExtractionPattern[] = [
 
 /**
  * Extract rules from text with confidence scoring
+ * Only extracts CORE STRATEGY PARAMETERS (no commentary)
  */
 export function extractRulesEnhanced(
   text: string,
@@ -335,10 +324,10 @@ export function extractRulesEnhanced(
   const rules: StrategyRule[] = [];
   const seen = new Set<string>();
   
-  // Confidence threshold - lower for user messages (they're stating facts)
+  // Confidence threshold - higher for non-user messages
   const confidenceThreshold = isUserMessage ? 0.7 : 0.85;
   
-  for (const pattern of EXTRACTION_PATTERNS) {
+  for (const pattern of ENHANCED_EXTRACTION_PATTERNS) {
     pattern.regex.lastIndex = 0;
     
     let match;
@@ -367,7 +356,6 @@ export function extractRulesEnhanced(
     }
   }
   
-  debugLog(`Extracted ${rules.length} rules (user=${isUserMessage})`, rules);
   return rules;
 }
 
@@ -378,8 +366,9 @@ export function extractRulesEnhanced(
 /**
  * Accumulate rules intelligently:
  * - Merge new rules with existing
- * - Update existing rules (same category + label) with new value
+ * - Update existing rules (same category + label)
  * - No duplicates
+ * - Keep most recent value when conflict
  */
 export function accumulateRules(
   existingRules: StrategyRule[],
@@ -396,12 +385,13 @@ export function accumulateRules(
     ruleMap.set(key, rule);
   });
   
-  // Add/update with new rules (overwrites if exists = update behavior)
+  // Add/update with new rules
   newRules.forEach(rule => {
     const key = `${rule.category}:${rule.label}`.toLowerCase();
-    ruleMap.set(key, rule);
+    ruleMap.set(key, rule); // Overwrites if exists (update behavior)
   });
   
+  // Convert back to array
   return Array.from(ruleMap.values());
 }
 
@@ -422,7 +412,7 @@ export function extractFromMessage(
   role: 'user' | 'assistant',
   existingRules: StrategyRule[]
 ): StrategyRule[] {
-  // ALWAYS extract from user messages (they're declaring facts)
+  // ALWAYS extract from user messages
   if (role === 'user') {
     const newRules = extractRulesEnhanced(message, true);
     return accumulateRules(existingRules, newRules);
@@ -436,185 +426,4 @@ export function extractFromMessage(
   
   // Skip Claude's questions
   return existingRules;
-}
-
-// ============================================================================
-// LEGACY EXPORTS (for mapParsedRulesToStrategyRules)
-// ============================================================================
-
-interface ParsedRules {
-  entry_conditions?: Array<{
-    indicator?: string;
-    condition?: string;
-    value?: number | string;
-    period?: number;
-    direction?: string;
-  }>;
-  exit_conditions?: Array<{
-    type?: string;
-    value?: number | string;
-    unit?: string;
-  }>;
-  filters?: Array<{
-    type?: string;
-    indicator?: string;
-    condition?: string;
-    value?: number | string;
-    start?: string;
-    end?: string;
-    period?: number;
-  }>;
-  position_sizing?: {
-    method?: string;
-    value?: number;
-    max_contracts?: number;
-  };
-  time_restrictions?: {
-    trading_hours?: {
-      start?: string;
-      end?: string;
-    };
-    session?: string;
-    days?: string[];
-  };
-  direction?: 'long' | 'short' | 'both';
-  strategy_type?: string;
-}
-
-/**
- * Map parsed rules from API to StrategyRule format
- * Used for final state after strategy is complete
- */
-export function mapParsedRulesToStrategyRules(
-  parsedRules: ParsedRules,
-  strategyName?: string,
-  instrument?: string
-): StrategyRule[] {
-  const rules: StrategyRule[] = [];
-
-  if (strategyName) {
-    rules.push({
-      label: 'Strategy',
-      value: strategyName,
-      category: 'setup',
-    });
-  }
-
-  if (instrument) {
-    rules.push({
-      label: 'Instrument',
-      value: instrument.toUpperCase(),
-      category: 'setup',
-    });
-  }
-
-  if (parsedRules.direction) {
-    rules.push({
-      label: 'Direction',
-      value: parsedRules.direction === 'both' 
-        ? 'Long and Short' 
-        : parsedRules.direction.charAt(0).toUpperCase() + parsedRules.direction.slice(1) + ' only',
-      category: 'setup',
-    });
-  }
-
-  if (parsedRules.strategy_type) {
-    rules.push({
-      label: 'Pattern',
-      value: parsedRules.strategy_type,
-      category: 'setup',
-    });
-  }
-
-  parsedRules.entry_conditions?.forEach((entry, index) => {
-    let value = '';
-    if (entry.indicator && entry.condition) {
-      value = `${entry.indicator}${entry.period ? ` (${entry.period})` : ''} ${entry.condition} ${entry.value ?? ''}`.trim();
-    } else if (entry.direction) {
-      value = `Break ${entry.direction}`;
-    }
-    
-    if (value) {
-      rules.push({
-        label: index === 0 ? 'Entry Trigger' : 'Entry Condition',
-        value,
-        category: 'entry',
-      });
-    }
-  });
-
-  parsedRules.exit_conditions?.forEach((exit) => {
-    if (exit.type === 'stop_loss') {
-      rules.push({
-        label: 'Stop Loss',
-        value: `${exit.value}${exit.unit ? ` ${exit.unit}` : ''}`,
-        category: 'risk',
-      });
-    } else if (exit.type === 'take_profit' || exit.type === 'target') {
-      rules.push({
-        label: 'Target',
-        value: `${exit.value}${exit.unit ? ` ${exit.unit}` : ''}`,
-        category: 'exit',
-      });
-    } else if (exit.type === 'risk_reward') {
-      rules.push({
-        label: 'Risk:Reward',
-        value: `${exit.value}`,
-        category: 'risk',
-      });
-    }
-  });
-
-  parsedRules.filters?.forEach((filter) => {
-    if (filter.type === 'indicator' && filter.indicator) {
-      rules.push({
-        label: `${filter.indicator} Filter`,
-        value: `${filter.condition || ''} ${filter.value ?? ''}`.trim(),
-        category: 'filters',
-      });
-    } else if (filter.type === 'time_window') {
-      rules.push({
-        label: 'Time Filter',
-        value: `${filter.start} - ${filter.end}`,
-        category: 'timeframe',
-      });
-    }
-  });
-
-  if (parsedRules.position_sizing) {
-    const ps = parsedRules.position_sizing;
-    if (ps.method === 'risk_percent' && ps.value) {
-      rules.push({
-        label: 'Position Size',
-        value: `${ps.value}% risk per trade`,
-        category: 'risk',
-      });
-    } else if (ps.method === 'fixed' && ps.max_contracts) {
-      rules.push({
-        label: 'Position Size',
-        value: `${ps.max_contracts} contract${ps.max_contracts > 1 ? 's' : ''}`,
-        category: 'risk',
-      });
-    }
-  }
-
-  if (parsedRules.time_restrictions) {
-    const tr = parsedRules.time_restrictions;
-    if (tr.session) {
-      rules.push({
-        label: 'Session',
-        value: tr.session === 'RTH' ? 'RTH (9:30 AM - 4:00 PM ET)' : tr.session,
-        category: 'timeframe',
-      });
-    }
-    if (tr.trading_hours?.start && tr.trading_hours?.end) {
-      rules.push({
-        label: 'Trading Hours',
-        value: `${tr.trading_hours.start} - ${tr.trading_hours.end}`,
-        category: 'timeframe',
-      });
-    }
-  }
-
-  return rules;
 }
