@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MessageSquare, X, Send, Loader2 } from 'lucide-react';
 
@@ -9,6 +9,13 @@ interface FeedbackButtonProps {
   mobilePosition?: 'high' | 'low';
   /** Hide on mobile entirely (optional) */
   hideOnMobile?: boolean;
+}
+
+interface OpenFeedbackEvent extends CustomEvent {
+  detail: {
+    type?: 'general' | 'bug' | 'feature';
+    message?: string;
+  };
 }
 
 export default function FeedbackButton({ 
@@ -22,6 +29,25 @@ export default function FeedbackButton({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState('');
+
+  // Listen for custom event to open with pre-filled content
+  const handleOpenFeedback = useCallback((e: Event) => {
+    const customEvent = e as OpenFeedbackEvent;
+    if (customEvent.detail) {
+      if (customEvent.detail.type) {
+        setFeedbackType(customEvent.detail.type);
+      }
+      if (customEvent.detail.message) {
+        setFeedback(customEvent.detail.message);
+      }
+    }
+    setIsOpen(true);
+  }, []);
+
+  useEffect(() => {
+    window.addEventListener('openFeedback', handleOpenFeedback);
+    return () => window.removeEventListener('openFeedback', handleOpenFeedback);
+  }, [handleOpenFeedback]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

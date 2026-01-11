@@ -32,7 +32,9 @@ export function Header() {
         </nav>
 
         <div className="header-cta">
-          <button className="btn-primary">{navData.cta}</button>
+          <a href="/auth/login">
+            <button className="btn-primary">{navData.cta}</button>
+          </a>
         </div>
 
         <button
@@ -56,7 +58,9 @@ export function Header() {
               {link.label}
             </a>
           ))}
-          <button className="btn-primary mobile-cta">{navData.cta}</button>
+          <a href="/auth/login">
+            <button className="btn-primary mobile-cta">{navData.cta}</button>
+          </a>
         </div>
       )}
     </header>

@@ -1,10 +1,10 @@
 'use client';
 
+import { useState, useCallback } from 'react';
 import { User } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import Image from 'next/image';
 import {
   Activity,
   MessageSquare,
@@ -15,6 +15,8 @@ import {
   TrendingUp,
 } from 'lucide-react';
 import FeedbackButton from '@/components/feedback/FeedbackButton';
+import FirmSelectionModal from '@/components/dashboard/FirmSelectionModal';
+import OAuthLoadingModal from '@/components/dashboard/OAuthLoadingModal';
 
 interface DashboardShellProps {
   user: User;
@@ -35,6 +37,12 @@ export default function DashboardShell({
 }: DashboardShellProps) {
   const router = useRouter();
   const supabase = createClient();
+  
+  // Modal states
+  const [showFirmModal, setShowFirmModal] = useState(false);
+  const [showOAuthModal, setShowOAuthModal] = useState(false);
+  const [selectedFirmName, setSelectedFirmName] = useState<string | null>(null);
+  const [isPersonalAccount, setIsPersonalAccount] = useState(false);
 
   // Get user's first name or email prefix for greeting
   const displayName = user.user_metadata?.full_name?.split(' ')[0] 
@@ -49,42 +57,91 @@ export default function DashboardShell({
   // Determine user state from profile
   const hasBrokerConnected = profile?.broker_connected ?? false;
 
-  // Handle firm selection - store and redirect to OAuth
-  const handleFirmSelect = async (firmId: string) => {
-    const firmSelection = {
-      firmId,
-      accountType: firmId === 'personal' ? 'personal' : 'prop_firm',
-    };
+  // Handle firm selection from modal
+  const handleFirmSelect = useCallback(async (
+    firmId: string, 
+    firmName: string | null, 
+    isPersonal: boolean
+  ) => {
+    setShowFirmModal(false);
+    setSelectedFirmName(isPersonal ? 'Personal Account' : firmName);
+    setIsPersonalAccount(isPersonal);
+    setShowOAuthModal(true);
     
-    // Encode firm selection for OAuth callback
-    const firmSelectionParam = encodeURIComponent(JSON.stringify(firmSelection));
+    // Store firm selection in session for OAuth callback
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('pendingFirmConnection', JSON.stringify({
+        firmId,
+        firmName,
+        isPersonal,
+        timestamp: Date.now(),
+      }));
+    }
     
     // TODO: Implement actual Tradovate OAuth redirect
-    // For Phase 1A, we'll simulate the flow
-    // const oauthUrl = `/auth/tradovate?firm_selection=${firmSelectionParam}`;
+    // For Phase 1A, we'll simulate the flow after 2 seconds
+    // In production: window.location.href = `/auth/tradovate?firm=${firmId}`;
     
-    // For now, just show alert and update profile directly (placeholder)
-    console.log('Selected firm:', firmId, 'Selection:', firmSelectionParam);
-    alert(`Connecting to Tradovate for ${firmId}...\n\nOAuth flow placeholder. In production, this will redirect to Tradovate.`);
-    
-    // Simulate successful connection for development
-    if (confirm('Simulate successful Tradovate connection?')) {
-      const supabase = createClient();
+    // Simulate OAuth flow for development
+    setTimeout(async () => {
+      // Simulate successful connection
       await supabase
         .from('profiles')
         .update({
-          firm_name: firmId === 'personal' ? null : firmId,
-          account_type: firmId === 'personal' ? 'personal' : 'prop_firm',
-          account_size: firmId === 'personal' ? null : 50000, // Default for dev
+          firm_name: isPersonal ? null : firmId,
+          account_type: isPersonal ? 'personal' : 'prop_firm',
+          account_size: 50000, // TODO: Will be auto-captured from Tradovate API
           broker_connected: true,
           broker_connected_at: new Date().toISOString(),
         })
         .eq('id', user.id);
       
-      // Reload page to reflect changes
+      // Clear session storage
+      sessionStorage.removeItem('pendingFirmConnection');
+      
+      // Close modal and refresh after a brief delay
+      setTimeout(() => {
+        setShowOAuthModal(false);
+        router.refresh();
+      }, 800); // Allow user to see "Connected!" state
+    }, 2000);
+  }, [supabase, user.id, router]);
+
+  // Handle request integration - opens feedback with pre-filled message
+  const handleRequestIntegration = useCallback((firmName: string) => {
+    setShowFirmModal(false);
+    
+    // Dispatch custom event to open feedback with pre-filled content
+    const event = new CustomEvent('openFeedback', {
+      detail: {
+        type: 'feature',
+        message: `Please add support for ${firmName}. I'd love to use PropTraderAI with this firm!`,
+      },
+    });
+    window.dispatchEvent(event);
+  }, []);
+
+  // Handle disconnect - reset broker connection
+  const handleDisconnect = useCallback(async () => {
+    const confirmed = confirm(
+      'Disconnect from Tradovate?\n\nThis will remove your broker connection and you\'ll need to reconnect to trade.'
+    );
+    
+    if (confirmed) {
+      await supabase
+        .from('profiles')
+        .update({
+          firm_name: null,
+          account_type: null,
+          account_size: null,
+          broker_connected: false,
+          broker_connected_at: null,
+        })
+        .eq('id', user.id);
+      
       router.refresh();
     }
-  };
+  }, [supabase, user.id, router]);
 
   return (
     <div className="min-h-screen bg-[#000000] pb-20">
@@ -129,17 +186,10 @@ export default function DashboardShell({
                 94% fail their first challenge. Connect Tradovate and we&apos;ll make sure you&apos;re not one of them.
               </p>
               <button 
-                onClick={() => handleFirmSelect('tradovate')}
-                className="btn-primary mb-4 inline-flex items-center gap-2"
+                onClick={() => setShowFirmModal(true)}
+                className="btn-primary mb-4"
               >
-                CONNECT
-                <Image
-                  src="/tradovate-logo.png"
-                  alt="Tradovate"
-                  width={120}
-                  height={24}
-                  className="h-5 w-auto"
-                />
+                Connect Your Account
               </button>
               <p className="text-xs text-[rgba(255,255,255,0.5)]">
                 Or <Link href="/chat" className="text-[#00FFD1] underline hover:text-[#00FFD1]/80 transition-colors">describe your strategy first</Link>
@@ -196,9 +246,19 @@ export default function DashboardShell({
               <p className="text-[rgba(255,255,255,0.5)] text-sm mb-6 max-w-sm mx-auto">
                 Now describe your strategy in plain English. We&apos;ll handle the execution.
               </p>
-              <Link href="/chat" className="btn-primary inline-block">
+              <Link href="/chat" className="btn-primary inline-block mb-4">
                 Describe Your Strategy
               </Link>
+              
+              {/* Disconnect option */}
+              <div className="text-xs">
+                <button
+                  onClick={handleDisconnect}
+                  className="text-[rgba(255,255,255,0.5)] hover:text-[#b5323d] transition-colors underline"
+                >
+                  Disconnect
+                </button>
+              </div>
             </div>
 
             {/* SECONDARY: Protection status */}
@@ -326,6 +386,21 @@ export default function DashboardShell({
 
       {/* Feedback Button - Dashboard position (high, above bottom nav) */}
       <FeedbackButton mobilePosition="high" />
+
+      {/* Firm Selection Modal */}
+      <FirmSelectionModal
+        isOpen={showFirmModal}
+        onClose={() => setShowFirmModal(false)}
+        onSelectFirm={handleFirmSelect}
+        onRequestIntegration={handleRequestIntegration}
+      />
+
+      {/* OAuth Loading Modal */}
+      <OAuthLoadingModal
+        isOpen={showOAuthModal}
+        firmName={selectedFirmName}
+        isPersonal={isPersonalAccount}
+      />
     </div>
   );
 }
