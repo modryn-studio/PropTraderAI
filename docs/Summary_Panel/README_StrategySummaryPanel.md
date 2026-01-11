@@ -50,18 +50,18 @@ The panel embodies PropTraderAI's "Terminal Luxe" design language:
 ### File Structure
 
 ```
-src/components/strategy/
-├── StrategySummaryPanel.tsx          # Main desktop component
-├── MobileStrategySummary.tsx         # Mobile-optimized version
-├── StrategySummaryPanel.css          # Responsive styles
-└── StrategySummaryPanel_Integration_Example.tsx  # Usage examples
+src/
+├── components/strategy/
+│   └── StrategySummaryPanel.tsx      # Responsive panel (desktop + mobile)
+└── lib/utils/
+    └── ruleExtractor.ts              # V2 conversation-aware extraction
 ```
 
 ### Core Components
 
-#### 1. **StrategySummaryPanel** (Desktop)
+#### **StrategySummaryPanel** (Responsive)
 
-Fixed sidebar that appears on the right side of the chat interface.
+Single component that adapts to desktop (left sidebar) and mobile (FAB + slide-up).
 
 ```tsx
 <StrategySummaryPanel
@@ -71,20 +71,19 @@ Fixed sidebar that appears on the right side of the chat interface.
     { label: 'Stop Loss', value: '50% of range', category: 'risk' },
   ]}
   isVisible={true}
+  animationConfig={animationConfig}        // Optional: strategy animation
+  isAnimationExpanded={isExpanded}         // Optional: animation state
+  onToggleAnimation={() => setExpanded(!isExpanded)}  // Optional: toggle handler
 />
 ```
 
-#### 2. **MobileStrategySummary** (Mobile)
-
-Slide-up bottom sheet with floating action button.
-
-```tsx
-<MobileStrategySummary
-  strategyName="Opening Range Breakout"
-  rules={rules}
-  onClose={() => console.log('Panel closed')}
-/>
-```
+**Key Props:**
+- `strategyName` - Display name (derived from rules or API)
+- `rules` - Array of StrategyRule objects
+- `isVisible` - Show/hide panel
+- `animationConfig` - Optional animation visualization
+- `isAnimationExpanded` - Optional animation sidebar state
+- `onToggleAnimation` - Optional handler for animation toggle
 
 ---
 
@@ -96,34 +95,36 @@ Slide-up bottom sheet with floating action button.
 npm install framer-motion lucide-react
 ```
 
-### Step 2: Add Components to Your Project
+### Step 2: Component is Already Integrated
 
-```bash
-cp StrategySummaryPanel.tsx src/components/strategy/
-cp MobileStrategySummary.tsx src/components/strategy/
-cp StrategySummaryPanel.css src/styles/
-```
+The StrategySummaryPanel is already part of PropTraderAI at:
+- `src/components/strategy/StrategySummaryPanel.tsx`
+- `src/lib/utils/ruleExtractor.ts`
 
-### Step 3: Import Styles
+### Step 3: Integrate into Chat Interface
 
 ```tsx
-// In your layout or page component
-import '@/styles/StrategySummaryPanel.css';
-```
-
-### Step 4: Integrate into Chat Interface
-
-```tsx
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import StrategySummaryPanel, { StrategyRule } from '@/components/strategy/StrategySummaryPanel';
-import MobileStrategySummary from '@/components/strategy/MobileStrategySummary';
+import { extractFromMessage, accumulateRules } from '@/lib/utils/ruleExtractor';
 
 export default function ChatInterface() {
-  const [rules, setRules] = useState<StrategyRule[]>([]);
-  const [strategyName, setStrategyName] = useState('');
-  const [isMobile, setIsMobile] = useState(false);
+  const [accumulatedRules, setAccumulatedRules] = useState<StrategyRule[]>([]);
 
-  // ... your chat logic ...
+  // Extract from user messages IMMEDIATELY
+  const handleUserMessage = useCallback((message: string) => {
+    setAccumulatedRules(prev => extractFromMessage(message, 'user', prev));
+    // ... send to API ...
+  }, []);
+
+  // Extract from Claude responses ONLY on confirmations
+  const handleClaudeResponse = useCallback((response: string) => {
+    setAccumulatedRules(prev => extractFromMessage(response, 'assistant', prev));
+    // extractFromMessage internally checks isConfirmation()
+  }, []);
+
+  // Derive strategy name from rules
+  const strategyName = accumulatedRules.find(r => r.label === 'Strategy')?.value;
 
   return (
     <div className="relative flex h-screen">
@@ -132,19 +133,12 @@ export default function ChatInterface() {
         {/* Your chat messages */}
       </div>
 
-      {/* Strategy Summary */}
-      {isMobile ? (
-        <MobileStrategySummary
-          strategyName={strategyName}
-          rules={rules}
-        />
-      ) : (
-        <StrategySummaryPanel
-          strategyName={strategyName}
-          rules={rules}
-          isVisible={rules.length > 0}
-        />
-      )}
+      {/* Strategy Summary (responsive: desktop sidebar + mobile bottom sheet) */}
+      <StrategySummaryPanel
+        strategyName={strategyName}
+        rules={accumulatedRules}
+        isVisible={accumulatedRules.length > 0}
+      />
     </div>
   );
 }
@@ -167,47 +161,73 @@ Rules are automatically organized into six categories:
 
 ---
 
-## 🔧 Rule Extraction
+## 🔧 Rule Extraction (V2)
 
-### Basic Pattern Matching
+### Conversation-Aware Extraction
+
+The V2 extraction system intelligently extracts rules based on conversational context:
 
 ```typescript
-import { StrategyRule } from '@/components/strategy/StrategySummaryPanel';
+import { 
+  extractFromMessage,      // Main extraction function
+  isConfirmation,          // Detect Claude confirmations vs questions
+  accumulateRules,         // Progressive merge (update existing, no duplicates)
+  extractRulesEnhanced     // Low-level extraction with confidence scoring
+} from '@/lib/utils/ruleExtractor';
 
-function extractRulesFromMessage(message: string): StrategyRule[] {
-  const rules: StrategyRule[] = [];
-  
-  // Stop loss
-  const stopMatch = message.match(/stop(?:\s+loss)?:\s*(.+?)(?:\n|$)/i);
-  if (stopMatch) {
-    rules.push({
-      label: 'Stop Loss',
-      value: stopMatch[1].trim(),
-      category: 'risk',
-    });
-  }
-  
-  // Risk:Reward
-  const rrMatch = message.match(/(\d+:\d+)(?:\s+rr)?/i);
-  if (rrMatch) {
-    rules.push({
-      label: 'Risk:Reward',
-      value: rrMatch[1],
-      category: 'risk',
-    });
-  }
-  
-  return rules;
-}
+// Extract from ANY message (user or assistant)
+const rules = extractFromMessage(
+  message,       // The text content
+  'user',        // or 'assistant'
+  existingRules  // Current accumulated rules
+);
 ```
 
-### Advanced: Context-Aware Parser
+### How It Works
 
-See `StrategySummaryPanel_Integration_Example.tsx` for a full parser implementation that:
-- Tracks conversation context
-- Deduplicates rules
-- Updates existing rules
-- Handles user corrections
+**User Messages** → Extract IMMEDIATELY
+```typescript
+// User: "I trade NQ with 2 contracts"
+// Confidence threshold: 0.7 (lower because users state facts)
+setRules(prev => extractFromMessage(userMsg, 'user', prev));
+// ✅ Extracted: Instrument: NQ, Position Size: 2 contracts
+```
+
+**Claude Questions** → SKIP
+```typescript
+// Claude: "What's your stop loss approach?"
+// isConfirmation() returns false
+setRules(prev => extractFromMessage(claudeMsg, 'assistant', prev));
+// ❌ No extraction (it's a question)
+```
+
+**Claude Confirmations** → Extract
+```typescript
+// Claude: "Good — that gives you a tight risk of 20 ticks"
+// isConfirmation() returns true
+// Confidence threshold: 0.85 (higher for Claude)
+setRules(prev => extractFromMessage(claudeMsg, 'assistant', prev));
+// ✅ Extracted: Stop Loss: 20 ticks
+```
+
+### Key Features
+
+1. **Progressive Accumulation** - Rules merge intelligently:
+   ```typescript
+   // First message: "I trade NQ"
+   // Rules: [{ Instrument: "NQ" }]
+   
+   // Second message: "with 2 contracts"
+   // Rules: [{ Instrument: "NQ" }, { Position Size: "2 contracts" }]
+   
+   // Update: "actually make it 3 contracts"
+   // Rules: [{ Instrument: "NQ" }, { Position Size: "3 contracts" }]
+   ```
+
+2. **Confidence Scoring** - Different thresholds for user vs Claude
+3. **Deduplication** - Same category:label = update, not duplicate
+4. **Conversational Patterns** - Understands "I trade NQ", "im trading NQ", "on NQ"
+5. **Debug Logging** - Set `NEXT_PUBLIC_DEBUG_RULES=true` to see extraction details
 
 ---
 
@@ -215,10 +235,11 @@ See `StrategySummaryPanel_Integration_Example.tsx` for a full parser implementat
 
 ### Desktop (≥768px)
 
-- Fixed sidebar on right side
-- Always visible (unless manually collapsed)
-- Width: 320px (280px on tablets)
-- Chat area adjusts with `margin-right`
+- Fixed sidebar on **left** side
+- Always visible when rules exist
+- Width: 320px (w-80)
+- Chat area adjusts with `ml-80` margin
+- Smooth slide-in animation
 
 ### Mobile (<768px)
 
@@ -227,6 +248,7 @@ See `StrategySummaryPanel_Integration_Example.tsx` for a full parser implementat
 - Swipe-down to dismiss gesture
 - Keyboard-aware positioning
 - Touch-optimized spacing
+- Embedded strategy animation visualization
 
 ### Breakpoints
 
@@ -303,14 +325,11 @@ className="bg-[#000000]"  // Change base color
 
 ### Adjusting Width
 
-```css
-/* In StrategySummaryPanel.css */
+```tsx
+// In StrategySummaryPanel.tsx
 
-@media (min-width: 768px) {
-  .strategy-summary-panel {
-    width: 360px;  /* Default: 320px */
-  }
-}
+// Desktop width (default: w-80 = 320px)
+<div className="w-80 lg:w-96"> {/* Changes to 384px on large screens */}
 ```
 
 ### Adding New Categories
@@ -340,17 +359,15 @@ const categoryOrder = [
 
 ### Optimization Tips
 
-1. **Memoize Rules**: Use `useMemo` to prevent re-renders
+1. **V2 Already Optimized**: Processes only complete sentences during streaming
    ```typescript
-   const memoizedRules = useMemo(() => rules, [rules]);
+   // In ChatInterface.tsx
+   const sentences = displayText.split(/[.!?]\s+/);
+   const lastCompleteSentence = sentences[sentences.length - 2];
+   // Only extract from last complete sentence
    ```
 
-2. **Debounce Updates**: When parsing rules from streaming responses
-   ```typescript
-   const debouncedRules = useMemo(
-     () => debounce(extractRules, 300),
-     []
-   );
+2. **Deduplication Built-In**: `accumulateRules()` prevents duplicates automatically
    ```
 
 3. **Lazy Loading**: Load panel only when rules exist
@@ -379,14 +396,28 @@ const categoryOrder = [
 ### Rules Not Updating
 
 **Issue**: Rules don't update when conversation progresses  
-**Solution**: Ensure you're creating new array instances
+**Solution**: Use `extractFromMessage()` correctly
 
 ```typescript
-// ❌ Wrong: Mutating existing array
-setRules(prev => prev.push(newRule));
+// ❌ Wrong: Not passing previous rules
+const newRules = extractFromMessage(message, 'user', []);
+setRules(newRules);
 
-// ✅ Correct: Creating new array
-setRules(prev => [...prev, newRule]);
+// ✅ Correct: Accumulate with previous
+setRules(prev => extractFromMessage(message, 'user', prev));
+```
+
+### Rules Not Extracting from Claude
+
+**Issue**: Claude's confirmations not detected  
+**Solution**: Check if message is a question
+
+```typescript
+import { isConfirmation } from '@/lib/utils/ruleExtractor';
+
+// Debug why extraction isn't happening
+console.log('Is confirmation?', isConfirmation(claudeMessage));
+// If false, Claude is asking a question (extraction skipped)
 ```
 
 ### Mobile Panel Stutters
@@ -410,13 +441,17 @@ setRules(prev => [...prev, newRule]);
 
 ## 🔮 Future Enhancements
 
-Potential additions for v2:
+V2 extraction is complete! Potential additions for v3:
 
-- [ ] **Rule Editing**: Click to edit/remove rules
+- [x] **Conversation-aware extraction** (V2 complete)
+- [x] **Confirmation detection** (V2 complete)
+- [x] **Progressive accumulation** (V2 complete)
+- [x] **Confidence thresholds** (V2 complete)
+- [ ] **Rule Editing**: Click to edit/remove rules inline
 - [ ] **Export**: Save strategy as PDF/JSON
 - [ ] **Templates**: Pre-fill common strategies
-- [ ] **Validation**: Highlight incomplete/invalid rules
-- [ ] **Persistence**: Save/load strategies from database
+- [ ] **Validation**: Highlight incomplete/invalid rules (uses firm rules API)
+- [ ] **Persistence**: Already implemented in ChatInterface
 - [ ] **Sharing**: Generate shareable strategy cards
 - [ ] **AI Suggestions**: Claude recommends missing rules
 
