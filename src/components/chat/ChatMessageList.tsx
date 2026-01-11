@@ -156,6 +156,15 @@ function MessageBlock({
   // Reserved for scroll-to-latest behavior
   void _isLatest;
 
+  // Auto-resize textarea when editing
+  useEffect(() => {
+    if (isEditing && textareaRef.current) {
+      const textarea = textareaRef.current;
+      textarea.style.height = 'auto';
+      textarea.style.height = `${textarea.scrollHeight}px`;
+    }
+  }, [isEditing, editContent]);
+
   const handleCopy = () => {
     navigator.clipboard.writeText(message.content);
     setShowMobileMenu(false);
@@ -244,14 +253,33 @@ function MessageBlock({
           <div className="max-w-[85%] relative group">
             {isEditing ? (
               // Edit mode
-              <div className="w-full">
+              <div className="w-full min-w-[300px] sm:min-w-[400px]">
+                {/* Warning banner */}
+                <div className="mb-3 p-3 bg-[rgba(245,158,11,0.1)] border border-[rgba(245,158,11,0.3)] rounded-lg flex items-start gap-2">
+                  <svg className="w-5 h-5 text-[#f59e0b] flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                  <div className="flex-1">
+                    <p className="text-xs text-[rgba(255,255,255,0.9)] leading-relaxed">
+                      Editing will delete all messages after this point and restart the conversation from here.
+                    </p>
+                  </div>
+                </div>
+                
                 <textarea
                   ref={textareaRef}
                   value={editContent}
-                  onChange={(e) => setEditContent(e.target.value)}
+                  onChange={(e) => {
+                    setEditContent(e.target.value);
+                    // Auto-resize as user types
+                    if (textareaRef.current) {
+                      textareaRef.current.style.height = 'auto';
+                      textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
+                    }
+                  }}
                   onKeyDown={handleKeyDown}
-                  className="w-full text-white bg-[rgba(0,255,209,0.1)] px-4 py-3 rounded-lg border border-[rgba(0,255,209,0.4)] focus:border-[#00FFD1] focus:outline-none resize-none min-h-[44px]"
-                  rows={3}
+                  className="w-full text-white bg-[rgba(0,255,209,0.1)] px-4 py-3 rounded-lg border border-[rgba(0,255,209,0.4)] focus:border-[#00FFD1] focus:outline-none resize-none min-h-[120px]"
+                  style={{ maxHeight: '400px', overflowY: 'auto' }}
                 />
                 <div className="flex gap-2 mt-2 justify-end">
                   <button
@@ -272,13 +300,14 @@ function MessageBlock({
             ) : (
               // View mode
               <>
-                <div className="inline-block text-white bg-[rgba(0,255,209,0.1)] px-4 py-3 rounded-lg border border-[rgba(0,255,209,0.2)]">
-                  {message.content}
-                </div>
-                
-                {/* Desktop: Hover controls */}
-                {isHovered && !isDisabled && (
-                  <div className="hidden sm:flex absolute -bottom-6 right-0 items-center gap-1 text-xs">
+                <div className="inline-flex flex-col items-end gap-1">
+                  <div className="text-white bg-[rgba(0,255,209,0.1)] px-4 py-3 rounded-lg border border-[rgba(0,255,209,0.2)]">
+                    {message.content}
+                  </div>
+                  
+                  {/* Desktop: Hover controls */}
+                  {isHovered && !isDisabled && (
+                    <div className="hidden sm:flex items-center gap-1 text-xs">
                     {message.timestamp && (
                       <span 
                         className="text-[rgba(255,255,255,0.5)] mr-2 cursor-default relative group/time"
@@ -313,6 +342,7 @@ function MessageBlock({
                     </button>
                   </div>
                 )}
+                </div>
                 
                 {/* Mobile: Long press menu */}
                 {showMobileMenu && (
