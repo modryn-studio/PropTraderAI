@@ -4,12 +4,9 @@ import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronRight, ChevronDown, Eye, EyeOff, List, X } from 'lucide-react';
 import { useResponsiveBreakpoints, useKeyboardVisible } from '@/lib/hooks/useResponsiveBreakpoints';
+import { StrategyRule } from '@/lib/utils/ruleExtractor';
 
-export interface StrategyRule {
-  label: string;
-  value: string;
-  category?: 'setup' | 'entry' | 'exit' | 'risk' | 'timeframe' | 'filters';
-}
+export type { StrategyRule };
 
 interface StrategySummaryPanelProps {
   strategyName?: string;
