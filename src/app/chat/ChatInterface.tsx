@@ -273,9 +273,17 @@ export default function ChatInterface({
                   }
                 }
                 
-                // V2: Extract rules from Claude ONLY if confirmation (not a question)
-                if (isConfirmation(displayText)) {
-                  setAccumulatedRules(prev => extractFromMessage(displayText, 'assistant', prev));
+                // V2: Extract from Claude's complete sentences only (more efficient)
+                const sentences = displayText.split(/[.!?]\s+/);
+                const lastCompleteSentence = sentences.length > 1 ? sentences[sentences.length - 2] : '';
+                
+                // Only extract if we have a new complete sentence
+                if (lastCompleteSentence && 
+                    lastCompleteSentence.length > 20 && 
+                    isConfirmation(lastCompleteSentence)) {
+                  setAccumulatedRules(prev => 
+                    extractFromMessage(lastCompleteSentence, 'assistant', prev)
+                  );
                 }
                 
                 setMessages(prev => prev.map(msg => 

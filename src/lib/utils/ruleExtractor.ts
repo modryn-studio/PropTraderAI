@@ -402,7 +402,14 @@ export function accumulateRules(
     ruleMap.set(key, rule);
   });
   
-  return Array.from(ruleMap.values());
+  const result = Array.from(ruleMap.values());
+  
+  debugLog(
+    `Accumulated: ${existingRules.length} existing + ${newRules.length} new = ${result.length} total`,
+    { existingRules, newRules, result }
+  );
+  
+  return result;
 }
 
 // ============================================================================
