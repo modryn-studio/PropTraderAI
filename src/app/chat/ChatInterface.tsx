@@ -165,13 +165,6 @@ export default function ChatInterface({
     }
   }, [wasAnimationManuallySet, animationAutoExpandable, conversationId]);
 
-  // Smart minimize: only auto-minimize if not manually set
-  const handleSmartMinimize = useCallback(() => {
-    if (!wasAnimationManuallySet) {
-      setIsAnimationExpanded(false);
-    }
-  }, [wasAnimationManuallySet]);
-
   const handleStopGeneration = useCallback(() => {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();

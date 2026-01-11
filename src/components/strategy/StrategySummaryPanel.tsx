@@ -40,7 +40,7 @@ export default function StrategySummaryPanel({
   isAnimationExpanded,
   onToggleAnimation,
 }: StrategySummaryPanelProps) {
-  const { isMobile, showSidebars } = useResponsiveBreakpoints();
+  const { isMobile } = useResponsiveBreakpoints();
   const isKeyboardVisible = useKeyboardVisible();
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [hasNewRules, setHasNewRules] = useState(false);
@@ -189,8 +189,6 @@ function MobileSummaryPanel({
   isKeyboardVisible,
   animationConfig,
 }: MobileSummaryPanelProps) {
-  const [showAnimationFullscreen, setShowAnimationFullscreen] = useState(false);
-
   // Don't show FAB when keyboard is visible
   const showFAB = !isOpen && !isKeyboardVisible;
 
@@ -307,8 +305,7 @@ function MobileSummaryPanel({
               {/* Embedded Animation Preview (if exists) */}
               {animationConfig && (
                 <div 
-                  className="mx-4 mt-4 border border-[rgba(255,255,255,0.1)] rounded-lg overflow-hidden cursor-pointer hover:border-[#00FFD1]/30 transition-colors"
-                  onClick={() => setShowAnimationFullscreen(true)}
+                  className="mx-4 mt-4 border border-[rgba(255,255,255,0.1)] rounded-lg overflow-hidden"
                 >
                   <div className="bg-[rgba(255,255,255,0.02)] px-3 py-2 flex items-center justify-between">
                     <span className="text-xs font-mono text-[rgba(255,255,255,0.5)]">
