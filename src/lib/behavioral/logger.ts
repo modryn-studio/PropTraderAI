@@ -60,7 +60,16 @@ export type BehavioralEventType =
   | 'broker_disconnected'
   | 'challenge_started'
   | 'challenge_passed'
-  | 'challenge_failed';
+  | 'challenge_failed'
+  
+  // Animation events (Strategy visualization)
+  | 'animation_generated'
+  | 'animation_viewed'
+  | 'animation_updated'
+  | 'animation_dismissed_quickly'
+  | 'animation_generation_failed'
+  | 'strategy_confirmed_with_animation'
+  | 'strategy_confirmed_without_animation';
 
 export interface ChallengeStatus {
   challengeId?: string;

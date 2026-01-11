@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
 import ChatInterface from './ChatInterface';
+import { UserProvider } from '@/contexts/UserContext';
 
 export default async function ChatPage() {
   const supabase = await createClient();
@@ -35,14 +36,16 @@ export default async function ChatPage() {
     .single();
 
   return (
-    <ChatInterface 
-      userId={user.id}
-      userStrategyCount={strategyCount || 0}
-      userProfile={profile}
-      existingConversation={activeConversation ? {
-        id: activeConversation.id,
-        messages: activeConversation.messages || [],
-      } : null}
-    />
+    <UserProvider userId={user.id}>
+      <ChatInterface 
+        userId={user.id}
+        userStrategyCount={strategyCount || 0}
+        userProfile={profile}
+        existingConversation={activeConversation ? {
+          id: activeConversation.id,
+          messages: activeConversation.messages || [],
+        } : null}
+      />
+    </UserProvider>
   );
 }

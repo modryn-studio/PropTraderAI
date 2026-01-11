@@ -15,6 +15,9 @@ import {
   processTimezones, 
   formatConversionSummary 
 } from '@/lib/utils/timezoneProcessor';
+import { AnimationLoader, AnimationConfig, tryExtractFromStream } from '@/components/strategy-animation';
+import { shouldExpectAnimation } from '@/lib/claude/promptManager';
+import { logAnimationGenerated, logAnimationFailed } from '@/lib/behavioral/animationLogger';
 
 interface ChatInterfaceProps {
   userId: string;
@@ -80,6 +83,10 @@ export default function ChatInterface({
   // Track the full conversation text for saving
   const [fullConversationText, setFullConversationText] = useState('');
   
+  // Animation state for strategy visualization
+  const [animationConfig, setAnimationConfig] = useState<AnimationConfig | null>(null);
+  const sessionStartRef = useRef<number>(Date.now());
+  
   // AbortController for canceling requests
   const abortControllerRef = useRef<AbortController | null>(null);
   
@@ -104,8 +111,15 @@ export default function ChatInterface({
   }, []);
 
   const handleSendMessage = useCallback(async (message: string) => {
-    // Optimistic UI: show message immediately
-    setPendingMessage(message);
+    // Optimistic UI: show user message immediately
+    const userMsg: ChatMessage = {
+      id: `user-${Date.now()}`,
+      role: 'user',
+      content: message,
+      timestamp: new Date().toISOString(),
+    };
+    setMessages(prev => [...prev, userMsg]);
+    
     setIsLoading(true);
     setError(null);
 
@@ -113,8 +127,12 @@ export default function ChatInterface({
     const controller = new AbortController();
     abortControllerRef.current = controller;
 
+    // Prepare assistant message that will be streamed
+    const assistantMsgId = `assistant-${Date.now()}`;
+    let streamedContent = '';
+
     try {
-      const response = await fetch('/api/strategy/parse', {
+      const response = await fetch('/api/strategy/parse-stream', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -129,73 +147,120 @@ export default function ChatInterface({
         throw new Error(data.error || 'Failed to send message');
       }
 
-      const data = await response.json();
-
-      // Update conversation ID if this was a new conversation
-      if (!conversationId && data.conversationId) {
-        setConversationId(data.conversationId);
+      if (!response.body) {
+        throw new Error('No response body');
       }
 
-      // Add messages to state
-      const userMsg: ChatMessage = {
-        id: `user-${Date.now()}`,
-        role: 'user',
-        content: message,
-        timestamp: new Date().toISOString(),
-      };
-      const assistantMsg: ChatMessage = {
-        id: `assistant-${Date.now()}`,
-        role: 'assistant',
-        content: data.message,
-        timestamp: new Date().toISOString(),
-      };
+      // Read the stream
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
 
-      setMessages(prev => [...prev, userMsg, assistantMsg]);
+      // Add empty assistant message that will be updated
+      setMessages(prev => [...prev, {
+        id: assistantMsgId,
+        role: 'assistant',
+        content: '',
+        timestamp: new Date().toISOString(),
+      }]);
+      setPendingMessage(null);
+
+      let buffer = '';
       
+      // Track whether we should look for animation in this response
+      const conversationForPrompt = messages.map(m => ({ role: m.role, content: m.content }));
+      conversationForPrompt.push({ role: 'user', content: message });
+      const expectAnimation = shouldExpectAnimation(conversationForPrompt);
+
+      while (true) {
+        const { done, value } = await reader.read();
+        
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const jsonStr = line.slice(6);
+            try {
+              const data = JSON.parse(jsonStr);
+
+              if (data.type === 'text') {
+                // Update streamed content
+                streamedContent += data.content;
+                setMessages(prev => prev.map(msg => 
+                  msg.id === assistantMsgId 
+                    ? { ...msg, content: streamedContent }
+                    : msg
+                ));
+                
+                // Try to extract animation config mid-stream
+                if (expectAnimation && !animationConfig) {
+                  const extracted = tryExtractFromStream(streamedContent);
+                  if (extracted.extractedSuccessfully && extracted.config) {
+                    setAnimationConfig(extracted.config);
+                    const sessionTime = Date.now() - sessionStartRef.current;
+                    logAnimationGenerated(userId, extracted.config, sessionTime).catch(console.error);
+                  }
+                }
+              } else if (data.type === 'complete') {
+                // Update conversation ID if new
+                if (!conversationId && data.conversationId) {
+                  setConversationId(data.conversationId);
+                }
+
+                // Handle strategy completion
+                if (data.complete) {
+                  // Process timezone conversions
+                  const userMessages = messages
+                    .filter(msg => msg.role === 'user')
+                    .map(msg => msg.content);
+                  userMessages.push(message);
+                  
+                  const detectedTimezone = extractTimezoneFromConversation(userMessages);
+                  const timezoneResult = processTimezones(data.parsedRules, {
+                    userTimezone: detectedTimezone || undefined,
+                    profileTimezone: (userProfile?.timezone as keyof typeof import('@/lib/utils/timezone').TRADER_TIMEZONES) || undefined,
+                  });
+                  
+                  const summary = formatConversionSummary(timezoneResult);
+                  setTimezoneConversionSummary(summary);
+                  
+                  if (timezoneResult.conversions.length > 0) {
+                    await logBehavioralEvent(
+                      userId,
+                      'timezone_conversion_applied',
+                      {
+                        detectedTimezone,
+                        conversions: timezoneResult.conversions,
+                        warnings: timezoneResult.warnings,
+                      }
+                    );
+                  }
+                  
+                  setStrategyComplete(true);
+                  setStrategyData({
+                    strategyName: data.strategyName,
+                    summary: data.summary,
+                    parsedRules: timezoneResult.processedRules,
+                    instrument: data.instrument,
+                  });
+                }
+              } else if (data.type === 'error') {
+                throw new Error(data.error);
+              }
+            } catch (e) {
+              console.error('Failed to parse SSE data:', e);
+            }
+          }
+        }
+      }
+
       // Track conversation text for natural_language field
       setFullConversationText(prev => 
-        prev + `User: ${message}\nAssistant: ${data.message}\n\n`
+        prev + `User: ${message}\nAssistant: ${streamedContent}\n\n`
       );
-
-      // Check if strategy is complete
-      if (data.complete) {
-        // Process timezone conversions before displaying strategy
-        const userMessages = messages
-          .filter(msg => msg.role === 'user')
-          .map(msg => msg.content);
-        userMessages.push(message); // Include current message
-        
-        const detectedTimezone = extractTimezoneFromConversation(userMessages);
-        const timezoneResult = processTimezones(data.parsedRules, {
-          userTimezone: detectedTimezone || undefined,
-          profileTimezone: (userProfile?.timezone as keyof typeof import('@/lib/utils/timezone').TRADER_TIMEZONES) || undefined,
-        });
-        
-        // Store conversion summary for display
-        const summary = formatConversionSummary(timezoneResult);
-        setTimezoneConversionSummary(summary);
-        
-        // If conversions were made, log for PATH 2
-        if (timezoneResult.conversions.length > 0) {
-          await logBehavioralEvent(
-            userId,
-            'timezone_conversion_applied',
-            {
-              detectedTimezone,
-              conversions: timezoneResult.conversions,
-              warnings: timezoneResult.warnings,
-            }
-          );
-        }
-        
-        setStrategyComplete(true);
-        setStrategyData({
-          strategyName: data.strategyName,
-          summary: data.summary,
-          parsedRules: timezoneResult.processedRules, // Use processed rules with converted times
-          instrument: data.instrument,
-        });
-      }
 
     } catch (err) {
       // Ignore abort errors - user intentionally stopped generation
@@ -208,7 +273,7 @@ export default function ChatInterface({
       setPendingMessage(null);
       setIsLoading(false);
     }
-  }, [conversationId, messages, userId, userProfile?.timezone]);
+  }, [conversationId, messages, userId, userProfile?.timezone, animationConfig]);
 
   const handleEditMessage = useCallback(async (messageIndex: number, newContent: string) => {
     // Delete all messages after the edited message (branching)
@@ -346,6 +411,8 @@ export default function ChatInterface({
     setStrategyData(null);
     setFullConversationText('');
     setTimezoneConversionSummary('');
+    setAnimationConfig(null);
+    sessionStartRef.current = Date.now();
     setError(null);
   }, [conversationId]);
 
@@ -380,6 +447,8 @@ export default function ChatInterface({
     setStrategyData(null);
     setFullConversationText('');
     setTimezoneConversionSummary('');
+    setAnimationConfig(null);
+    sessionStartRef.current = Date.now();
     setError(null);
   }, [conversationId]);
 
@@ -455,6 +524,13 @@ export default function ChatInterface({
           )}
         </div>
       </header>
+
+      {/* Strategy Animation Visualization (desktop: sidebar, mobile: FAB) */}
+      {animationConfig && (
+        <AnimationLoader 
+          config={animationConfig}
+        />
+      )}
 
       {/* Messages area - scrollable */}
       <div className="flex-1 overflow-hidden flex flex-col">

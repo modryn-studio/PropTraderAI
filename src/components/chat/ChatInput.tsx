@@ -30,6 +30,16 @@ const QUICK_PROMPTS = [
   { label: "Order Flow", prompt: "I trade using order flow and tape reading - watch for bid/ask imbalances and large orders on the DOM" },
 ];
 
+// Shuffle array using Fisher-Yates algorithm
+function shuffleArray<T>(array: T[]): T[] {
+  const shuffled = [...array];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+}
+
 export default function ChatInput({ 
   onSubmit,
   onStop,
@@ -43,6 +53,9 @@ export default function ChatInput({
   const containerRef = useRef<HTMLDivElement>(null);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   const animationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // Randomize quick prompts on mount
+  const [shuffledPrompts] = useState(() => shuffleArray(QUICK_PROMPTS));
 
   // Handle iOS keyboard pushing content up
   useEffect(() => {
@@ -175,7 +188,7 @@ export default function ChatInput({
         {/* Quick prompt buttons (only on welcome screen) */}
         {showAnimation && value.length === 0 && (
           <div className="mb-3 flex gap-2 overflow-x-auto scrollbar-hide pb-2">
-            {QUICK_PROMPTS.map((item) => (
+            {shuffledPrompts.map((item) => (
               <button
                 key={item.label}
                 onClick={() => handleQuickPrompt(item.prompt)}

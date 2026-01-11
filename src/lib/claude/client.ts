@@ -1,4 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
+import { getSystemPrompt } from './promptManager';
 
 // Initialize Anthropic client
 // Note: This will be used server-side only
@@ -255,4 +256,41 @@ export async function parseStrategy(
     complete: false,
     message: textContent,
   };
+}
+
+// Streaming version of parseStrategy for real-time responses
+export async function parseStrategyStream(
+  userMessage: string,
+  conversationHistory: ConversationMessage[]
+) {
+  const client = createAnthropicClient();
+  
+  // Build messages array
+  const messages: Anthropic.MessageParam[] = [
+    ...conversationHistory.map(msg => ({
+      role: msg.role as 'user' | 'assistant',
+      content: msg.content,
+    })),
+    { role: 'user' as const, content: userMessage },
+  ];
+  
+  // Build conversation for prompt manager analysis
+  const conversationForPrompt = conversationHistory.map(msg => ({
+    role: msg.role,
+    content: msg.content,
+  }));
+  conversationForPrompt.push({ role: 'user', content: userMessage });
+  
+  // Get dynamic system prompt (conditionally includes animation instructions)
+  const systemPrompt = getSystemPrompt(STRATEGY_PARSER_SYSTEM_PROMPT, conversationForPrompt);
+  
+  const stream = await client.messages.stream({
+    model: 'claude-sonnet-4-5-20250929',
+    max_tokens: 2048,
+    system: systemPrompt,
+    tools: STRATEGY_TOOLS,
+    messages,
+  });
+
+  return stream;
 }
