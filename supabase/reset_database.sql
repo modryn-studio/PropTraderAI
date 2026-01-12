@@ -44,8 +44,17 @@ RESTART IDENTITY CASCADE;
 
 -- Delete auth users separately (Supabase auth table)
 -- This table is in the 'auth' schema, not 'public'
--- WARNING: This requires service_role key or admin access
--- If this fails, manually delete users from: Supabase Dashboard → Authentication → Users
+-- 
+-- IMPORTANT: This DELETE statement often FAILS due to permissions
+-- If it fails, you MUST manually delete users:
+-- 1. Go to: Supabase Dashboard → Authentication → Users
+-- 2. Click on each user
+-- 3. Click "Delete user" button
+-- 
+-- Or use this approach (requires creating a function first):
+-- SELECT auth.delete_user(id) FROM auth.users;
+--
+-- For now, try this:
 DELETE FROM auth.users;
 
 -- ============================================
