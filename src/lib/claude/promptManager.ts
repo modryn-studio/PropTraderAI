@@ -222,6 +222,15 @@ export function getSystemPrompt(
     prompt = `${prompt}\n\n${STRATEGY_ANIMATION_PROMPT}`;
   }
   
+  // PHASE 4: Add update_rule tool usage reminder
+  prompt = `${prompt}\n\nCRITICAL TOOL USAGE - update_rule:
+- When you confirm ANY rule the user states, IMMEDIATELY call the update_rule tool
+- Call it for EVERY rule: instrument, pattern, entry trigger, stop loss, target, position size, session, etc.
+- Format: update_rule({ category: "risk", label: "Stop Loss", value: "50% of opening range" })
+- Multiple rules in one message? Call update_rule multiple times
+- This keeps the UI synchronized in real-time as you confirm each rule
+- Categories: setup (instrument/pattern/direction), entry, exit (targets), risk (stops/sizing), timeframe (sessions), filters`;
+  
   return prompt;
 }
 

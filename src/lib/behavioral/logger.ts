@@ -78,7 +78,10 @@ export type BehavioralEventType =
   | 'critical_error_detected'
   | 'critical_error_corrected'
   | 'response_validation_failed'
-  | 'professional_standard_enforced';
+  | 'professional_standard_enforced'
+  
+  // Rule streaming events (Claude update_rule tool)
+  | 'rule_updated_via_tool';
 
 export interface ChallengeStatus {
   challengeId?: string;

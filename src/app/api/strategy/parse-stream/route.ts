@@ -117,8 +117,8 @@ export async function POST(request: Request) {
     const readableStream = new ReadableStream({
       async start(controller) {
         let fullText = '';
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        let toolInput: any = null;
+        let currentToolName: string | null = null;
+        let currentToolInput = '';
         let isComplete = false;
 
         try {
@@ -136,37 +136,65 @@ export async function POST(request: Request) {
                   encoder.encode(`data: ${JSON.stringify({ type: 'text', content: text })}\n\n`)
                 );
               }
-            }
-            
-            // Handle tool use (strategy completion)
-            if (chunk.type === 'content_block_start') {
-              if (chunk.content_block.type === 'tool_use' && chunk.content_block.name === 'confirm_strategy') {
-                isComplete = true;
-              }
-            }
-            
-            if (chunk.type === 'content_block_delta') {
+              
+              // Handle tool input JSON streaming
               if (chunk.delta.type === 'input_json_delta') {
-                if (!toolInput) toolInput = '';
-                toolInput += chunk.delta.partial_json;
+                currentToolInput += chunk.delta.partial_json;
               }
+            }
+            
+            // Handle tool use start - detect which tool is being called
+            if (chunk.type === 'content_block_start') {
+              if (chunk.content_block.type === 'tool_use') {
+                currentToolName = chunk.content_block.name;
+                currentToolInput = ''; // Reset for new tool
+                
+                if (currentToolName === 'confirm_strategy') {
+                  isComplete = true;
+                }
+              }
+            }
+            
+            // Handle tool use end - parse and emit completed tool calls
+            if (chunk.type === 'content_block_stop') {
+              if (currentToolName && currentToolInput) {
+                try {
+                  const parsedInput = JSON.parse(currentToolInput);
+                  
+                  // Send update_rule to frontend immediately
+                  if (currentToolName === 'update_rule') {
+                    // Validate required fields exist
+                    if (parsedInput.category && parsedInput.label && parsedInput.value) {
+                      controller.enqueue(
+                        encoder.encode(`data: ${JSON.stringify({
+                          type: 'rule_update',
+                          rule: {
+                            category: parsedInput.category,
+                            label: parsedInput.label,
+                            value: parsedInput.value
+                          }
+                        })}\n\n`)
+                      );
+                    } else {
+                      console.warn('update_rule missing required fields:', parsedInput);
+                    }
+                  }
+                } catch (e) {
+                  console.error('Failed to parse tool input:', e);
+                  // Don't crash - just skip this tool call
+                }
+              }
+              // Don't reset currentToolName/Input here - we need them for final message processing
             }
           }
 
           // Wait for final message
           const finalMessage = await stream.finalMessage();
           
-          // Parse tool input if present
+          // Parse final tool input if present (for confirm_strategy)
           let parsedToolInput = null;
-          if (toolInput) {
-            try {
-              parsedToolInput = JSON.parse(toolInput);
-            } catch (e) {
-              console.error('Failed to parse tool input:', e);
-            }
-          }
-
-          // Check if strategy is complete
+          
+          // Check if strategy is complete via confirm_strategy tool
           const toolUse = finalMessage.content.find(
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             (block: any) => block.type === 'tool_use' && block.name === 'confirm_strategy'

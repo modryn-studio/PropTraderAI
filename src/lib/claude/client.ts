@@ -182,6 +182,40 @@ const STRATEGY_TOOLS: Anthropic.Tool[] = [
       },
       required: ['strategy_name', 'summary', 'parsed_rules', 'instrument']
     }
+  },
+  // ============================================================================
+  // Incremental Rule Recording Tool
+  // ============================================================================
+  {
+    name: 'update_rule',
+    description: `Record a confirmed strategy rule during the conversation. Call this IMMEDIATELY after you confirm ANY rule the user states.
+    
+Examples:
+- User: "Stop at 50% of the range" → You confirm → CALL update_rule({ category: "risk", label: "Stop Loss", value: "50% of opening range" })
+- User: "I trade NQ" → You acknowledge → CALL update_rule({ category: "setup", label: "Instrument", value: "NQ" })
+- User: "Break above the high" → You confirm → CALL update_rule({ category: "entry", label: "Entry Trigger", value: "Break above high" })
+- User: "Target 2R" → You confirm → CALL update_rule({ category: "exit", label: "Target", value: "2:1 risk-reward" })
+
+CRITICAL: Call this tool for EVERY rule you confirm. Multiple rules in one user message? Call update_rule multiple times.`,
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        category: {
+          type: 'string',
+          enum: ['setup', 'entry', 'exit', 'risk', 'timeframe', 'filters'],
+          description: 'Rule category: setup=pattern/instrument/direction, entry=triggers, exit=targets, risk=stops/sizing, timeframe=sessions/hours, filters=additional conditions'
+        },
+        label: {
+          type: 'string',
+          description: 'Rule label (e.g., "Stop Loss", "Entry Trigger", "Instrument", "Pattern", "Target", "Position Size", "Session", "Direction")'
+        },
+        value: {
+          type: 'string',
+          description: 'Rule value in plain English (e.g., "50% of opening range", "NQ", "Break above high", "20 ticks", "1% risk per trade")'
+        }
+      },
+      required: ['category', 'label', 'value']
+    }
   }
 ];
 

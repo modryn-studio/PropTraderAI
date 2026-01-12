@@ -25,7 +25,6 @@ import { validateStrategy, type ValidationResult } from '@/lib/strategy/strategy
 import { useResponsiveBreakpoints } from '@/lib/hooks/useResponsiveBreakpoints';
 import { 
   extractFromMessage,
-  isConfirmation,
   mapParsedRulesToStrategyRules,
   accumulateRules
 } from '@/lib/utils/ruleExtractor';
@@ -284,24 +283,45 @@ export default function ChatInterface({
                   }
                 }
                 
-                // V2: Extract from Claude's complete sentences only (more efficient)
-                const sentences = displayText.split(/[.!?]\s+/);
-                const lastCompleteSentence = sentences.length > 1 ? sentences[sentences.length - 2] : '';
-                
-                // Only extract if we have a new complete sentence
-                if (lastCompleteSentence && 
-                    lastCompleteSentence.length > 20 && 
-                    isConfirmation(lastCompleteSentence)) {
-                  setAccumulatedRules(prev => 
-                    extractFromMessage(lastCompleteSentence, 'assistant', prev)
-                  );
-                }
+                // Rule extraction now handled by update_rule tool (no regex parsing needed)
                 
                 setMessages(prev => prev.map(msg => 
                   msg.id === assistantMsgId 
                     ? { ...msg, content: displayText }
                     : msg
                 ));
+              } else if (data.type === 'rule_update') {
+                // Claude called update_rule tool - add to summary panel
+                // Defensive validation
+                if (!data.rule?.category || !data.rule?.label || !data.rule?.value) {
+                  console.warn('Invalid rule_update received:', data);
+                } else {
+                  const newRule: StrategyRule = {
+                    category: data.rule.category,
+                    label: data.rule.label,
+                    value: data.rule.value
+                  };
+                  
+                  // Check if this is an overwrite of existing rule
+                  const wasOverwrite = accumulatedRules.some(
+                    r => r.category === newRule.category && r.label === newRule.label
+                  );
+                  
+                  // Use existing accumulation logic
+                  setAccumulatedRules(prev => accumulateRules(prev, [newRule]));
+                  
+                  // Log behavioral event for rule updates
+                  logBehavioralEvent(
+                    userId,
+                    'rule_updated_via_tool',
+                    {
+                      conversationId,
+                      category: newRule.category,
+                      label: newRule.label,
+                      wasOverwrite
+                    }
+                  ).catch(console.error);
+                }
               } else if (data.type === 'complete') {
                 // Update conversation ID if new
                 if (!conversationId && data.conversationId) {
