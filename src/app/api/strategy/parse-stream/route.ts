@@ -1,6 +1,13 @@
 import { createClient } from '@/lib/supabase/server';
 import { parseStrategyStream, ConversationMessage } from '@/lib/claude/client';
 import { logBehavioralEvent } from '@/lib/behavioral/logger';
+import { getIntelligenceMetadata } from '@/lib/claude/promptManager';
+import { 
+  TradingIntelligenceSkill, 
+  detectCriticalErrors 
+} from '@/lib/trading';
+import { extractFromMessage } from '@/lib/utils/ruleExtractor';
+import type { StrategyRule } from '@/lib/utils/ruleExtractor';
 
 interface ParseRequest {
   message: string;
@@ -204,6 +211,76 @@ export async function POST(request: Request) {
             .eq('id', conversation!.id);
 
           // Log behavioral events
+          
+          // Extract rules from conversation for intelligence analysis
+          const extractedRules: StrategyRule[] = updatedMessages.reduce((acc: StrategyRule[], msg) => {
+            const newRules = extractFromMessage(msg.content, msg.role, acc);
+            return newRules;
+          }, []);
+          
+          // Get intelligence metadata for logging
+          const intelligenceMetadata = getIntelligenceMetadata(
+            updatedMessages.map(m => ({ role: m.role, content: m.content })),
+            extractedRules
+          );
+          
+          // Log Trading Intelligence usage
+          await logBehavioralEvent(
+            user.id,
+            'trading_intelligence_used',
+            {
+              conversationId: conversation!.id,
+              phase: intelligenceMetadata.phase,
+              focus: intelligenceMetadata.focus,
+              rulesCount: intelligenceMetadata.rulesCount,
+              errorsDetected: intelligenceMetadata.errorsDetected,
+              missingComponents: intelligenceMetadata.missingComponents,
+              completionPercentage: intelligenceMetadata.completionPercentage,
+            }
+          );
+          
+          // Check for and log critical errors
+          const criticalErrors = detectCriticalErrors(extractedRules);
+          if (criticalErrors.length > 0) {
+            await logBehavioralEvent(
+              user.id,
+              'critical_error_detected',
+              {
+                conversationId: conversation!.id,
+                errors: criticalErrors.map(e => ({
+                  severity: e.severity,
+                  message: e.message,
+                })),
+                phase: intelligenceMetadata.phase,
+              }
+            );
+          }
+          
+          // Validate Claude's response quality
+          const responseValidation = TradingIntelligenceSkill.validateResponse(
+            finalText,
+            {
+              phase: intelligenceMetadata.phase,
+              rules: extractedRules,
+              lastUserMessage: message,
+              missingComponents: intelligenceMetadata.missingComponents,
+              detectedIssues: criticalErrors.map(e => e.message),
+            }
+          );
+          
+          if (!responseValidation.valid) {
+            await logBehavioralEvent(
+              user.id,
+              'response_validation_failed',
+              {
+                conversationId: conversation!.id,
+                issues: responseValidation.issues,
+                severity: responseValidation.severity,
+                phase: intelligenceMetadata.phase,
+              }
+            );
+          }
+          
           if (!isComplete && finalText.includes('?')) {
             let questionType = 'general';
             if (/stop|loss/i.test(finalText)) questionType = 'stop_loss';

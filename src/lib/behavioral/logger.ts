@@ -70,7 +70,15 @@ export type BehavioralEventType =
   | 'animation_dismissed_quickly'
   | 'animation_generation_failed'
   | 'strategy_confirmed_with_animation'
-  | 'strategy_confirmed_without_animation';
+  | 'strategy_confirmed_without_animation'
+  
+  // Trading Intelligence events (Professional coaching)
+  | 'trading_intelligence_used'
+  | 'intelligence_phase_transition'
+  | 'critical_error_detected'
+  | 'critical_error_corrected'
+  | 'response_validation_failed'
+  | 'professional_standard_enforced';
 
 export interface ChallengeStatus {
   challengeId?: string;

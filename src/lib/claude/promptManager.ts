@@ -1,12 +1,20 @@
 import { STRATEGY_ANIMATION_PROMPT } from '@/lib/animation';
 import { REQUIRED_COMPONENTS } from '@/lib/strategy/strategyValidator';
+import { 
+  TradingIntelligenceSkill, 
+  type IntelligenceMetadata 
+} from '@/lib/trading';
+import type { StrategyRule } from '@/lib/utils/ruleExtractor';
 
 /**
  * Prompt Manager for Dynamic Claude Prompts
  * 
+ * ENHANCED with Professional Trading Intelligence System.
+ * 
  * Handles conditional injection of:
- * 1. Animation prompts (after enough strategy clarity)
- * 2. Validation context (when strategy is incomplete - based on message analysis)
+ * 1. Trading intelligence (professional knowledge, phase detection, error catching)
+ * 2. Animation prompts (after enough strategy clarity)
+ * 3. Validation context (when strategy is incomplete - based on message analysis)
  */
 
 /**
@@ -170,31 +178,70 @@ export function shouldInjectAnimationPrompt(
 /**
  * Get the appropriate system prompt based on conversation state
  * 
+ * ENHANCED: Now includes Professional Trading Intelligence System
+ * 
  * @param basePrompt - The core strategy parsing system prompt
  * @param messages - Conversation history
- * @returns Combined system prompt (possibly with animation and validation context)
+ * @param rules - Optional accumulated strategy rules (if available from frontend)
+ * @returns Combined system prompt with trading intelligence, validation, and animation context
  */
 export function getSystemPrompt(
   basePrompt: string,
-  messages: { role: string; content: string }[]
+  messages: { role: string; content: string }[],
+  rules?: StrategyRule[]
 ): string {
-  let prompt = basePrompt;
+  // Get last user message for focus detection
+  const lastUserMessage = messages
+    .filter(m => m.role === 'user')
+    .pop()?.content || '';
   
-  // Analyze conversation to detect which required components have been mentioned
-  const components = analyzeRequiredComponents(messages);
-  const validationContext = generateValidationContext(components, messages);
+  // Use provided rules or empty array
+  const strategyRules = rules || [];
   
-  // Inject validation context if strategy is incomplete
-  if (validationContext) {
-    prompt = `${prompt}\n\n${validationContext}`;
+  // PHASE 1: Inject Trading Intelligence (enhanced contextual prompt)
+  // This replaces our old validation context with professional trading knowledge
+  let prompt = TradingIntelligenceSkill.generateSystemPrompt(
+    strategyRules,
+    lastUserMessage,
+    basePrompt
+  );
+  
+  // PHASE 2: Inject legacy validation context if no rules provided
+  // (backwards compatibility - will be phased out once rules are passed)
+  if (!rules || rules.length === 0) {
+    const components = analyzeRequiredComponents(messages);
+    const validationContext = generateValidationContext(components, messages);
+    
+    if (validationContext) {
+      prompt = `${prompt}\n\n${validationContext}`;
+    }
   }
   
-  // Inject animation prompt after enough clarity
+  // PHASE 3: Inject animation prompt after enough clarity
   if (shouldInjectAnimationPrompt(messages)) {
     prompt = `${prompt}\n\n${STRATEGY_ANIMATION_PROMPT}`;
   }
   
   return prompt;
+}
+
+/**
+ * Get intelligence metadata for behavioral logging
+ * 
+ * Call this alongside getSystemPrompt to log what intelligence was provided
+ */
+export function getIntelligenceMetadata(
+  messages: { role: string; content: string }[],
+  rules?: StrategyRule[]
+): IntelligenceMetadata {
+  const lastUserMessage = messages
+    .filter(m => m.role === 'user')
+    .pop()?.content || '';
+  
+  return TradingIntelligenceSkill.getIntelligenceMetadata(
+    rules || [],
+    lastUserMessage
+  );
 }
 
 /**
