@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, User, Bell, Link2, Shield, Globe, Save, Loader2 } from 'lucide-react';
+import { ArrowLeft, User, Bell, Link2, Shield, Globe, Save, Loader2, Trash2, AlertTriangle } from 'lucide-react';
 import TimezonePicker from '@/components/ui/TimezonePicker';
 import { createClient } from '@/lib/supabase/client';
 import type { TRADER_TIMEZONES } from '@/lib/utils/timezone';
@@ -26,6 +26,9 @@ export default function SettingsPageClient({
   );
   const [isSaving, setIsSaving] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteConfirmEmail, setDeleteConfirmEmail] = useState('');
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     setHasChanges(timezone !== initialProfile.timezone);
@@ -57,6 +60,35 @@ export default function SettingsPageClient({
       toast.error('Failed to save settings');
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    if (deleteConfirmEmail !== userEmail) {
+      toast.error('Email does not match');
+      return;
+    }
+
+    setIsDeleting(true);
+    try {
+      const response = await fetch('/api/user/delete', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ confirmEmail: deleteConfirmEmail }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to delete account');
+      }
+
+      toast.success('Account deleted successfully');
+      router.push('/');
+    } catch (err) {
+      console.error('Failed to delete account:', err);
+      toast.error(err instanceof Error ? err.message : 'Failed to delete account');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -189,11 +221,107 @@ export default function SettingsPageClient({
           </div>
         ))}
 
+        {/* Delete Account Section */}
+        <div className="border-t border-[#b5323d]/20 pt-6">
+          <h3 className="text-[#b5323d] font-semibold mb-2">Delete Account</h3>
+          <p className="text-sm text-[rgba(255,255,255,0.6)] mb-4">
+            Your personal information will be permanently deleted. 
+            Anonymized trading patterns will be retained for research purposes.
+          </p>
+          <button
+            onClick={() => setShowDeleteModal(true)}
+            className="bg-[#b5323d]/10 border border-[#b5323d] text-[#b5323d] px-4 py-2 rounded hover:bg-[#b5323d]/20 transition-colors"
+          >
+            Delete My Account
+          </button>
+        </div>
+
         {/* Version */}
-        <p className="text-center text-xs text-[rgba(255,255,255,0.5)]">
+        <p className="text-center text-xs text-[rgba(255,255,255,0.5)] pt-6">
           PropTrader.AI v0.1.0
         </p>
       </main>
+
+      {/* Delete Account Modal */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center px-4 z-50">
+          <div className="card max-w-md w-full border border-[rgba(181,50,61,0.3)]">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-12 h-12 bg-[rgba(181,50,61,0.15)] flex items-center justify-center">
+                <AlertTriangle className="w-6 h-6 text-[#b5323d]" />
+              </div>
+              <div>
+                <h3 className="font-mono font-bold text-white">Delete Account</h3>
+                <p className="text-xs text-[rgba(255,255,255,0.5)]">This cannot be undone</p>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <p className="text-sm text-[rgba(255,255,255,0.85)]">
+                This will permanently delete:
+              </p>
+              <ul className="text-sm text-[rgba(255,255,255,0.5)] space-y-2 list-disc list-inside">
+                <li>Your profile and login credentials</li>
+                <li>Broker connections and API tokens</li>
+                <li>Conversation history and feedback</li>
+                <li>Screenshots and analyses</li>
+              </ul>
+
+              <div className="bg-[rgba(59,130,246,0.1)] border border-[rgba(59,130,246,0.3)] rounded-lg p-3">
+                <p className="text-xs text-[rgba(255,255,255,0.7)]">
+                  <strong className="text-white">Privacy Note:</strong> Anonymized trading patterns 
+                  (behavioral data, trade history, strategies) are retained for AI research. 
+                  This data cannot be used to identify you.
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2 text-white">
+                  Type your email to confirm: <span className="text-[#b5323d]">{userEmail}</span>
+                </label>
+                <input
+                  type="email"
+                  value={deleteConfirmEmail}
+                  onChange={(e) => setDeleteConfirmEmail(e.target.value)}
+                  placeholder={userEmail}
+                  className="terminal-input w-full"
+                  disabled={isDeleting}
+                />
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => {
+                    setShowDeleteModal(false);
+                    setDeleteConfirmEmail('');
+                  }}
+                  disabled={isDeleting}
+                  className="btn-secondary flex-1"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleDeleteAccount}
+                  disabled={isDeleting || deleteConfirmEmail !== userEmail}
+                  className="flex-1 bg-[#b5323d] hover:bg-[#dc2626] text-white px-4 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium flex items-center justify-center gap-2"
+                >
+                  {isDeleting ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Deleting...
+                    </>
+                  ) : (
+                    <>
+                      <Trash2 className="w-4 h-4" />
+                      Delete Forever
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

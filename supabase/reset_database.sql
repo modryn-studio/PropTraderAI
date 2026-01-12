@@ -45,17 +45,23 @@ RESTART IDENTITY CASCADE;
 -- Delete auth users separately (Supabase auth table)
 -- This table is in the 'auth' schema, not 'public'
 -- 
--- IMPORTANT: This DELETE statement often FAILS due to permissions
--- If it fails, you MUST manually delete users:
--- 1. Go to: Supabase Dashboard → Authentication → Users
--- 2. Click on each user
--- 3. Click "Delete user" button
--- 
--- Or use this approach (requires creating a function first):
--- SELECT auth.delete_user(id) FROM auth.users;
---
--- For now, try this:
+-- IMPORTANT: Must delete identities FIRST, then users
+-- Otherwise you get "Database error finding user" for orphaned identities
+
+-- 1. Delete orphaned identities (critical!)
+DELETE FROM auth.identities;
+
+-- 2. Delete refresh tokens
+DELETE FROM auth.refresh_tokens;
+
+-- 3. Delete sessions
+DELETE FROM auth.sessions;
+
+-- 4. Delete users
 DELETE FROM auth.users;
+
+-- If DELETE fails due to permissions, manually delete:
+-- Go to: Supabase Dashboard → Authentication → Users → Delete each user
 
 -- ============================================
 -- RE-SEED PROP FIRMS (Reference Data)

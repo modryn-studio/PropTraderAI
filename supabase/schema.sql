@@ -312,3 +312,16 @@ CREATE TRIGGER update_broker_connections_updated_at BEFORE UPDATE ON public.brok
 
 CREATE TRIGGER update_prop_firms_updated_at BEFORE UPDATE ON public.prop_firms
   FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+
+-- ============================================
+-- ACCOUNT DELETION SYSTEM
+-- ============================================
+-- NOTE: Run migration 010_account_deletion_system.sql AFTER this schema
+-- It makes user_id nullable in MOAT tables and creates the deletion function
+--
+-- The deletion function:
+-- - HARD DELETES PII (profile, broker connections, messages, feedback)
+-- - ANONYMIZES MOAT data by setting user_id = NULL (behavioral_data, trades, strategies, challenges)
+--
+-- This preserves valuable ML training data while respecting user privacy.
+-- NULL user_id means "this is anonymized data from a deleted account"
