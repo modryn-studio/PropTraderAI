@@ -27,7 +27,7 @@ export async function DELETE(request: Request) {
     // Call the database function to delete user account
     // This anonymizes MOAT data (behavioral_data, trades, strategies, challenges)
     // and hard deletes PII (profile, broker connections, messages)
-    const { data, error: deleteError } = await supabase.rpc('delete_user_account', {
+    const { error: deleteError } = await supabase.rpc('delete_user_account', {
       target_user_id: user.id
     });
 
