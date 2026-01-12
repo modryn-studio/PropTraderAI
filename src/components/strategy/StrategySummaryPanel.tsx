@@ -122,6 +122,32 @@ export default function StrategySummaryPanel({
         </div>
       </div>
 
+      {/* Visual Preview (Parameter-Based Animation) */}
+      {rules.length >= 3 && (
+        <div className="border-t border-[rgba(255,255,255,0.1)] p-4">
+          <div className="mb-2">
+            <div className="text-[rgba(255,255,255,0.5)] text-xs font-mono uppercase tracking-wide">
+              Visual Preview
+            </div>
+          </div>
+          <Suspense fallback={
+            <div className="h-48 flex items-center justify-center bg-[rgba(0,255,209,0.05)] rounded">
+              <div className="text-[rgba(255,255,255,0.5)] text-sm font-mono">
+                Calculating positions...
+              </div>
+            </div>
+          }>
+            <SmartAnimationContainer 
+              rules={rules}
+              debug={process.env.NODE_ENV === 'development'}
+              width={288}
+              height={200}
+              duration={3}
+            />
+          </Suspense>
+        </div>
+      )}
+
       {/* Footer - Rule Count + Animation Toggle */}
       <div className="px-4 py-3 border-t border-[rgba(255,255,255,0.1)] bg-[rgba(255,255,255,0.02)]">
         <div className="flex items-center justify-between">

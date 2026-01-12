@@ -16,7 +16,7 @@ import {
   processTimezones, 
   formatConversionSummary 
 } from '@/lib/utils/timezoneProcessor';
-import { AnimationLoader, AnimationConfig, tryExtractFromStream } from '@/components/strategy-animation';
+import { AnimationConfig, tryExtractFromStream } from '@/components/strategy-animation';
 import { shouldExpectAnimation } from '@/lib/claude/promptManager';
 import { logAnimationGenerated } from '@/lib/behavioral/animationLogger';
 import StrategySummaryPanel, { StrategyRule } from '@/components/strategy/StrategySummaryPanel';
@@ -696,29 +696,9 @@ export default function ChatInterface({
         onValidationChange={handleValidationChange}
       />
 
-      {/* Strategy Animation Visualization (desktop: right sidebar, mobile: embedded in summary) */}
-      {animationConfig && !isMobile && (
-        <AnimationLoader 
-          config={animationConfig}
-          isExpanded={isAnimationExpanded}
-          onExpandedChange={(expanded) => {
-            setIsAnimationExpanded(expanded);
-            setWasAnimationManuallySet(true);
-            if (conversationId) {
-              saveAnimationPreference(conversationId, expanded, true);
-            }
-          }}
-          wasManuallySet={wasAnimationManuallySet}
-        />
-      )}
-
-      {/* Messages area - scrollable (with margins for sidebars on desktop) */}
+      {/* Messages area - scrollable (with margin for sidebar on desktop) */}
       <div className={`flex-1 overflow-hidden flex flex-col ${
-        !isMobile && accumulatedRules.length > 0
-          ? isAnimationExpanded && animationConfig
-            ? 'ml-80 mr-[400px]' // Both sidebars visible
-            : 'ml-80' // Summary only
-          : ''
+        !isMobile && accumulatedRules.length > 0 ? 'ml-80' : ''
       }`}>
         <ChatMessageList
           messages={messages}
