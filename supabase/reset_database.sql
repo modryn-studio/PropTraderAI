@@ -20,40 +20,32 @@
 -- Created: January 11, 2026
 -- ============================================
 
--- Disable triggers temporarily to avoid cascading issues
-SET session_replication_role = 'replica';
-
 -- ============================================
--- DELETE ALL DATA (Order matters due to foreign keys)
+-- DELETE ALL DATA (More aggressive approach)
 -- ============================================
 
--- Start with tables that have no foreign keys pointing to them
-DELETE FROM public.screenshot_analyses;
-DELETE FROM public.feedback;
-DELETE FROM public.behavioral_data;
-DELETE FROM public.chat_messages;
+-- Option 1: Use TRUNCATE CASCADE (fastest, cleanest)
+-- TRUNCATE removes all data and resets sequences
+-- CASCADE automatically handles foreign key dependencies
 
--- Then tables that reference the above
-DELETE FROM public.trades;
-DELETE FROM public.trading_rules;
-DELETE FROM public.strategy_conversations;
+TRUNCATE TABLE 
+  public.screenshot_analyses,
+  public.feedback,
+  public.behavioral_data,
+  public.chat_messages,
+  public.trades,
+  public.trading_rules,
+  public.strategy_conversations,
+  public.strategies,
+  public.challenges,
+  public.broker_connections,
+  public.profiles
+RESTART IDENTITY CASCADE;
 
--- Then strategies (referenced by trades and conversations)
-DELETE FROM public.strategies;
-
--- Then challenges (referenced by strategies and trades)
-DELETE FROM public.challenges;
-
--- Then broker connections (standalone)
-DELETE FROM public.broker_connections;
-
--- Finally profiles and auth users
--- Note: This will CASCADE delete everything due to ON DELETE CASCADE
-DELETE FROM public.profiles;
-
--- Delete auth users (Supabase auth table)
+-- Delete auth users separately (Supabase auth table)
+-- This table is in the 'auth' schema, not 'public'
 -- WARNING: This requires service_role key or admin access
--- If this fails, you can delete users from the Supabase Dashboard → Authentication → Users
+-- If this fails, manually delete users from: Supabase Dashboard → Authentication → Users
 DELETE FROM auth.users;
 
 -- ============================================
@@ -69,7 +61,8 @@ DELETE FROM auth.users;
 -- RE-ENABLE TRIGGERS
 -- ============================================
 
-SET session_replication_role = 'origin';
+-- Not needed with TRUNCATE approach
+-- SET session_replication_role = 'origin';
 
 -- ============================================
 -- VERIFICATION QUERIES
