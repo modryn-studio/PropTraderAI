@@ -691,7 +691,6 @@ export default function ChatInterface({
         strategyName={accumulatedRules.find(r => r.label === 'Strategy')?.value || strategyData?.strategyName}
         rules={accumulatedRules}
         isVisible={accumulatedRules.length > 0}
-        animationConfig={animationConfig}
         isAnimationExpanded={isAnimationExpanded}
         onToggleAnimation={handleToggleAnimation}
         onValidationChange={handleValidationChange}

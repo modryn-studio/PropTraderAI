@@ -6,11 +6,11 @@ import { ChevronRight, ChevronDown, Eye, EyeOff, List, X } from 'lucide-react';
 import { useResponsiveBreakpoints, useKeyboardVisible } from '@/lib/hooks/useResponsiveBreakpoints';
 import type { StrategyRule } from '@/lib/utils/ruleExtractor';
 import { lazy, Suspense } from 'react';
-import type { AnimationConfig } from '@/components/strategy-animation/taxonomy';
 import { validateStrategy, type ValidationResult } from '@/lib/strategy/strategyValidator';
 import ValidationStatus from './ValidationStatus';
 
-const StrategyVisualizer = lazy(() => import('@/components/strategy-animation/StrategyVisualizer'));
+// Parameter-Based Animation System (replaces old template-based StrategyVisualizer)
+const SmartAnimationContainer = lazy(() => import('@/components/animation'));
 
 export type { StrategyRule };
 
@@ -18,7 +18,6 @@ interface StrategySummaryPanelProps {
   strategyName?: string;
   rules: StrategyRule[];
   isVisible?: boolean;
-  animationConfig?: AnimationConfig | null;
   isAnimationExpanded?: boolean;
   onToggleAnimation?: () => void;
   onValidationChange?: (validation: ValidationResult) => void;
@@ -40,7 +39,6 @@ export default function StrategySummaryPanel({
   strategyName,
   rules,
   isVisible = true,
-  animationConfig,
   isAnimationExpanded,
   onToggleAnimation,
   onValidationChange,
@@ -86,7 +84,6 @@ export default function StrategySummaryPanel({
         onClose={() => setIsMobileOpen(false)}
         hasNewRules={hasNewRules}
         isKeyboardVisible={isKeyboardVisible}
-        animationConfig={animationConfig}
         validation={validation}
       />
     );
@@ -133,7 +130,7 @@ export default function StrategySummaryPanel({
           </span>
           
           {/* Animation toggle button (only show if animation exists) */}
-          {animationConfig && onToggleAnimation && (
+          {rules.length >= 3 && onToggleAnimation && (
             <button
               onClick={onToggleAnimation}
               className="flex items-center gap-1.5 text-xs font-mono text-[rgba(255,255,255,0.5)] hover:text-[#00FFD1] transition-colors group"
@@ -153,7 +150,7 @@ export default function StrategySummaryPanel({
             </button>
           )}
           
-          {!animationConfig && (
+          {rules.length < 3 && (
             <div className="flex items-center gap-1.5">
               <div className="w-1 h-1 bg-[#00FFD1] rounded-full" />
               <span className="text-[#00FFD1] text-xs font-mono">Active</span>
@@ -194,7 +191,6 @@ interface MobileSummaryPanelProps {
   onClose: () => void;
   hasNewRules: boolean;
   isKeyboardVisible: boolean;
-  animationConfig?: AnimationConfig | null;
   validation: ValidationResult;
 }
 
@@ -206,7 +202,6 @@ function MobileSummaryPanel({
   onClose,
   hasNewRules,
   isKeyboardVisible,
-  animationConfig,
   validation,
 }: MobileSummaryPanelProps) {
   // Don't show FAB when keyboard is visible
@@ -322,15 +317,15 @@ function MobileSummaryPanel({
                 </button>
               </div>
 
-              {/* Embedded Animation Preview (if exists) */}
-              {animationConfig && (
+              {/* Embedded Animation Preview (Parameter-Based) */}
+              {rules.length >= 3 && (
                 <div className="mx-4 mt-4 border border-[rgba(255,255,255,0.1)] rounded-lg overflow-hidden">
                   <div className="bg-[rgba(255,255,255,0.02)] px-3 py-2 border-b border-[rgba(255,255,255,0.1)]">
                     <span className="text-xs font-mono text-[rgba(255,255,255,0.5)]">
                       Strategy Preview
                     </span>
                   </div>
-                  {/* Render actual StrategyVisualizer */}
+                  {/* Render Parameter-Based Animation */}
                   <div className="p-4 bg-[rgba(0,0,0,0.5)]">
                     <Suspense fallback={
                       <div className="h-32 flex items-center justify-center">
@@ -345,7 +340,12 @@ function MobileSummaryPanel({
                         </div>
                       </div>
                     }>
-                      <StrategyVisualizer config={animationConfig as AnimationConfig} />
+                      <SmartAnimationContainer 
+                        rules={rules}
+                        debug={process.env.NODE_ENV === 'development'}
+                        width={400}
+                        height={240}
+                      />
                     </Suspense>
                   </div>
                 </div>
