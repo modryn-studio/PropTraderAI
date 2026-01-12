@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, RotateCcw } from 'lucide-react';
+import { toast } from '@/components/ui/sonner';
 import ChatMessageList, { ChatMessage } from '@/components/chat/ChatMessageList';
 import ChatInput from '@/components/chat/ChatInput';
 import StrategyConfirmationCard from '@/components/chat/StrategyConfirmationCard';
@@ -442,6 +443,14 @@ export default function ChatInterface({
       setPendingStrategyName(name);
       setGateMode('save');
       setShowReadinessGate(true);
+      
+      // Toast notification
+      const missingCount = validation.requiredMissing.length;
+      toast.warning('Strategy Incomplete', {
+        description: `${missingCount} required component${missingCount > 1 ? 's' : ''} missing. Complete your strategy or save as draft.`,
+        duration: 5000,
+      });
+      
       return;
     }
 

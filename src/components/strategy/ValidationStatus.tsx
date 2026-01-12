@@ -12,9 +12,24 @@
  * - Warnings as yellow, no blocking
  */
 
+import { useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { CheckCircle2, AlertCircle, AlertTriangle, Circle, ChevronRight } from 'lucide-react';
 import type { ValidationResult, ValidationIssue } from '@/lib/strategy/strategyValidator';
+
+/**
+ * Trigger haptic feedback on mobile devices
+ */
+function triggerHapticFeedback(style: 'light' | 'medium' | 'heavy' = 'medium') {
+  if (typeof window !== 'undefined' && 'vibrate' in navigator) {
+    const patterns = {
+      light: 10,
+      medium: 20,
+      heavy: 50,
+    };
+    navigator.vibrate(patterns[style]);
+  }
+}
 
 interface ValidationStatusProps {
   validation: ValidationResult;
@@ -90,13 +105,43 @@ interface CompletionProgressProps {
 function CompletionProgress({ score, isComplete }: CompletionProgressProps) {
   const dots = 5;
   const filledDots = Math.round((score / 100) * dots);
+  const previousScoreRef = useRef(0);
+
+  // Trigger haptic feedback and screen reader announcement at milestones
+  useEffect(() => {
+    const milestones = [20, 40, 60, 80, 100];
+    const previousScore = previousScoreRef.current;
+    
+    // Check if we crossed a milestone
+    const crossedMilestone = milestones.find(
+      milestone => previousScore < milestone && score >= milestone
+    );
+    
+    if (crossedMilestone) {
+      // Haptic feedback
+      triggerHapticFeedback(crossedMilestone === 100 ? 'heavy' : 'medium');
+      
+      // Screen reader announcement
+      const announcement = crossedMilestone === 100 
+        ? 'Strategy complete! All required components defined.'
+        : `${crossedMilestone}% complete. ${5 - Math.floor(crossedMilestone / 20)} components remaining.`;
+      
+      announceToScreenReader(announcement);
+    }
+    
+    previousScoreRef.current = score;
+  }, [score]);
 
   return (
-    <div className="px-3 py-3 border border-[rgba(255,255,255,0.1)] rounded-sm bg-[rgba(0,0,0,0.3)]">
+    <div 
+      className="px-3 py-3 border border-[rgba(255,255,255,0.1)] rounded-sm bg-[rgba(0,0,0,0.3)]"
+      role="status"
+      aria-label={`Strategy completion: ${score}%`}
+    >
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2">
           {/* Completion dots */}
-          <div className="flex gap-1">
+          <div className="flex gap-1" aria-hidden="true">
             {Array.from({ length: dots }).map((_, i) => (
               <motion.div
                 key={i}
@@ -139,7 +184,7 @@ function CompletionProgress({ score, isComplete }: CompletionProgressProps) {
       </div>
 
       {/* Status message */}
-      <p className="mt-2 text-[10px] font-mono text-[rgba(255,255,255,0.5)]">
+      <p className="mt-2 text-[10px] font-mono text-[rgba(255,255,255,0.5)]" aria-live="polite">
         {isComplete 
           ? '✓ All required components defined'
           : 'Define required components to proceed'
@@ -147,6 +192,26 @@ function CompletionProgress({ score, isComplete }: CompletionProgressProps) {
       </p>
     </div>
   );
+}
+
+/**
+ * Announce message to screen readers
+ */
+function announceToScreenReader(message: string) {
+  if (typeof window === 'undefined') return;
+  
+  const announcement = document.createElement('div');
+  announcement.setAttribute('role', 'status');
+  announcement.setAttribute('aria-live', 'polite');
+  announcement.setAttribute('aria-atomic', 'true');
+  announcement.className = 'sr-only';
+  announcement.textContent = message;
+  
+  document.body.appendChild(announcement);
+  
+  setTimeout(() => {
+    document.body.removeChild(announcement);
+  }, 1000);
 }
 
 // ============================================================================
@@ -171,12 +236,12 @@ function RequiredComponentsStatus({ missing, onNavigate }: RequiredComponentsSta
   const missingFields = new Set(missing.map(m => m.field));
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-2" role="region" aria-label="Required strategy components">
       <h3 className="text-[#00FFD1] text-xs font-mono font-semibold tracking-wider px-3">
         REQUIRED COMPONENTS
       </h3>
 
-      <div className="space-y-1">
+      <div className="space-y-1" role="list">
         {REQUIRED_COMPONENT_ORDER.map(field => {
           const isMissing = missingFields.has(field);
           const issue = missing.find(m => m.field === field);
@@ -186,6 +251,8 @@ function RequiredComponentsStatus({ missing, onNavigate }: RequiredComponentsSta
               key={field}
               initial={{ opacity: 0, x: -10 }}
               animate={{ opacity: 1, x: 0 }}
+              role="listitem"
+              aria-label={`${REQUIRED_COMPONENT_LABELS[field]}: ${isMissing ? 'missing' : 'complete'}`}
               className={`
                 flex items-center gap-2 px-3 py-2 rounded-sm
                 ${isMissing 

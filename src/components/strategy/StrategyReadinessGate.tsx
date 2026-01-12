@@ -14,6 +14,7 @@
  * Desktop: Centered modal
  */
 
+import { useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Lock, CheckCircle2, AlertCircle, ChevronRight, Sparkles, Save } from 'lucide-react';
 import type { ValidationResult, ValidationIssue } from '@/lib/strategy/strategyValidator';
@@ -43,6 +44,59 @@ export default function StrategyReadinessGate({
   const canProceed = validation.isComplete && validation.errors.length === 0;
   const isBacktestMode = mode === 'backtest';
   const isSaveMode = mode === 'save';
+  const modalRef = useRef<HTMLDivElement>(null);
+  
+  // Keyboard navigation
+  useEffect(() => {
+    if (!isOpen) return;
+    
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    
+    document.addEventListener('keydown', handleKeyDown);
+    
+    // Focus trap
+    const modal = modalRef.current;
+    if (modal) {
+      const focusableElements = modal.querySelectorAll(
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+      );
+      const firstElement = focusableElements[0] as HTMLElement;
+      const lastElement = focusableElements[focusableElements.length - 1] as HTMLElement;
+      
+      firstElement?.focus();
+      
+      const handleTabKey = (e: KeyboardEvent) => {
+        if (e.key !== 'Tab') return;
+        
+        if (e.shiftKey) {
+          if (document.activeElement === firstElement) {
+            e.preventDefault();
+            lastElement?.focus();
+          }
+        } else {
+          if (document.activeElement === lastElement) {
+            e.preventDefault();
+            firstElement?.focus();
+          }
+        }
+      };
+      
+      modal.addEventListener('keydown', handleTabKey as EventListener);
+      
+      return () => {
+        modal.removeEventListener('keydown', handleTabKey as EventListener);
+        document.removeEventListener('keydown', handleKeyDown);
+      };
+    }
+    
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isOpen, onClose]);
 
   return (
     <AnimatePresence>
@@ -59,6 +113,11 @@ export default function StrategyReadinessGate({
 
           {/* Modal - Bottom sheet on mobile, centered on desktop */}
           <motion.div
+            ref={modalRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="gate-title"
+            aria-describedby="gate-description"
             initial={{ opacity: 0, y: 100 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 100 }}
@@ -93,7 +152,7 @@ export default function StrategyReadinessGate({
                       </div>
                     )}
                     <div>
-                      <h2 className="text-white font-mono font-semibold">
+                      <h2 id="gate-title" className="text-white font-mono font-semibold">
                         {canProceed 
                           ? 'Strategy Ready!' 
                           : isBacktestMode 
@@ -101,13 +160,14 @@ export default function StrategyReadinessGate({
                             : 'Strategy Incomplete'
                         }
                       </h2>
-                      <p className="text-xs text-[rgba(255,255,255,0.5)] font-mono mt-0.5">
+                      <p id="gate-description" className="text-xs text-[rgba(255,255,255,0.5)] font-mono mt-0.5">
                         {getValidationSummary(validation)}
                       </p>
                     </div>
                   </div>
                   <button
                     onClick={onClose}
+                    aria-label="Close dialog"
                     className="p-1 hover:bg-[rgba(255,255,255,0.1)] rounded transition-colors"
                   >
                     <X className="w-4 h-4 text-[rgba(255,255,255,0.5)]" />

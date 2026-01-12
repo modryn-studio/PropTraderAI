@@ -52,9 +52,28 @@ export function analyzeRequiredComponents(messages: { role: string; content: str
 }
 
 /**
+ * Detect common mistakes in strategy language
+ */
+function detectCommonMistakes(messages: { role: string; content: string }[]): string[] {
+  const allContent = messages
+    .filter(m => m.role === 'user')
+    .map(m => m.content.toLowerCase())
+    .join(' ');
+  
+  const warnings: string[] = [];
+  
+  // Vague entry criteria
+  if (/when.*looks good|depends|maybe|probably/.test(allContent)) {
+    warnings.push('⚠️ Vague Language Detected: Avoid terms like "looks good", "maybe", "probably". Be specific with measurable criteria.');
+  }
+  
+  return warnings;
+}
+
+/**
  * Generate validation context prompt based on missing components
  */
-function generateValidationContext(components: RequiredComponentsDetected): string {
+function generateValidationContext(components: RequiredComponentsDetected, messages: { role: string; content: string }[]): string {
   const missing: string[] = [];
   
   if (!components.hasEntry) {
@@ -73,20 +92,33 @@ function generateValidationContext(components: RequiredComponentsDetected): stri
     missing.push(`- ${REQUIRED_COMPONENTS.instrument.name}: ${REQUIRED_COMPONENTS.instrument.examples.join(', ')}`);
   }
   
-  if (missing.length === 0) {
-    return ''; // All components present
+  // Check for common mistakes
+  const mistakes = detectCommonMistakes(messages);
+  
+  if (missing.length === 0 && mistakes.length === 0) {
+    return ''; // All components present and no mistakes
   }
   
   const completedCount = 5 - missing.length;
   const completionPercent = Math.round((completedCount / 5) * 100);
   
-  return `
+  let context = '';
+  
+  if (missing.length > 0) {
+    context = `
 [VALIDATION CONTEXT - ${completionPercent}% Complete]
 The strategy is missing these required components. Guide the user to define them:
 ${missing.join('\n')}
 
 Focus on the FIRST missing component. Be direct and specific. One question at a time.
 `;
+  }
+  
+  if (mistakes.length > 0) {
+    context += `\n${mistakes.join('\n')}\n`;
+  }
+  
+  return context;
 }
 
 /**
@@ -150,7 +182,7 @@ export function getSystemPrompt(
   
   // Analyze conversation to detect which required components have been mentioned
   const components = analyzeRequiredComponents(messages);
-  const validationContext = generateValidationContext(components);
+  const validationContext = generateValidationContext(components, messages);
   
   // Inject validation context if strategy is incomplete
   if (validationContext) {
