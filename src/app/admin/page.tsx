@@ -4,7 +4,6 @@ import AdminDashboardClient from './AdminDashboardClient';
 
 // List of admin emails - add your email here
 const ADMIN_EMAILS = [
-  'hannerluke@gmail.com',
   'luke@modrynstudio.com',
 ];
 
