@@ -49,6 +49,33 @@ export default async function AdminPage() {
     .from('prop_firms')
     .select('*', { count: 'exact', head: true });
 
+  // Get conversation counts by status
+  const { count: totalConversations } = await supabase
+    .from('strategy_conversations')
+    .select('*', { count: 'exact', head: true });
+
+  const { count: inProgressConversations } = await supabase
+    .from('strategy_conversations')
+    .select('*', { count: 'exact', head: true })
+    .eq('status', 'in_progress');
+
+  const { count: completedConversations } = await supabase
+    .from('strategy_conversations')
+    .select('*', { count: 'exact', head: true })
+    .eq('status', 'completed');
+
+  const { count: abandonedConversations } = await supabase
+    .from('strategy_conversations')
+    .select('*', { count: 'exact', head: true })
+    .eq('status', 'abandoned');
+
+  // Get recent conversations
+  const { data: recentConversations } = await supabase
+    .from('strategy_conversations')
+    .select('id, user_id, status, messages, last_activity, strategy_id')
+    .order('last_activity', { ascending: false })
+    .limit(10);
+
   return (
     <AdminDashboardClient
       userEmail={user.email || ''}
@@ -59,7 +86,12 @@ export default async function AdminPage() {
         strategies: totalStrategies || 0,
         trades: totalTrades || 0,
         propFirms: totalPropFirms || 0,
+        conversations: totalConversations || 0,
+        conversationsInProgress: inProgressConversations || 0,
+        conversationsCompleted: completedConversations || 0,
+        conversationsAbandoned: abandonedConversations || 0,
       }}
+      recentConversations={recentConversations || []}
     />
   );
 }

@@ -40,7 +40,7 @@ export default function ChatMessageList({
       ref={containerRef}
       className="flex-1 overflow-y-auto bg-[#000000]"
     >
-      <div className="max-w-3xl mx-auto px-4 py-8">
+      <div className="max-w-3xl mx-auto px-6 py-8">
         {/* Welcome message if no messages yet */}
         {messages.length === 0 && !pendingMessage && (
           <motion.div

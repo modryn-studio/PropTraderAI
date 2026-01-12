@@ -239,6 +239,7 @@ export default function ChatInterface({
         timestamp: new Date().toISOString(),
       }]);
       setPendingMessage(null);
+      setIsLoading(false); // Hide "Thinking..." as soon as streaming starts
 
       let buffer = '';
       
@@ -709,7 +710,7 @@ export default function ChatInterface({
 
         {/* Strategy confirmation card */}
         {strategyComplete && strategyData && (
-          <div className="px-4 pb-4">
+          <div className="max-w-3xl mx-auto px-6 pb-4">
             <StrategyConfirmationCard
               strategyName={strategyData.strategyName}
               summary={strategyData.summary}
@@ -726,7 +727,7 @@ export default function ChatInterface({
 
         {/* Error message */}
         {error && (
-          <div className="px-4 py-3 bg-[rgba(181,50,61,0.1)] border-t border-[rgba(181,50,61,0.2)]">
+          <div className="max-w-3xl mx-auto px-6 py-3 bg-[rgba(181,50,61,0.1)] border-t border-[rgba(181,50,61,0.2)">
             <p className="text-[#b5323d] text-sm">{error}</p>
           </div>
         )}
@@ -739,6 +740,7 @@ export default function ChatInterface({
           onStop={handleStopGeneration}
           disabled={isLoading}
           showAnimation={messages.length === 0}
+          hasSidebar={!isMobile && accumulatedRules.length > 0}
           placeholder={
             messages.length === 0
               ? ""

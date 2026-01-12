@@ -9,6 +9,7 @@ interface ChatInputProps {
   disabled?: boolean;
   placeholder?: string;
   showAnimation?: boolean; // Show animated placeholder on welcome screen
+  hasSidebar?: boolean; // Whether the summary sidebar is visible (desktop only)
 }
 
 // Example prompts to cycle through
@@ -46,6 +47,7 @@ export default function ChatInput({
   disabled = false,
   placeholder = "Describe your trading strategy...",
   showAnimation = false,
+  hasSidebar = false,
 }: ChatInputProps) {
   const [value, setValue] = useState('');
   const [animatedPlaceholder, setAnimatedPlaceholder] = useState('');
@@ -54,8 +56,13 @@ export default function ChatInput({
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   const animationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
-  // Randomize quick prompts on mount
-  const [shuffledPrompts] = useState(() => shuffleArray(QUICK_PROMPTS));
+  // Randomize quick prompts on mount (client-side only to avoid hydration mismatch)
+  const [shuffledPrompts, setShuffledPrompts] = useState(QUICK_PROMPTS);
+  
+  useEffect(() => {
+    // Shuffle only after mount to prevent server/client mismatch
+    setShuffledPrompts(shuffleArray(QUICK_PROMPTS));
+  }, []);
 
   // Handle iOS keyboard pushing content up
   useEffect(() => {
@@ -179,12 +186,14 @@ export default function ChatInput({
   return (
     <div
       ref={containerRef}
-      className="fixed bottom-0 left-0 right-0 bg-[#000000] border-t border-[rgba(255,255,255,0.1)]"
+      className={`fixed bottom-0 right-0 bg-[#000000] border-t border-[rgba(255,255,255,0.1)] ${
+        hasSidebar ? 'left-80' : 'left-0'
+      }`}
       style={{
         paddingBottom: `max(env(safe-area-inset-bottom, 0px), ${keyboardHeight}px)`,
       }}
     >
-      <div className="max-w-3xl mx-auto px-4 py-3">
+      <div className="max-w-3xl mx-auto px-6 py-3">
         {/* Quick prompt buttons (only on welcome screen) */}
         {showAnimation && value.length === 0 && (
           <div className="mb-3 flex gap-2 overflow-x-auto scrollbar-hide pb-2">

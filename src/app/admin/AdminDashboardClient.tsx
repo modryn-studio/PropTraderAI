@@ -10,6 +10,15 @@ interface AnonymizationStat {
   anonymized_records: number;
 }
 
+interface Conversation {
+  id: string;
+  user_id: string;
+  status: string;
+  messages: { role: string; content: string; timestamp: string }[];
+  last_activity: string;
+  strategy_id: string | null;
+}
+
 interface AdminDashboardProps {
   userEmail: string;
   anonymizationStats: AnonymizationStat[];
@@ -19,7 +28,12 @@ interface AdminDashboardProps {
     strategies: number;
     trades: number;
     propFirms: number;
+    conversations: number;
+    conversationsInProgress: number;
+    conversationsCompleted: number;
+    conversationsAbandoned: number;
   };
+  recentConversations: Conversation[];
 }
 
 export default function AdminDashboardClient({
@@ -27,6 +41,7 @@ export default function AdminDashboardClient({
   anonymizationStats,
   statsError,
   counts,
+  recentConversations,
 }: AdminDashboardProps) {
   const router = useRouter();
 
@@ -101,6 +116,87 @@ export default function AdminDashboardClient({
               <span className="text-xs text-[rgba(255,255,255,0.5)]">Prop Firms</span>
             </div>
             <p className="font-mono text-2xl text-white">{counts.propFirms}</p>
+          </div>
+        </div>
+
+        {/* Strategy Conversations */}
+        <div className="card">
+          <div className="flex items-center gap-2 mb-4">
+            <Activity className="w-5 h-5 text-[#00FFD1]" />
+            <h2 className="font-mono font-bold text-white">Strategy Conversations</h2>
+          </div>
+
+          {/* Conversation Stats */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <div className="bg-[#121212] rounded-lg p-4">
+              <p className="text-xs text-[rgba(255,255,255,0.5)] mb-1">Total</p>
+              <p className="font-mono text-xl text-white">{counts.conversations}</p>
+            </div>
+            <div className="bg-[#121212] rounded-lg p-4">
+              <p className="text-xs text-[rgba(255,255,255,0.5)] mb-1">In Progress</p>
+              <p className="font-mono text-xl text-[#f59e0b]">{counts.conversationsInProgress}</p>
+            </div>
+            <div className="bg-[#121212] rounded-lg p-4">
+              <p className="text-xs text-[rgba(255,255,255,0.5)] mb-1">Completed</p>
+              <p className="font-mono text-xl text-[#10b981]">{counts.conversationsCompleted}</p>
+            </div>
+            <div className="bg-[#121212] rounded-lg p-4">
+              <p className="text-xs text-[rgba(255,255,255,0.5)] mb-1">Abandoned</p>
+              <p className="font-mono text-xl text-[#6b7280]">{counts.conversationsAbandoned}</p>
+            </div>
+          </div>
+
+          {/* Recent Conversations */}
+          <div>
+            <h3 className="text-sm font-mono text-[rgba(255,255,255,0.7)] mb-3">Recent Activity</h3>
+            <div className="space-y-2">
+              {recentConversations.map((conv) => {
+                const messageCount = Array.isArray(conv.messages) ? conv.messages.length : 0;
+                const lastActivity = new Date(conv.last_activity);
+                const displayTime = lastActivity.toLocaleString('en-US', {
+                  timeZone: 'America/New_York',
+                  month: 'short',
+                  day: 'numeric',
+                  hour: 'numeric',
+                  minute: '2-digit',
+                  hour12: true
+                });
+                
+                const statusColor = 
+                  conv.status === 'completed' ? 'text-[#10b981]' :
+                  conv.status === 'in_progress' ? 'text-[#f59e0b]' :
+                  'text-[#6b7280]';
+                
+                return (
+                  <div key={conv.id} className="bg-[#121212] rounded-lg p-3 flex items-center justify-between">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <code className="text-xs text-[rgba(255,255,255,0.5)] bg-[#1a1a1a] px-1.5 py-0.5 rounded font-mono">
+                          {conv.id.slice(0, 8)}
+                        </code>
+                        <span className={`text-xs font-medium ${statusColor}`}>
+                          {conv.status}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-3 text-xs text-[rgba(255,255,255,0.5)]">
+                        <span>{messageCount} messages</span>
+                        <span>•</span>
+                        <span>{displayTime} EST</span>
+                        {conv.strategy_id && (
+                          <>
+                            <span>•</span>
+                            <span className="text-[#10b981]">✓ Strategy saved</span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+              {recentConversations.length === 0 && (
+                <p className="text-center text-[rgba(255,255,255,0.5)] py-8">No conversations yet</p>
+              )}
+            </div>
           </div>
         </div>
 
