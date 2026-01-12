@@ -1,4 +1,4 @@
-import { STRATEGY_ANIMATION_PROMPT } from '@/components/strategy-animation/claude-prompt';
+import { STRATEGY_ANIMATION_PROMPT } from '@/lib/animation';
 import { REQUIRED_COMPONENTS } from '@/lib/strategy/strategyValidator';
 
 /**

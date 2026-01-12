@@ -1,12 +1,41 @@
 /**
- * CLAUDE SYSTEM PROMPT FOR STRATEGY ANIMATIONS
+ * @deprecated LEGACY CLAUDE PROMPT - Use parameterAnimationPrompt.ts instead
  * 
- * Add this to your existing Claude system prompt to enable animation generation.
- * Claude will learn to output animation configs embedded in its responses.
+ * This file is kept for backwards compatibility only.
+ * The new Parameter-Based Animation System provides precise animations
+ * that match user's exact specifications (e.g., "50% of range" shows at 50%, not bottom).
+ * 
+ * Migration:
+ * ```ts
+ * // Old (template-based, imprecise)
+ * import { STRATEGY_ANIMATION_PROMPT } from '@/components/strategy-animation/claude-prompt';
+ * 
+ * // New (parameter-based, precise)
+ * import { STRATEGY_ANIMATION_PROMPT } from '@/lib/animation';
+ * ```
+ * 
+ * @see docs/Animations/Parameter-Based Animation System/README.md
+ * @see src/lib/animation/parameterAnimationPrompt.ts
  */
 
-export const STRATEGY_ANIMATION_PROMPT = `
-## Strategy Visualization System
+// Re-export the new prompt for backwards compatibility
+export { STRATEGY_ANIMATION_PROMPT } from '@/lib/animation/parameterAnimationPrompt';
+
+/**
+ * @deprecated Legacy prompt kept for reference only
+ * Do not use - animations will not match user specifications
+ */
+export const LEGACY_STRATEGY_ANIMATION_PROMPT = `
+## Strategy Visualization System (DEPRECATED)
+
+⚠️ WARNING: This is the legacy template-based prompt.
+Use the new parameter-based prompt from '@/lib/animation' instead.
+
+The new system ensures animations match EXACTLY what users specify.
+For example: "50% of range" → stop actually shows at 50%, not bottom.
+
+## Legacy Content Below (DO NOT USE)
+---
 
 You have the ability to generate visual animations of trading strategies. When discussing trading setups with users, you can embed animation configurations in your responses to help them visualize the strategy.
 
