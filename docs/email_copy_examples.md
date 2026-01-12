@@ -273,6 +273,35 @@ Unsubscribe: [link]
 
 ---
 
+### Account Deleted Confirmation
+
+**Subject:** Your PropTraderAI account has been deleted
+
+```
+[Name],
+
+Your account has been deleted.
+
+What we removed:
+• Your email and profile
+• Broker connection credentials
+• Conversation history
+• All uploaded screenshots
+
+What remains (anonymized):
+• Trading patterns with no link to you
+• Behavioral data for AI improvement
+• No personally identifiable information
+
+You can create a new account anytime with this email address.
+
+Thanks for being part of PropTraderAI.
+
+—PropTraderAI
+```
+
+---
+
 ### Challenge Failed
 
 **Subject:** Challenge ended. Here's what happened.
