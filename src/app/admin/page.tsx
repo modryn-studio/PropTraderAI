@@ -27,10 +27,9 @@ export default async function AdminPage() {
     redirect('/dashboard');
   }
 
-  // Fetch anonymization stats
+  // Fetch anonymization stats using RPC function (secure)
   const { data: anonymizationStats, error: statsError } = await supabase
-    .from('data_anonymization_stats')
-    .select('*');
+    .rpc('get_anonymization_stats');
 
   // Fetch recent user counts
   const { count: totalUsers } = await supabase
