@@ -8,6 +8,9 @@
 
 import type { ToolType, PrefilledData } from '@/lib/utils/toolDetection';
 
+// Re-export for convenience
+export type { ToolType, PrefilledData };
+
 // ============================================================================
 // TOOL STATE
 // ============================================================================
@@ -97,77 +100,9 @@ export interface TimeframeValues {
 // INSTRUMENT DATA
 // ============================================================================
 
-export interface InstrumentSpec {
-  symbol: string;
-  name: string;
-  tickValue: number;
-  pointValue: number;
-  typicalStopRange: [number, number]; // [min, max] ticks
-  microVersion?: string;
-}
-
-export const INSTRUMENTS: Record<string, InstrumentSpec> = {
-  NQ: {
-    symbol: 'NQ',
-    name: 'E-mini Nasdaq',
-    tickValue: 5,
-    pointValue: 20,
-    typicalStopRange: [10, 30],
-    microVersion: 'MNQ',
-  },
-  MNQ: {
-    symbol: 'MNQ',
-    name: 'Micro E-mini Nasdaq',
-    tickValue: 0.5,
-    pointValue: 2,
-    typicalStopRange: [20, 60],
-  },
-  ES: {
-    symbol: 'ES',
-    name: 'E-mini S&P 500',
-    tickValue: 12.5,
-    pointValue: 50,
-    typicalStopRange: [8, 20],
-    microVersion: 'MES',
-  },
-  MES: {
-    symbol: 'MES',
-    name: 'Micro E-mini S&P 500',
-    tickValue: 1.25,
-    pointValue: 5,
-    typicalStopRange: [16, 40],
-  },
-  CL: {
-    symbol: 'CL',
-    name: 'Crude Oil',
-    tickValue: 10,
-    pointValue: 1000,
-    typicalStopRange: [10, 30],
-    microVersion: 'MCL',
-  },
-  MCL: {
-    symbol: 'MCL',
-    name: 'Micro Crude Oil',
-    tickValue: 1,
-    pointValue: 100,
-    typicalStopRange: [20, 60],
-  },
-  GC: {
-    symbol: 'GC',
-    name: 'Gold',
-    tickValue: 10,
-    pointValue: 100,
-    typicalStopRange: [10, 40],
-    microVersion: 'MGC',
-  },
-  MGC: {
-    symbol: 'MGC',
-    name: 'Micro Gold',
-    tickValue: 1,
-    pointValue: 10,
-    typicalStopRange: [20, 80],
-  },
-};
+// NOTE: Contract specifications are defined in src/lib/utils/contractSpecs.ts
+// Use CONTRACT_SPECS, getContractSpec(), and related functions from there.
+// This avoids duplication and ensures a single source of truth for CME specs.
 
 // ============================================================================
 // VALIDATION THRESHOLDS

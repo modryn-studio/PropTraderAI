@@ -286,31 +286,46 @@ export default function DrawdownVisualizer({
           </div>
 
           {/* Current P&L Inputs */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs text-[rgba(255,255,255,0.5)] mb-1.5">
-                Today&apos;s P&L
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <label className="text-xs text-[rgba(255,255,255,0.5)]">
+                Current P&L
               </label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[rgba(255,255,255,0.5)]">
-                  $
-                </span>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  value={currentDailyPnL}
-                  onChange={handleDollarInput(setCurrentDailyPnL, true)}
-                  placeholder="0"
-                  className="w-full bg-black border border-[rgba(255,255,255,0.1)] rounded-md
-                             py-2.5 pl-7 pr-3 text-white font-mono text-sm
-                             focus:outline-none focus:border-[#00ff41] focus:ring-1 focus:ring-[#00ff41]
-                             transition-colors"
-                />
-              </div>
-              <p className="text-xs text-[rgba(255,255,255,0.4)] mt-1">
-                Negative if down
-              </p>
+              <button
+                onClick={() => {
+                  setCurrentDailyPnL(0);
+                  setCurrentTotalPnL(0);
+                }}
+                className="text-xs text-[rgba(255,255,255,0.4)] hover:text-[#00ff41] transition-colors"
+              >
+                Reset for new day
+              </button>
             </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs text-[rgba(255,255,255,0.5)] mb-1.5">
+                  Today&apos;s P&L
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[rgba(255,255,255,0.5)]">
+                    $
+                  </span>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    value={currentDailyPnL}
+                    onChange={handleDollarInput(setCurrentDailyPnL, true)}
+                    placeholder="0"
+                    className="w-full bg-black border border-[rgba(255,255,255,0.1)] rounded-md
+                               py-2.5 pl-7 pr-3 text-white font-mono text-sm
+                               focus:outline-none focus:border-[#00ff41] focus:ring-1 focus:ring-[#00ff41]
+                               transition-colors"
+                  />
+                </div>
+                <p className="text-xs text-[rgba(255,255,255,0.4)] mt-1">
+                  Negative if down
+                </p>
+              </div>
             
             <div>
               <label className="block text-xs text-[rgba(255,255,255,0.5)] mb-1.5">
@@ -335,6 +350,7 @@ export default function DrawdownVisualizer({
               <p className="text-xs text-[rgba(255,255,255,0.4)] mt-1">
                 Since account start
               </p>
+            </div>
             </div>
           </div>
 

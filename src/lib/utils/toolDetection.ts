@@ -73,7 +73,17 @@ const TOOL_TRIGGERS: Record<ToolType, RegExp[]> = {
     /full[- ]?size or micro/i,
     /NQ or MNQ/i,
     /ES or MES/i,
+    /CL or MCL/i,
+    /GC or MGC/i,
     /what(?:'s| is) your instrument/i,
+    // Tool chaining patterns - reference previous tool data
+    /based on (?:that|your) \$\d+.*(?:which contract|NQ or MNQ)/i,
+    /with that risk.*(?:full.?size or micro)/i,
+    // Common instrument phrases
+    /trade (?:the )?(?:E-?mini )?Nasdaq/i,
+    /trade (?:the )?(?:E-?mini )?S&P/i,
+    /trade (?:crude|oil)/i,
+    /trade gold/i,
   ],
   
   drawdown_visualizer: [
@@ -89,6 +99,8 @@ const TOOL_TRIGGERS: Record<ToolType, RegExp[]> = {
     /where (?:do you|will you) (?:place|put|set) your stop/i,
     /how (?:big|wide) (?:is )?(?:your |the )?stop/i,
     /stop loss (?:size|in ticks)/i,
+    // Tool chaining - reference contract choice
+    /now that you.*(?:contracts?|instrument).*(?:where|what).*stop/i,
   ],
   
   timeframe_helper: [
@@ -466,7 +478,7 @@ export function formatToolResponse(
       
     case 'contract_selector':
       return {
-        message: `${values.instrument} with ${values.contractQuantity} contracts (${values.stopLossTicks} tick stop)`,
+        message: `I'll trade ${values.contractQuantity} ${values.instrument} contract${(values.contractQuantity as number) !== 1 ? 's' : ''} with a ${values.stopLossTicks}-tick stop, risking $${(values.riskPerContract as number)?.toFixed(2) || 'N/A'} per contract ($${(values.totalRisk as number)?.toFixed(2) || 'N/A'} total).`,
         metadata: {
           source: 'tool',
           toolType,
@@ -476,7 +488,7 @@ export function formatToolResponse(
       
     case 'stop_loss_calculator':
       return {
-        message: `${values.stopLossTicks} tick stop loss ($${values.riskPerContract} per contract)`,
+        message: `I'll use a ${values.stopLossTicks}-tick stop${values.stopType === 'atr' ? ' (ATR-based)' : values.stopType === 'dollar' ? ' (dollar-based)' : ''}, risking $${(values.riskPerContract as number)?.toFixed(2) || 'N/A'} per contract.`,
         metadata: {
           source: 'tool',
           toolType,
@@ -485,8 +497,10 @@ export function formatToolResponse(
       };
       
     case 'drawdown_visualizer':
+      const pnl = values.currentPnL as number || 0;
+      const pnlDirection = pnl >= 0 ? 'up' : 'down';
       return {
-        message: `Daily limit: $${values.dailyLimit}, Total drawdown: $${values.drawdownLimit}`,
+        message: `My daily loss limit is $${values.dailyLimit} and max drawdown is $${values.drawdownLimit}. Currently ${pnlDirection} $${Math.abs(pnl).toFixed(0)} today${values.tradesRemainingDaily ? `, with ${values.tradesRemainingDaily} trades left before hitting my daily limit` : ''}.`,
         metadata: {
           source: 'tool',
           toolType,
@@ -495,8 +509,12 @@ export function formatToolResponse(
       };
       
     case 'timeframe_helper':
+      const days = values.days as string[] || [];
+      const daysStr = days.length === 5 && !days.includes('Sat') && !days.includes('Sun') 
+        ? 'weekdays' 
+        : days.length === 7 ? 'every day' : days.join(', ');
       return {
-        message: `Trading ${values.startTime} - ${values.endTime} ${values.timezone || 'ET'}`,
+        message: `I trade from ${values.startTime} to ${values.endTime} ${values.timezone || 'ET'} on ${daysStr}.`,
         metadata: {
           source: 'tool',
           toolType,

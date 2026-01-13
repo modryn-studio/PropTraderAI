@@ -18,15 +18,19 @@ import ContractSelector from './ContractSelector';
 import DrawdownVisualizer from './DrawdownVisualizer';
 import StopLossCalculator from './StopLossCalculator';
 import TimeframeHelper from './TimeframeHelper';
+import type { PrefilledData } from './types';
 
 interface ToolsManagerProps {
   activeTool: ActiveTool | null;
   onToolComplete: (toolType: ToolType, values: Record<string, unknown>) => void;
   onToolDismiss: (toolType: ToolType) => void;
+  /** Values from previously completed tools in this conversation - enables cross-tool data flow */
+  previousToolValues?: Partial<PrefilledData>;
 }
 
 /**
  * Manages which tool is currently active and handles completion/dismissal.
+ * Supports cross-tool data flow via previousToolValues prop.
  * 
  * Usage in ChatInterface:
  * ```tsx
@@ -34,6 +38,7 @@ interface ToolsManagerProps {
  *   activeTool={activeTool}
  *   onToolComplete={handleToolComplete}
  *   onToolDismiss={handleToolDismiss}
+ *   previousToolValues={completedToolValues}
  * />
  * ```
  */
@@ -41,9 +46,16 @@ export default function ToolsManager({
   activeTool,
   onToolComplete,
   onToolDismiss,
+  previousToolValues = {},
 }: ToolsManagerProps) {
   // Track collapsed state
   const [isCollapsed, setIsCollapsed] = useState(false);
+  
+  // Merge previous tool values into prefilled data for cross-tool data flow
+  const enrichedPrefilledData = activeTool ? {
+    ...activeTool.prefilledData,
+    ...previousToolValues,
+  } : {};
   
   const handleToggleCollapse = useCallback(() => {
     setIsCollapsed(prev => !prev);
@@ -72,7 +84,7 @@ export default function ToolsManager({
     case 'position_size_calculator':
       return (
         <PositionSizeCalculator
-          prefilledData={activeTool.prefilledData}
+          prefilledData={enrichedPrefilledData}
           onComplete={handleComplete}
           onDismiss={handleDismiss}
           isCollapsed={isCollapsed}
@@ -83,7 +95,8 @@ export default function ToolsManager({
     case 'contract_selector':
       return (
         <ContractSelector
-          prefilledData={activeTool.prefilledData}
+          prefilledData={enrichedPrefilledData}
+          riskAmount={previousToolValues.riskAmount}
           onComplete={handleComplete}
           onDismiss={handleDismiss}
           isCollapsed={isCollapsed}
@@ -94,7 +107,8 @@ export default function ToolsManager({
     case 'drawdown_visualizer':
       return (
         <DrawdownVisualizer
-          prefilledData={activeTool.prefilledData}
+          prefilledData={enrichedPrefilledData}
+          riskPerTrade={previousToolValues.riskAmount}
           onComplete={handleComplete}
           onDismiss={handleDismiss}
           isCollapsed={isCollapsed}
@@ -105,7 +119,8 @@ export default function ToolsManager({
     case 'stop_loss_calculator':
       return (
         <StopLossCalculator
-          prefilledData={activeTool.prefilledData}
+          prefilledData={enrichedPrefilledData}
+          instrument={previousToolValues.instrument}
           onComplete={handleComplete}
           onDismiss={handleDismiss}
           isCollapsed={isCollapsed}
@@ -116,7 +131,8 @@ export default function ToolsManager({
     case 'timeframe_helper':
       return (
         <TimeframeHelper
-          prefilledData={activeTool.prefilledData}
+          prefilledData={enrichedPrefilledData}
+          userTimezone={previousToolValues.timezone}
           onComplete={handleComplete}
           onDismiss={handleDismiss}
           isCollapsed={isCollapsed}

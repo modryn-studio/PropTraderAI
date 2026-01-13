@@ -45,9 +45,16 @@ export default function ContractSelector({
     prefilledData.stopLossTicks || 20
   );
   // Allow user to input risk amount if not prefilled
-  const [inputRiskAmount, setInputRiskAmount] = useState<number>(
-    propRiskAmount || prefilledData.riskAmount || 500
-  );
+  // Smart default: calculate from account size + risk % if available
+  const [inputRiskAmount, setInputRiskAmount] = useState<number>(() => {
+    if (propRiskAmount) return propRiskAmount;
+    if (prefilledData.riskAmount) return prefilledData.riskAmount;
+    // Try to calculate from account size and risk % if available
+    if (prefilledData.accountSize && prefilledData.riskPercent) {
+      return prefilledData.accountSize * (prefilledData.riskPercent / 100);
+    }
+    return 500; // Fallback only if no context
+  });
   
   // Use prop, then prefilled, then user input
   const effectiveRiskAmount = propRiskAmount ?? prefilledData.riskAmount ?? inputRiskAmount;
