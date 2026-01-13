@@ -35,7 +35,7 @@ export interface BaseToolProps {
 export type PositionSizeCalculatorProps = BaseToolProps;
 
 export interface ContractSelectorProps extends BaseToolProps {
-  riskAmount: number; // Required - calculated from position size
+  riskAmount?: number; // Optional - can be calculated from position size or prefilled
 }
 
 export interface StopLossCalculatorProps extends BaseToolProps {
@@ -191,4 +191,51 @@ export const VALIDATION_THRESHOLDS = {
     warningHigh: 100,  // > 100 contracts shows warning
     warningLow: 2,     // < 2 contracts shows warning
   },
+  
+  // ATR multiple warnings
+  atrMultiple: {
+    warning: 2.5,  // > 2.5x ATR shows warning (wide stop)
+    error: 3.5,    // > 3.5x ATR shows error
+  },
+  
+  // Daily limit usage warnings
+  dailyLimitUsage: {
+    warning: 70,   // > 70% used shows warning
+    danger: 90,    // > 90% used shows danger
+  },
 };
+
+// ============================================================================
+// MARKET SESSIONS
+// ============================================================================
+
+export const MARKET_SESSIONS = {
+  'Opening Range': {
+    startET: '09:30',
+    endET: '10:30',
+    description: 'High volume, volatility. Best for breakouts.',
+  },
+  'Morning Session': {
+    startET: '09:30',
+    endET: '12:00',
+    description: 'Most liquid period. Best for trending moves.',
+  },
+  'Afternoon Session': {
+    startET: '12:00',
+    endET: '16:00',
+    description: 'Slower action, reversals common.',
+  },
+  'Extended Hours': {
+    startET: '06:00',
+    endET: '09:30',
+    description: 'Pre-market. Lower liquidity.',
+  },
+};
+
+export const TIMEZONES = {
+  ET: { label: 'Eastern (ET)', offset: 0 },
+  CT: { label: 'Central (CT)', offset: -1 },
+  MT: { label: 'Mountain (MT)', offset: -2 },
+  PT: { label: 'Pacific (PT)', offset: -3 },
+};
+
