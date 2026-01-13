@@ -1,5 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
-import { getSystemPrompt } from './promptManager';
+import { getSystemPrompt, shouldInjectAnimationPrompt, STRATEGY_ANIMATION_PROMPT } from './promptManager';
 
 // Initialize Anthropic client
 // Note: This will be used server-side only
@@ -17,6 +17,8 @@ export function createAnthropicClient() {
 
 // Strategy parsing prompt template - Trader-focused Socratic questioning
 export const STRATEGY_PARSER_SYSTEM_PROMPT = `You are a senior trader helping someone articulate their trading strategy for PropTraderAI.
+
+CRITICAL RULE: You MUST ALWAYS respond with text content. NEVER respond with only tool calls. Every response must include a natural language message to the user, even when calling tools.
 
 Your personality:
 - Direct but not harsh (like an experienced mentor)
@@ -57,7 +59,9 @@ When you have ALL required information, call the confirm_strategy tool with:
 - A suggested strategy name (e.g., "20 EMA Pullback + RSI Filter")
 - A human-readable summary
 
-Keep responses concise. One question at a time. Never overwhelm.`;
+Keep responses concise. One question at a time. Never overwhelm.
+
+REMINDER: Always include a text response. Never reply with only tool calls.`;
 
 // Parsed rules structure
 export interface ParsedRules {
@@ -309,9 +313,20 @@ export async function parseStrategyStream(
 ) {
   const client = createAnthropicClient();
   
+  // CONTEXT LIMIT: Keep only recent conversation history to avoid context overflow
+  // Claude Sonnet 4 context: 200k tokens. Keep last 10 messages max (5 exchanges)
+  const maxHistoryLength = 10;
+  const recentHistory = conversationHistory.length > maxHistoryLength 
+    ? conversationHistory.slice(-maxHistoryLength)
+    : conversationHistory;
+  
+  if (conversationHistory.length > maxHistoryLength) {
+    console.log(`[Claude] Truncated history: ${conversationHistory.length} → ${recentHistory.length} messages`);
+  }
+  
   // Build messages array
   const messages: Anthropic.MessageParam[] = [
-    ...conversationHistory.map(msg => ({
+    ...recentHistory.map(msg => ({
       role: msg.role as 'user' | 'assistant',
       content: msg.content,
     })),
@@ -319,7 +334,7 @@ export async function parseStrategyStream(
   ];
   
   // Build conversation for prompt manager analysis
-  const conversationForPrompt = conversationHistory.map(msg => ({
+  const conversationForPrompt = recentHistory.map(msg => ({
     role: msg.role,
     content: msg.content,
   }));
@@ -328,13 +343,244 @@ export async function parseStrategyStream(
   // Get dynamic system prompt (conditionally includes animation instructions)
   const systemPrompt = getSystemPrompt(STRATEGY_PARSER_SYSTEM_PROMPT, conversationForPrompt);
   
-  const stream = await client.messages.stream({
-    model: 'claude-sonnet-4-5-20250929',
-    max_tokens: 2048,
-    system: systemPrompt,
-    tools: STRATEGY_TOOLS,
-    messages,
-  });
+  // Log prompt size for debugging
+  const promptSize = systemPrompt.length + messages.reduce((acc, m) => acc + m.content.length, 0);
+  if (promptSize > 50000) {
+    console.warn(`[Claude] Large prompt: ${promptSize} characters (may cause timeout)`);
+  }
+  
+  // Add error handling and timeout protection
+  try {
+    const stream = await client.messages.stream({
+      model: 'claude-sonnet-4-5-20250929',
+      max_tokens: 4096, // Increased from 2048 to allow longer responses
+      system: systemPrompt,
+      tools: STRATEGY_TOOLS,
+      messages,
+    });
 
-  return stream;
+    return stream;
+  } catch (error: any) {
+    console.error('[Claude API] Streaming error:', error.message);
+    throw new Error(`Failed to stream from Claude: ${error.message}`);
+  }
+}
+
+// ============================================================================
+// TWO-PASS SYSTEM: Separates conversation from rule extraction
+// ============================================================================
+
+// System prompt for Pass 1: Pure conversation (no rule recording concerns)
+const CONVERSATION_ONLY_PROMPT = `You are a senior trader helping someone articulate their trading strategy for PropTraderAI.
+
+Your personality:
+- Direct but not harsh (like an experienced mentor)
+- Use real trader terminology: "EMA cross", "pullback", "structure-based stop"
+- Give realistic examples: "9 EMA for scalpers, 20 EMA for swing traders"
+- Risk-first mindset: always ask about stop loss before profit targets
+
+Your job:
+1. Listen to their strategy description
+2. Ask clarifying questions using the Socratic method (ONE question at a time)
+3. Keep the conversation flowing naturally
+
+What you need to understand before a strategy is complete:
+- Entry conditions (indicators, price action, patterns)
+- Stop loss (in ticks, dollars, or structure-based)
+- Take profit / risk-reward ratio
+- Trading hours (session filters)
+- Position sizing (risk per trade)
+- Instrument (ES, NQ, MES, MNQ)
+
+CRITICAL: Present clarifying questions as MULTIPLE CHOICE OPTIONS whenever possible.
+
+Format your options as a list with each on its own line:
+- Start with a short intro question
+- List options with A), B), C), D) on separate lines
+- End with "Which matches your approach?" or similar
+
+Example:
+"What time period defines your opening range?
+
+- **A)** First 5 minutes (9:30-9:35 ET) - aggressive, more setups
+- **B)** First 15 minutes (9:30-9:45 ET) - common standard
+- **C)** First 30 minutes (9:30-10:00 ET) - cleaner, fewer false breaks
+- **D)** First 60 minutes (9:30-10:30 ET) - swing traders
+
+Which fits your approach?"
+
+After user selects an option, ALWAYS confirm what they chose:
+- Example: "Got it, 15-minute opening range. Now, what's your entry trigger..."
+
+Keep responses concise. One question at a time. Never overwhelm.`;
+
+// System prompt for Pass 2: Rule extraction only
+const RULE_EXTRACTION_PROMPT = `You are a trading strategy parser. Your ONLY job is to extract confirmed rules from the conversation.
+
+Analyze the user's latest message and the assistant's response. Extract ANY rules that are now confirmed.
+
+Rules to extract:
+- Instrument (ES, NQ, MES, MNQ)
+- Pattern/Strategy type (opening range breakout, pullback, etc.)
+- Entry trigger/criteria
+- Stop loss (method and value)
+- Take profit / target (method and value)
+- Position sizing (risk per trade, fixed contracts)
+- Time filters (trading sessions, hours)
+- Direction bias (long only, short only, both)
+
+CRITICAL: Extract rules that the USER explicitly stated, even if the assistant asked follow-up questions.
+
+Examples:
+- User: "I want to trade NQ opening range breakout" → Extract: instrument=NQ, strategy=Opening Range Breakout
+- User: "Stop at 20 ticks" → Extract: stop_loss=20 ticks
+- User: "Risk 1% per trade" → Extract: position_sizing=1% risk per trade
+
+Do NOT:
+- Extract from hypothetical examples the assistant gave
+- Re-extract rules already confirmed in earlier exchanges
+- Guess at values not stated by the user
+
+If the strategy appears COMPLETE (has entry, stop, target, sizing, instrument), call confirm_strategy.
+
+If no new rules are confirmed in this exchange, call NO tools.`;
+
+/**
+ * PASS 1: Conversation Only (Streaming, No Tools)
+ * Returns a stream of conversational text with Socratic questions
+ */
+export async function conversationPassStream(
+  userMessage: string,
+  conversationHistory: ConversationMessage[]
+) {
+  const client = createAnthropicClient();
+  
+  // Keep recent history to avoid context overflow
+  const maxHistoryLength = 10;
+  const recentHistory = conversationHistory.length > maxHistoryLength 
+    ? conversationHistory.slice(-maxHistoryLength)
+    : conversationHistory;
+  
+  // Build messages array
+  const messages: Anthropic.MessageParam[] = [
+    ...recentHistory.map(msg => ({
+      role: msg.role as 'user' | 'assistant',
+      content: msg.content,
+    })),
+    { role: 'user' as const, content: userMessage },
+  ];
+  
+  // Build conversation for prompt manager analysis (for animation injection only)
+  const conversationForPrompt = recentHistory.map(msg => ({
+    role: msg.role,
+    content: msg.content,
+  }));
+  conversationForPrompt.push({ role: 'user', content: userMessage });
+  
+  // For Pass 1: Use base prompt + animation ONLY (no tool instructions)
+  // getSystemPrompt() would inject tool usage reminders which don't apply here
+  let systemPrompt = CONVERSATION_ONLY_PROMPT;
+  
+  // Only inject animation instructions after enough clarity (4+ messages)
+  if (shouldInjectAnimationPrompt(conversationForPrompt)) {
+    systemPrompt = `${systemPrompt}\n\n${STRATEGY_ANIMATION_PROMPT}`;
+  }
+  
+  try {
+    const stream = await client.messages.stream({
+      model: 'claude-sonnet-4-5-20250929',
+      max_tokens: 1024, // Shorter for conversational responses
+      system: systemPrompt,
+      // NO TOOLS - pure conversation
+      messages,
+    });
+
+    return stream;
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error('[Claude API] Conversation pass error:', errorMessage);
+    throw new Error(`Failed to stream conversation: ${errorMessage}`);
+  }
+}
+
+/**
+ * PASS 2: Rule Extraction Only (Non-streaming, Tools Only)
+ * Analyzes the exchange and extracts confirmed rules
+ */
+export async function ruleExtractionPass(
+  userMessage: string,
+  assistantResponse: string,
+  conversationHistory: ConversationMessage[]
+): Promise<{
+  rules: Array<{ category: string; label: string; value: string }>;
+  isComplete: boolean;
+  strategyData?: {
+    strategy_name: string;
+    summary: string;
+    parsed_rules: ParsedRules;
+    instrument: string;
+  };
+}> {
+  const client = createAnthropicClient();
+  
+  // Only include recent relevant context
+  const maxHistoryLength = 6;
+  const recentHistory = conversationHistory.length > maxHistoryLength 
+    ? conversationHistory.slice(-maxHistoryLength)
+    : conversationHistory;
+  
+  // Build messages - include history + this exchange
+  const messages: Anthropic.MessageParam[] = [
+    ...recentHistory.map(msg => ({
+      role: msg.role as 'user' | 'assistant',
+      content: msg.content,
+    })),
+    { role: 'user' as const, content: userMessage },
+    { role: 'assistant' as const, content: assistantResponse },
+    { role: 'user' as const, content: 'Please extract any confirmed rules from this exchange.' },
+  ];
+  
+  try {
+    const response = await client.messages.create({
+      model: 'claude-sonnet-4-5-20250929',
+      max_tokens: 1024,
+      system: RULE_EXTRACTION_PROMPT,
+      tools: STRATEGY_TOOLS,
+      messages,
+    });
+    
+    const extractedRules: Array<{ category: string; label: string; value: string }> = [];
+    let isComplete = false;
+    let strategyData: {
+      strategy_name: string;
+      summary: string;
+      parsed_rules: ParsedRules;
+      instrument: string;
+    } | undefined;
+    
+    // Process all tool calls
+    for (const block of response.content) {
+      if (block.type === 'tool_use') {
+        if (block.name === 'update_rule') {
+          const input = block.input as { category: string; label: string; value: string };
+          if (input.category && input.label && input.value) {
+            extractedRules.push({
+              category: input.category,
+              label: input.label,
+              value: input.value,
+            });
+          }
+        } else if (block.name === 'confirm_strategy') {
+          isComplete = true;
+          strategyData = block.input as typeof strategyData;
+        }
+      }
+    }
+    
+    return { rules: extractedRules, isComplete, strategyData };
+  } catch (error: any) {
+    console.error('[Claude API] Rule extraction error:', error.message);
+    // Don't fail the whole request - just return no rules
+    return { rules: [], isComplete: false };
+  }
 }

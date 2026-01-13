@@ -80,6 +80,9 @@ export type BehavioralEventType =
   | 'response_validation_failed'
   | 'professional_standard_enforced'
   
+  // API error events
+  | 'claude_api_error'
+  
   // Rule streaming events (Claude update_rule tool)
   | 'rule_updated_via_tool';
 
@@ -143,6 +146,49 @@ export async function logBehavioralEvent(
   try {
     const supabase = createClient();
     
+    const { error } = await supabase.from('behavioral_data').insert({
+      user_id: userId,
+      event_type: eventType,
+      event_data: eventData,
+      challenge_status: challengeStatus || null,
+      session_context: sessionContext || null,
+      timestamp: new Date().toISOString(),
+    });
+
+    if (error) {
+      console.error('[Behavioral Logger] Failed to log event:', error);
+      return { success: false, error: error.message };
+    }
+
+    return { success: true };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Unknown error';
+    console.error('[Behavioral Logger] Exception:', message);
+    return { success: false, error: message };
+  }
+}
+
+/**
+ * Server-side version of logBehavioralEvent
+ * 
+ * Use this in API routes where you already have an authenticated Supabase client.
+ * Pass in the server Supabase client to avoid RLS policy issues.
+ * 
+ * @example
+ * // In an API route
+ * const supabase = await createClient(); // server client
+ * await logBehavioralEventServer(supabase, userId, 'trade_executed', { ... });
+ */
+export async function logBehavioralEventServer(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabase: any, // Accept any Supabase client (server or browser)
+  userId: string,
+  eventType: BehavioralEventType,
+  eventData: BehavioralEventData,
+  challengeStatus?: ChallengeStatus,
+  sessionContext?: SessionContext
+): Promise<{ success: boolean; error?: string }> {
+  try {
     const { error } = await supabase.from('behavioral_data').insert({
       user_id: userId,
       event_type: eventType,

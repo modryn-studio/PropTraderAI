@@ -1,4 +1,8 @@
-# Phase 1: Strategy Validation Layer - Complete Implementation
+# Strategy Validation Layer - Documentation Hub
+
+> **Note:** This folder contains legacy validation documentation. For current Strategy Builder documentation (chat system, summary panel, animations), see **[00_INDEX.md](00_INDEX.md)**.
+
+---
 
 ## 🎯 What We Built
 
@@ -9,6 +13,25 @@ A comprehensive validation system that ensures **every trading strategy meets pr
 3. **Profit Target** - Gain realization point (1.5R - 3R standard)
 4. **Position Sizing** - Formula-based (1-2% risk standard)
 5. **Instrument** - Exact contracts (ES, NQ, MES, etc.)
+
+---
+
+## 📚 Current Documentation
+
+**For the latest Strategy Builder documentation, see:**
+
+### [→ 00_INDEX.md - Master Documentation Index](00_INDEX.md)
+
+**Quick Links:**
+- [Chat System (Two-Pass Architecture)](01_Chat_System/README_TwoPass_Architecture.md)
+- [Rule Streaming V3](01_Chat_System/README_RuleStreaming_V3.md)
+- [Summary Panel](02_Summary_Panel/README_StrategySummaryPanel.md)
+- [Animation System](03_Animations/README_Animation_System.md)
+- [Parameter-Based Animations](03_Animations/README_Parameter_Based.md)
+
+---
+
+## Legacy Validation Content (Below)
 
 ## 📦 Deliverables
 

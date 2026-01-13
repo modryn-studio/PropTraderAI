@@ -150,8 +150,10 @@ function MessageBlock({
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(message.content);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
+  const [isCopied, setIsCopied] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
   // Reserved for scroll-to-latest behavior
   void _isLatest;
@@ -167,7 +169,26 @@ function MessageBlock({
 
   const handleCopy = () => {
     navigator.clipboard.writeText(message.content);
+    setIsCopied(true);
     setShowMobileMenu(false);
+    // Reset copied state after 2 seconds
+    setTimeout(() => setIsCopied(false), 2000);
+  };
+
+  const handleMouseLeave = () => {
+    // Add delay before hiding icons
+    hoverTimeoutRef.current = setTimeout(() => {
+      setIsHovered(false);
+    }, 300);
+  };
+
+  const handleMouseEnter = () => {
+    // Clear any pending timeout
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current);
+      hoverTimeoutRef.current = null;
+    }
+    setIsHovered(true);
   };
 
   const handleEdit = () => {
@@ -241,8 +262,8 @@ function MessageBlock({
       animate={{ opacity: isOptimistic ? 0.7 : 1, y: 0 }}
       transition={{ duration: 0.2 }}
       className="mb-8 relative"
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
       onTouchMove={handleTouchEnd}
@@ -300,14 +321,18 @@ function MessageBlock({
             ) : (
               // View mode
               <>
-                <div className="inline-flex flex-col items-end gap-1">
+                <div className="inline-flex flex-col items-end gap-1 relative">
                   <div className="text-white bg-[rgba(0,255,209,0.1)] px-4 py-3 rounded-lg border border-[rgba(0,255,209,0.2)]">
                     {message.content}
                   </div>
                   
-                  {/* Desktop: Hover controls */}
+                  {/* Desktop: Hover controls - positioned absolutely to prevent layout shift */}
                   {isHovered && !isDisabled && (
-                    <div className="hidden sm:flex items-center gap-1 text-xs">
+                    <div 
+                      className="hidden sm:flex items-center gap-1 text-xs absolute top-full right-0 pt-1"
+                      onMouseEnter={handleMouseEnter}
+                      onMouseLeave={handleMouseLeave}
+                    >
                     {message.timestamp && (
                       <span 
                         className="text-[rgba(255,255,255,0.5)] mr-2 cursor-default relative group/time"
@@ -333,11 +358,17 @@ function MessageBlock({
                       onClick={handleCopy}
                       className="group/btn p-1.5 text-[rgba(255,255,255,0.5)] hover:text-[#00FFD1] transition-colors relative"
                     >
-                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                      </svg>
+                      {isCopied ? (
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                      ) : (
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                        </svg>
+                      )}
                       <span className="absolute top-full right-0 mt-1 px-2 py-1 bg-[#1a1a1a] border border-[rgba(255,255,255,0.2)] rounded text-xs text-white whitespace-nowrap opacity-0 group-hover/btn:opacity-100 transition-opacity pointer-events-none shadow-lg z-10">
-                        copy
+                        {isCopied ? 'copied!' : 'copy'}
                       </span>
                     </button>
                   </div>

@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
-import { parseStrategyStream, ConversationMessage } from '@/lib/claude/client';
-import { logBehavioralEvent } from '@/lib/behavioral/logger';
+import { conversationPassStream, ruleExtractionPass, ConversationMessage } from '@/lib/claude/client';
+import { logBehavioralEventServer } from '@/lib/behavioral/logger';
 import { getIntelligenceMetadata } from '@/lib/claude/promptManager';
 import { 
   TradingIntelligenceSkill, 
@@ -94,7 +94,8 @@ export async function POST(request: Request) {
     const conversationHistory: ConversationMessage[] = conversation.messages || [];
 
     // Log behavioral event: message sent
-    await logBehavioralEvent(
+    await logBehavioralEventServer(
+      supabase,
       user.id,
       'strategy_chat_message_sent',
       {
@@ -109,21 +110,60 @@ export async function POST(request: Request) {
       }
     );
 
-    // Get the streaming response from Claude
-    const stream = await parseStrategyStream(message, conversationHistory);
+    // ========================================================================
+    // TWO-PASS SYSTEM
+    // Pass 1: Stream conversational response (no tools)
+    // Pass 2: Extract rules in background (tools only, after Pass 1 completes)
+    // ========================================================================
+
+    // Get the streaming response from Claude (Pass 1: Conversation only)
+    let stream;
+    try {
+      stream = await conversationPassStream(message, conversationHistory);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      console.error('[API] Failed to start Claude stream:', error);
+      
+      // Log failure event
+      await logBehavioralEventServer(
+        supabase,
+        user.id,
+        'claude_api_error',
+        {
+          conversationId: conversation!.id,
+          error: errorMessage,
+          messageLength: message.length,
+          historyLength: conversationHistory.length,
+        }
+      );
+      
+      return new Response(
+        JSON.stringify({ 
+          error: 'Failed to process message. Please try again.',
+          details: errorMessage 
+        }),
+        { 
+          status: 500, 
+          headers: { 'Content-Type': 'application/json' } 
+        }
+      );
+    }
 
     // Create a readable stream for SSE
     const encoder = new TextEncoder();
     const readableStream = new ReadableStream({
       async start(controller) {
         let fullText = '';
-        let currentToolName: string | null = null;
-        let currentToolInput = '';
         let isComplete = false;
 
         try {
+          // ================================================================
+          // PASS 1: Stream conversational response (NO TOOLS)
+          // This guarantees text output with Socratic questions
+          // ================================================================
+          
           for await (const chunk of stream) {
-            // Handle text deltas
+            // Handle text deltas only (no tools in Pass 1)
             if (chunk.type === 'content_block_delta') {
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
               if ((chunk.delta as any).type === 'text_delta') {
@@ -131,89 +171,69 @@ export async function POST(request: Request) {
                 const text = (chunk.delta as any).text;
                 fullText += text;
                 
-                // Send text chunk to client
+                // Send text chunk to client immediately
                 controller.enqueue(
                   encoder.encode(`data: ${JSON.stringify({ type: 'text', content: text })}\n\n`)
                 );
               }
-              
-              // Handle tool input JSON streaming
-              if (chunk.delta.type === 'input_json_delta') {
-                currentToolInput += chunk.delta.partial_json;
-              }
-            }
-            
-            // Handle tool use start - detect which tool is being called
-            if (chunk.type === 'content_block_start') {
-              if (chunk.content_block.type === 'tool_use') {
-                currentToolName = chunk.content_block.name;
-                currentToolInput = ''; // Reset for new tool
-                
-                if (currentToolName === 'confirm_strategy') {
-                  isComplete = true;
-                }
-              }
-            }
-            
-            // Handle tool use end - parse and emit completed tool calls
-            if (chunk.type === 'content_block_stop') {
-              if (currentToolName && currentToolInput) {
-                try {
-                  const parsedInput = JSON.parse(currentToolInput);
-                  
-                  // Send update_rule to frontend immediately
-                  if (currentToolName === 'update_rule') {
-                    // Validate required fields exist
-                    if (parsedInput.category && parsedInput.label && parsedInput.value) {
-                      controller.enqueue(
-                        encoder.encode(`data: ${JSON.stringify({
-                          type: 'rule_update',
-                          rule: {
-                            category: parsedInput.category,
-                            label: parsedInput.label,
-                            value: parsedInput.value
-                          }
-                        })}\n\n`)
-                      );
-                    } else {
-                      console.warn('update_rule missing required fields:', parsedInput);
-                    }
-                  }
-                } catch (e) {
-                  console.error('Failed to parse tool input:', e);
-                  // Don't crash - just skip this tool call
-                }
-              }
-              // Don't reset currentToolName/Input here - we need them for final message processing
             }
           }
-
-          // Wait for final message
-          const finalMessage = await stream.finalMessage();
           
-          // Parse final tool input if present (for confirm_strategy)
+          // Wait for Pass 1 to fully complete
+          await stream.finalMessage();
+          
+          console.log(`[Pass 1] Conversation complete. Length: ${fullText.length} chars`);
+          
+          // ================================================================
+          // PASS 2: Extract rules in background (TOOLS ONLY)
+          // Runs after text is fully displayed to user
+          // ================================================================
+          
+          const extractionResult = await ruleExtractionPass(
+            message,
+            fullText,
+            conversationHistory
+          );
+          
+          console.log(`[Pass 2] Extracted ${extractionResult.rules.length} rules. Complete: ${extractionResult.isComplete}`);
+          
+          // Send extracted rules to frontend (slight delay from text, but still fast)
+          for (const rule of extractionResult.rules) {
+            controller.enqueue(
+              encoder.encode(`data: ${JSON.stringify({
+                type: 'rule_update',
+                rule: {
+                  category: rule.category,
+                  label: rule.label,
+                  value: rule.value
+                }
+              })}\n\n`)
+            );
+            
+            // Log each rule extraction
+            await logBehavioralEventServer(
+              supabase,
+              user.id,
+              'rule_updated_via_tool',
+              {
+                conversationId: conversation!.id,
+                category: rule.category,
+                label: rule.label,
+                value: rule.value,
+                wasOverwrite: false, // Could track this by comparing to history
+              }
+            );
+          }
+          
+          // Check if strategy is complete
           let parsedToolInput = null;
-          
-          // Check if strategy is complete via confirm_strategy tool
-          const toolUse = finalMessage.content.find(
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            (block: any) => block.type === 'tool_use' && block.name === 'confirm_strategy'
-          );
-
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          if (toolUse && (toolUse as any).input) {
+          if (extractionResult.isComplete && extractionResult.strategyData) {
             isComplete = true;
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            parsedToolInput = (toolUse as any).input;
+            parsedToolInput = extractionResult.strategyData;
           }
 
-          // Get final text content
-          const textBlock = finalMessage.content.find(
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            (block: any) => block.type === 'text'
-          );
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const finalText = (textBlock as any)?.text || fullText;
+          // Use fullText as the final text
+          const finalText = fullText;
 
           // Save conversation to database
           const now = new Date().toISOString();
@@ -253,7 +273,8 @@ export async function POST(request: Request) {
           );
           
           // Log Trading Intelligence usage
-          await logBehavioralEvent(
+          await logBehavioralEventServer(
+            supabase,
             user.id,
             'trading_intelligence_used',
             {
@@ -270,7 +291,8 @@ export async function POST(request: Request) {
           // Check for and log critical errors
           const criticalErrors = detectCriticalErrors(extractedRules);
           if (criticalErrors.length > 0) {
-            await logBehavioralEvent(
+            await logBehavioralEventServer(
+              supabase,
               user.id,
               'critical_error_detected',
               {
@@ -297,7 +319,8 @@ export async function POST(request: Request) {
           );
           
           if (!responseValidation.valid) {
-            await logBehavioralEvent(
+            await logBehavioralEventServer(
+              supabase,
               user.id,
               'response_validation_failed',
               {
@@ -318,7 +341,8 @@ export async function POST(request: Request) {
             else if (/size|contract|risk/i.test(finalText)) questionType = 'position_sizing';
             else if (/es|nq|mns|mes/i.test(finalText)) questionType = 'instrument';
 
-            await logBehavioralEvent(
+            await logBehavioralEventServer(
+              supabase,
               user.id,
               'strategy_clarification_requested',
               {
@@ -330,7 +354,8 @@ export async function POST(request: Request) {
           }
 
           if (isComplete && parsedToolInput) {
-            await logBehavioralEvent(
+            await logBehavioralEventServer(
+              supabase,
               user.id,
               'strategy_conversation_completed',
               {

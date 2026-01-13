@@ -409,6 +409,19 @@ export default function ChatInterface({
     // Clear animation when branching conversation
     setAnimationConfig(null);
     
+    // CRITICAL: Reset accumulated rules to only include rules from messages BEFORE the edit
+    // We need to re-extract rules from the remaining messages
+    const remainingUserMessages = updatedMessages
+      .filter(m => m.role === 'user')
+      .map(m => m.content);
+    
+    // Start fresh and re-accumulate from remaining messages only
+    let newAccumulatedRules: StrategyRule[] = [];
+    for (const content of remainingUserMessages) {
+      newAccumulatedRules = extractFromMessage(content, 'user', newAccumulatedRules);
+    }
+    setAccumulatedRules(newAccumulatedRules);
+    
     // Update the conversation text to match (remove everything after this point)
     const conversationUpToEdit = updatedMessages
       .map(msg => `${msg.role === 'user' ? 'User' : 'Assistant'}: ${msg.content}`)

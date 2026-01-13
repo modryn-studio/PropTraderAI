@@ -6,6 +6,9 @@ import {
 } from '@/lib/trading';
 import type { StrategyRule } from '@/lib/utils/ruleExtractor';
 
+// Re-export for use in client.ts two-pass system
+export { STRATEGY_ANIMATION_PROMPT };
+
 /**
  * Prompt Manager for Dynamic Claude Prompts
  * 
@@ -198,13 +201,18 @@ export function getSystemPrompt(
   // Use provided rules or empty array
   const strategyRules = rules || [];
   
-  // PHASE 1: Inject Trading Intelligence (enhanced contextual prompt)
-  // This replaces our old validation context with professional trading knowledge
-  let prompt = TradingIntelligenceSkill.generateSystemPrompt(
-    strategyRules,
-    lastUserMessage,
-    basePrompt
-  );
+  // START WITH BASE PROMPT (don't inject huge intelligence on first message)
+  let prompt = basePrompt;
+  
+  // PHASE 1: Only inject Trading Intelligence after 2+ messages (conversation established)
+  // This prevents massive prompts on first interaction
+  if (messages.length >= 2 || (rules && rules.length > 0)) {
+    prompt = TradingIntelligenceSkill.generateSystemPrompt(
+      strategyRules,
+      lastUserMessage,
+      basePrompt
+    );
+  }
   
   // PHASE 2: Inject legacy validation context if no rules provided
   // (backwards compatibility - will be phased out once rules are passed)
