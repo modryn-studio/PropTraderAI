@@ -246,8 +246,8 @@ export default function ChatInput({
                 disabled
                   ? 'text-gray-700 hover:text-gray-900 bg-gray-200 hover:bg-gray-300 cursor-pointer'
                   : !value.trim()
-                  ? 'text-[rgba(0,0,0,0.3)] cursor-not-allowed'
-                  : 'text-[#00FFD1] hover:bg-[rgba(0,255,209,0.1)]'
+                  ? 'text-gray-400 cursor-not-allowed'
+                  : 'text-gray-900 hover:text-black hover:bg-gray-100'
               }`}
               aria-label={disabled ? 'Stop generating' : 'Send message'}
             >

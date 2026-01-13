@@ -423,11 +423,23 @@ export const CALCULATIONS = {
     return Math.floor(riskDollars / riskPerContract);
   },
   
+  /**
+   * Calculate risk:reward ratio from stop and target distances.
+   * Returns in "risk:reward" notation (e.g., "1:2" means reward is 2x the risk).
+   * 
+   * Note: This matches industry standard notation from research doc:
+   * - "1:2" = risk 1 unit, reward 2 units
+   * - "1:1.5" = risk 1 unit, reward 1.5 units
+   */
   riskRewardRatio: (stopPoints: number, targetPoints: number): string => {
     const ratio = targetPoints / stopPoints;
     return `1:${ratio.toFixed(1)}`;
   },
   
+  /**
+   * Calculate breakeven win rate for a given risk:reward ratio.
+   * @param riskReward - The reward portion of a 1:X ratio (e.g., 2 for 1:2)
+   */
   breakEvenWinRate: (riskReward: number): number => {
     return 1 / (1 + riskReward);
   },

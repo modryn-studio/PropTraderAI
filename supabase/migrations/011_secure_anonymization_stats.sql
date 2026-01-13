@@ -30,12 +30,9 @@ LANGUAGE plpgsql
 SECURITY DEFINER -- Runs with creator's permissions
 AS $$
 BEGIN
-  -- Check if caller has service_role or is an admin
-  -- Since we can't easily check for service_role, we'll just ensure they're authenticated
-  IF auth.uid() IS NULL THEN
-    RAISE EXCEPTION 'Unauthorized: Authentication required';
-  END IF;
-
+  -- No auth check needed - function is only granted to authenticated and service_role
+  -- SQL Editor runs as service_role (auth.uid() = NULL), which is exactly who should access this
+  
   RETURN QUERY
   SELECT 
     'behavioral_data'::TEXT as table_name,
@@ -59,7 +56,19 @@ BEGIN
     'challenges'::TEXT,
     COUNT(*) FILTER (WHERE user_id IS NOT NULL),
     COUNT(*) FILTER (WHERE user_id IS NULL)
-  FROM public.challenges;
+  FROM public.challenges
+  UNION ALL
+  SELECT 
+    'feedback'::TEXT,
+    COUNT(*) FILTER (WHERE user_id IS NOT NULL),
+    COUNT(*) FILTER (WHERE user_id IS NULL)
+  FROM public.feedback
+  UNION ALL
+  SELECT 
+    'conversations'::TEXT,
+    COUNT(*) FILTER (WHERE user_id IS NOT NULL),
+    COUNT(*) FILTER (WHERE user_id IS NULL)
+  FROM public.strategy_conversations;
 END;
 $$;
 

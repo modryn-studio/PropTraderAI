@@ -118,13 +118,28 @@ export function hasCompleteAnimationConfig(buffer: string): boolean {
  * Returns null if config not yet complete
  * 
  * This enables mid-stream animation extraction for magical UX
+ * IMPORTANT: Hides partial animation markers during streaming to prevent visual flashing
  */
 export function tryExtractFromStream(buffer: string): {
   config: AnimationConfig | null;
   cleanText: string;
   extractedSuccessfully: boolean;
 } {
+  // If animation markers are incomplete, hide them from display
   if (!hasCompleteAnimationConfig(buffer)) {
+    // Check if we have a partial animation block being streamed
+    const startIndex = buffer.indexOf(START_MARKER);
+    if (startIndex !== -1) {
+      // Hide everything from [ANIMATION_START] onwards (incomplete block)
+      const cleanText = buffer.substring(0, startIndex).trimEnd();
+      return { 
+        config: null, 
+        cleanText,
+        extractedSuccessfully: false 
+      };
+    }
+    
+    // No animation markers at all - return full buffer
     return { 
       config: null, 
       cleanText: buffer,
@@ -132,6 +147,7 @@ export function tryExtractFromStream(buffer: string): {
     };
   }
 
+  // Complete animation block - extract and clean
   const config = extractAnimationConfig(buffer);
   const cleanText = removeAnimationConfig(buffer);
 

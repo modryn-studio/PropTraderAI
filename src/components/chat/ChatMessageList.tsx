@@ -27,10 +27,38 @@ export default function ChatMessageList({
 }: ChatMessageListProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const isUserScrollingRef = useRef(false);
 
-  // Auto-scroll to bottom when new messages arrive
+  // Check if user is near bottom of scroll container
+  const isNearBottom = () => {
+    if (!containerRef.current) return true;
+    const { scrollTop, scrollHeight, clientHeight } = containerRef.current;
+    const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
+    return distanceFromBottom < 100; // Within 100px of bottom
+  };
+
+  // Track when user manually scrolls
   useEffect(() => {
-    if (bottomRef.current) {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const handleScroll = () => {
+      // If user scrolls away from bottom, mark as manually scrolling
+      if (!isNearBottom()) {
+        isUserScrollingRef.current = true;
+      } else {
+        // If they scroll back to bottom, re-enable auto-scroll
+        isUserScrollingRef.current = false;
+      }
+    };
+
+    container.addEventListener('scroll', handleScroll);
+    return () => container.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  // Auto-scroll to bottom ONLY if user hasn't manually scrolled up
+  useEffect(() => {
+    if (bottomRef.current && !isUserScrollingRef.current) {
       bottomRef.current.scrollIntoView({ behavior: 'smooth' });
     }
   }, [messages, pendingMessage, isLoading]);

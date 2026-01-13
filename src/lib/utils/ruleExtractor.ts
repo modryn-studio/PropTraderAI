@@ -39,9 +39,37 @@ export interface StrategyRule {
 // ============================================================================
 
 /**
+ * Normalize label for consistent matching
+ * - Lowercase
+ * - Remove punctuation (Stop-Loss → stop loss)
+ * - Collapse whitespace
+ */
+function normalizeLabel(label: string): string {
+  return label
+    .toLowerCase()
+    .replace(/[-_]/g, ' ')  // Hyphens/underscores to spaces
+    .replace(/[^a-z0-9\s]/g, '')  // Remove other punctuation
+    .replace(/\s+/g, ' ')  // Collapse whitespace
+    .trim();
+}
+
+/**
+ * Check if a label represents a profit target (handles various notations)
+ */
+function isTargetLabel(label: string): boolean {
+  const normalized = normalizeLabel(label);
+  return normalized.includes('target') || 
+         normalized.includes('profit') || 
+         normalized.includes('r r') ||  // "R:R" after normalization
+         normalized.includes('risk reward') ||
+         normalized.includes('reward');
+}
+
+/**
  * Accumulate rules intelligently:
  * - Merge new rules with existing
- * - Update existing rules (same category + label) with new value
+ * - Update existing rules (same category + normalized label) with new value
+ * - Special handling for target/profit rules (treat all variants as same)
  * - No duplicates
  */
 export function accumulateRules(
@@ -51,17 +79,20 @@ export function accumulateRules(
   if (newRules.length === 0) return existingRules;
   if (existingRules.length === 0) return newRules;
   
-  // Create map of existing rules by category:label
+  // Create map of existing rules by normalized category:label
   const ruleMap = new Map<string, StrategyRule>();
   
   existingRules.forEach(rule => {
-    const key = `${rule.category}:${rule.label}`.toLowerCase();
+    // Special case: all target-related labels map to same key
+    const labelKey = isTargetLabel(rule.label) ? 'target' : normalizeLabel(rule.label);
+    const key = `${rule.category}:${labelKey}`;
     ruleMap.set(key, rule);
   });
   
   // Add/update with new rules (overwrites if exists = update behavior)
   newRules.forEach(rule => {
-    const key = `${rule.category}:${rule.label}`.toLowerCase();
+    const labelKey = isTargetLabel(rule.label) ? 'target' : normalizeLabel(rule.label);
+    const key = `${rule.category}:${labelKey}`;
     ruleMap.set(key, rule);
   });
   

@@ -310,17 +310,8 @@ export default function ChatInterface({
                   // Use existing accumulation logic
                   setAccumulatedRules(prev => accumulateRules(prev, [newRule]));
                   
-                  // Log behavioral event for rule updates
-                  logBehavioralEvent(
-                    userId,
-                    'rule_updated_via_tool',
-                    {
-                      conversationId,
-                      category: newRule.category,
-                      label: newRule.label,
-                      wasOverwrite
-                    }
-                  ).catch(console.error);
+                  // Note: Backend already logs 'rule_updated_via_tool' when emitting rule_update
+                  // No need to log again here (would create duplicates)
                 }
               } else if (data.type === 'complete') {
                 // Update conversation ID if new

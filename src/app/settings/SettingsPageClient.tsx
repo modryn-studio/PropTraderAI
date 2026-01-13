@@ -258,20 +258,12 @@ export default function SettingsPageClient({
 
             <div className="space-y-4">
               <p className="text-sm text-[rgba(255,255,255,0.85)]">
-                This will permanently delete:
+                Your account and all personal data will be permanently deleted.
               </p>
-              <ul className="text-sm text-[rgba(255,255,255,0.5)] space-y-2 list-disc list-inside">
-                <li>Your profile and login credentials</li>
-                <li>Broker connections and API tokens</li>
-                <li>Conversation history and feedback</li>
-                <li>Screenshots and analyses</li>
-              </ul>
 
               <div className="bg-[rgba(59,130,246,0.1)] border border-[rgba(59,130,246,0.3)] rounded-lg p-3">
                 <p className="text-xs text-[rgba(255,255,255,0.7)]">
-                  <strong className="text-white">Privacy Note:</strong> Anonymized trading patterns 
-                  (behavioral data, trade history, strategies) are retained for AI research. 
-                  This data cannot be used to identify you.
+                  <strong className="text-white">Privacy Note:</strong> Anonymous trading patterns are retained for AI research. This data cannot identify you.
                 </p>
               </div>
 

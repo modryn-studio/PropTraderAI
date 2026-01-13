@@ -233,6 +233,17 @@ function extractStopLossParameters(rules: StrategyRule[]): StrategyParameters['s
     };
   }
   
+  // Pattern 4b: Decimal notation "0.75 of range" (without % symbol)
+  const decimalMatch = text.match(/(0\.\d+)\s*(?:of\s*)?(?:the\s*)?range/);
+  if (decimalMatch) {
+    return {
+      placement: 'percentage',
+      value: parseFloat(decimalMatch[1]),
+      relativeTo: 'range_low',
+      unit: 'percentage',
+    };
+  }
+  
   // Pattern 5: "X ticks below" or "X ticks above"
   const tickMatch = text.match(/(\d+)\s*ticks?\s*(?:below|above)/);
   if (tickMatch) {

@@ -198,9 +198,11 @@ Examples:
 - User: "Stop at 50% of the range" → You confirm → CALL update_rule({ category: "risk", label: "Stop Loss", value: "50% of opening range" })
 - User: "I trade NQ" → You acknowledge → CALL update_rule({ category: "setup", label: "Instrument", value: "NQ" })
 - User: "Break above the high" → You confirm → CALL update_rule({ category: "entry", label: "Entry Trigger", value: "Break above high" })
-- User: "Target 2R" → You confirm → CALL update_rule({ category: "exit", label: "Target", value: "2:1 risk-reward" })
+- User: "Target 2R" → You confirm → CALL update_rule({ category: "exit", label: "Target", value: "2R" })
+- User: "1:2 risk:reward" → You confirm → CALL update_rule({ category: "exit", label: "Target", value: "1:2 risk:reward" })
 
-CRITICAL: Call this tool for EVERY rule you confirm. Multiple rules in one user message? Call update_rule multiple times.`,
+CRITICAL: Call this tool for EVERY rule you confirm. Multiple rules in one user message? Call update_rule multiple times.
+IMPORTANT: Store the value EXACTLY as the user stated it. Don't normalize notation (keep "1:2 risk:reward" if they said that, keep "2R" if they said that).`,
     input_schema: {
       type: 'object' as const,
       properties: {

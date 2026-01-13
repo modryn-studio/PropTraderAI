@@ -12,7 +12,7 @@
  * - Warnings as yellow, no blocking
  */
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { CheckCircle2, AlertCircle, AlertTriangle, Circle, ChevronRight } from 'lucide-react';
 import type { ValidationResult, ValidationIssue } from '@/lib/strategy/strategyValidator';
@@ -37,12 +37,45 @@ interface ValidationStatusProps {
   compact?: boolean;
 }
 
+/**
+ * Stabilize rapidly changing values to prevent UI flashing
+ * Only updates after the value has been stable for the delay period
+ */
+function useStabilizedValue<T>(value: T, delay: number = 500): T {
+  const [stableValue, setStableValue] = useState(value);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    // Clear any pending timeout
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+
+    // Set new timeout to update stable value
+    timeoutRef.current = setTimeout(() => {
+      setStableValue(value);
+    }, delay);
+
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, [value, delay]);
+
+  return stableValue;
+}
+
 export default function ValidationStatus({ 
   validation, 
   onNavigateToIssue,
   compact = false 
 }: ValidationStatusProps) {
-  const { completionScore, requiredMissing, recommendedMissing, errors, warnings, isComplete } = validation;
+  const { completionScore, requiredMissing, recommendedMissing, errors, isComplete } = validation;
+  
+  // Stabilize warnings to prevent flash during rapid streaming
+  // Warnings only update after being stable for 300ms
+  const stableWarnings = useStabilizedValue(validation.warnings, 300);
 
   // Compact mode for inline display
   if (compact) {
@@ -70,11 +103,11 @@ export default function ValidationStatus({
         />
       )}
 
-      {/* Validation Warnings */}
-      {warnings.length > 0 && (
+      {/* Validation Warnings - use stabilized to prevent flash */}
+      {stableWarnings.length > 0 && (
         <ValidationIssues 
           title="Warnings" 
-          issues={warnings} 
+          issues={stableWarnings} 
           icon={<AlertTriangle className="w-4 h-4 text-yellow-400" />}
           onNavigate={onNavigateToIssue}
         />

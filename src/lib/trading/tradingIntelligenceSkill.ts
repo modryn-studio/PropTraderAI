@@ -227,8 +227,13 @@ You're not just collecting information. You're ensuring they build something tha
     }
     
     // Check for multiple questions in one response
+    // Allow pattern: "Main question?" + "Which fits your approach?"
     const questionPatterns = response.match(/\b(what|where|when|how|which|do you|are you|will you|would you)\b.*?\?/gi) || [];
-    if (questionPatterns.length > 1) {
+    const hasMainQuestion = questionPatterns.length >= 1;
+    const hasWhichFits = /which fits (your|the)/i.test(response);
+    
+    // Only flag if 2+ questions AND NOT the "which fits" pattern
+    if (questionPatterns.length > 1 && !(hasMainQuestion && hasWhichFits)) {
       issues.push('Asked multiple questions - should be ONE at a time');
     }
     
@@ -278,13 +283,26 @@ You're not just collecting information. You're ensuring they build something tha
     const mistakes = detectMistakes(rules);
     const missing = this.getMissingComponents(rules);
     
+    // Calculate completion matching UI (strategyValidator.ts)
+    // Required = 70%, Recommended = 30% (but recommended only counts after required complete)
+    const requiredCount = 5; // Entry, Stop, Target, Position Size, Instrument
+    const requiredMet = requiredCount - missing.length;
+    
+    // Don't give recommended credit until all required are met
+    const recommendedMet = missing.length === 0 ? 0 : 0; // TODO: Add recommended tracking when needed
+    const recommendedCount = 4;
+    
+    const completionPercentage = Math.round(
+      ((requiredMet / requiredCount) * 70) + ((recommendedMet / recommendedCount) * 30)
+    );
+    
     return {
       phase,
       focus,
       rulesCount: rules.length,
       errorsDetected: mistakes.length,
       missingComponents: missing,
-      completionPercentage: Math.round(((5 - missing.length) / 5) * 100),
+      completionPercentage,
     };
   }
 }

@@ -257,7 +257,12 @@ export function validateStrategy(rules: StrategyRule[]): ValidationResult {
   const requiredCount = Object.keys(REQUIRED_COMPONENTS).length;
   const requiredMet = requiredCount - requiredMissing.length;
   const recommendedCount = Object.keys(RECOMMENDED_COMPONENTS).length;
-  const recommendedMet = recommendedCount - recommendedMissing.length;
+  
+  // Only count recommended components after required are complete
+  // (recommendedMissing is empty when required incomplete - don't give false credit)
+  const recommendedMet = requiredMissing.length === 0 
+    ? recommendedCount - recommendedMissing.length 
+    : 0;
   
   // Weight: Required = 70%, Recommended = 30%
   const completionScore = Math.round(
@@ -474,28 +479,127 @@ function validatePositionSizing(sizing: RiskComponent): ValidationIssue[] {
 
 /**
  * Validate risk-reward ratio
+ * 
+ * PARSING LOGIC (based on how traders actually communicate):
+ * 
+ * 1. "1:2 risk/reward" or "1:2 risk:reward" or "1:2 risk-reward"
+ *    → Format is risk:reward → ratio = 2R (good)
+ *    
+ * 2. "2:1 reward/risk" or "2:1 reward:risk"  
+ *    → Format is reward:risk → ratio = 2R (good)
+ *    
+ * 3. "1:2" or "1:3" (first number is 1, no qualifier)
+ *    → Almost always means "risking 1 to win X" → ratio = X (good)
+ *    → No trader says "I want to win 1 and risk 2"
+ *    
+ * 4. "2:1" (first number > second, no qualifier)
+ *    → Traditional shorthand for "2 to 1" reward:risk → ratio = 2R (good)
+ *    
+ * 5. "2R" or "3R"
+ *    → Explicit R-multiple → ratio = value (good if >= 1.5)
+ * 
+ * KEY INSIGHT: When "risk" appears ANYWHERE in the string (before OR after numbers),
+ * the format is risk:reward (first number = risk, second = reward).
  */
 function validateRiskReward(_stop: ExitComponent, _target: ExitComponent, allRules: StrategyRule[]): ValidationIssue[] {
   const issues: ValidationIssue[] = [];
 
-  // Try to extract R:R ratio
-  const rrMatch = [...allRules]
-    .map(r => r.value.match(/(?:^|\s)(\d+(?:\.\d+)?)\s*:\s*(\d+(?:\.\d+)?)/))
-    .find(m => m !== null);
+  // CRITICAL: Only look at exit/risk rules to avoid matching times like "9:30"
+  const relevantRules = allRules.filter(r => 
+    r.category === 'exit' || 
+    r.category === 'risk' ||
+    r.label.toLowerCase().includes('target') ||
+    r.label.toLowerCase().includes('profit') ||
+    r.label.toLowerCase().includes('reward')
+  );
 
-  if (rrMatch) {
-    const risk = parseFloat(rrMatch[1]);
-    const reward = parseFloat(rrMatch[2]);
-    const ratio = reward / risk;
+  // Find the rule containing a ratio in relevant rules only
+  const ruleWithRatio = relevantRules.find(r => 
+    r.value.match(/(\d+(?:\.\d+)?)\s*:\s*(\d+(?:\.\d+)?)/)
+  );
 
-    if (ratio < PROFESSIONAL_STANDARDS.minRiskRewardRatio) {
-      issues.push({
-        field: 'profitTarget',
-        message: `Risk:reward ratio (${risk}:${reward}) below professional minimum (1.5:1)`,
-        severity: 'warning',
-        category: 'exit',
-        suggestion: 'Industry standard is 2:1 minimum. Lower ratios require very high win rates.',
-      });
+  if (ruleWithRatio) {
+    const value = ruleWithRatio.value.toLowerCase();
+    const rrMatch = value.match(/(\d+(?:\.\d+)?)\s*:\s*(\d+(?:\.\d+)?)/);
+    
+    if (rrMatch) {
+      const firstNum = parseFloat(rrMatch[1]);
+      const secondNum = parseFloat(rrMatch[2]);
+      
+      // Determine notation by checking if "risk" appears ANYWHERE before "reward"
+      // This handles: "1:2 risk/reward", "risk:reward 1:2", "1:2 risk-reward", etc.
+      const hasRisk = value.includes('risk');
+      const hasReward = value.includes('reward');
+      
+      let ratio: number;
+      let isRiskRewardFormat: boolean;
+      
+      if (hasRisk && hasReward) {
+        // Both words present - check which comes first
+        const riskIndex = value.indexOf('risk');
+        const rewardIndex = value.indexOf('reward');
+        isRiskRewardFormat = riskIndex < rewardIndex;
+      } else if (hasRisk) {
+        // Only "risk" mentioned (e.g., "1:2 risk/reward" where / is separator)
+        // This is risk:reward format
+        isRiskRewardFormat = true;
+      } else if (hasReward) {
+        // Only "reward" mentioned - likely reward:risk
+        isRiskRewardFormat = false;
+      } else {
+        // No keywords - use smart heuristics
+        // If first number is 1 (like "1:2", "1:3"), it's almost certainly risk:reward
+        // because no trader says "I want to win 1 and risk 2"
+        if (firstNum === 1 && secondNum > 1) {
+          isRiskRewardFormat = true;
+        } else if (firstNum > secondNum) {
+          // "2:1" style - traditional reward:risk shorthand
+          isRiskRewardFormat = false;
+        } else {
+          // Default: assume risk:reward (smaller:larger is more intuitive)
+          isRiskRewardFormat = firstNum <= secondNum;
+        }
+      }
+      
+      // Calculate actual R-multiple
+      if (isRiskRewardFormat) {
+        ratio = secondNum / firstNum; // "1:2" → 2R
+      } else {
+        ratio = firstNum / secondNum; // "2:1" → 2R
+      }
+
+      if (ratio < PROFESSIONAL_STANDARDS.minRiskRewardRatio) {
+        // Display warning using consistent R-multiple format for clarity
+        issues.push({
+          field: 'profitTarget',
+          message: `Risk/reward ratio equals ${ratio.toFixed(1)}R - below professional minimum (${PROFESSIONAL_STANDARDS.minRiskRewardRatio}R)`,
+          severity: 'warning',
+          category: 'exit',
+          suggestion: `Industry standard is 2R minimum. Lower ratios require very high win rates.`,
+        });
+      }
+    }
+  }
+  
+  // Also check for R-multiple notation (e.g., "2R", "1.5R")
+  const rMultipleRule = relevantRules.find(r => 
+    r.value.match(/(\d+(?:\.\d+)?)\s*r\b/i)
+  );
+  
+  if (rMultipleRule) {
+    const rMatch = rMultipleRule.value.match(/(\d+(?:\.\d+)?)\s*r\b/i);
+    if (rMatch) {
+      const rValue = parseFloat(rMatch[1]);
+      
+      if (rValue < PROFESSIONAL_STANDARDS.minRiskRewardRatio) {
+        issues.push({
+          field: 'profitTarget',
+          message: `Target ${rValue}R below professional minimum (1.5R)`,
+          severity: 'warning',
+          category: 'exit',
+          suggestion: 'Industry standard is 2R minimum. Lower ratios require very high win rates.',
+        });
+      }
     }
   }
 
