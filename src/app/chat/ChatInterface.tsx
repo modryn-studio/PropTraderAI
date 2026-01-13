@@ -33,6 +33,9 @@ import {
   saveAnimationPreference,
   loadAnimationPreference 
 } from '@/lib/utils/animationTriggers';
+import ToolsManager from '@/components/chat/SmartTools';
+import type { ActiveTool } from '@/components/chat/SmartTools/types';
+import { formatToolResponse, type ToolType } from '@/lib/utils/toolDetection';
 
 interface ChatInterfaceProps {
   userId: string;
@@ -117,6 +120,10 @@ export default function ChatInterface({
   const [wasAnimationManuallySet, setWasAnimationManuallySet] = useState(false);
   const { isMobile, defaultAnimationExpanded, animationAutoExpandable } = useResponsiveBreakpoints();
   const prevRuleCountRef = useRef(0);
+  
+  // Smart Tools state
+  const [activeTool, setActiveTool] = useState<ActiveTool | null>(null);
+  const [toolsShown, setToolsShown] = useState<ToolType[]>([]);
   
   // AbortController for canceling requests
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -213,6 +220,7 @@ export default function ChatInterface({
         body: JSON.stringify({
           message,
           conversationId,
+          toolsShown, // Pass tools already shown to prevent duplicates
         }),
         signal: controller.signal,
       });
@@ -308,6 +316,23 @@ export default function ChatInterface({
                   // Note: Backend already logs 'rule_updated_via_tool' when emitting rule_update
                   // No need to log again here (would create duplicates)
                 }
+              } else if (data.type === 'tool') {
+                // Smart Tool detected - show inline calculator
+                if (data.toolType) {
+                  console.log('[Smart Tool] Received tool event:', data.toolType);
+                  
+                  setActiveTool({
+                    type: data.toolType,
+                    prefilledData: data.prefilledData || {},
+                    messageId: assistantMsgId,
+                    isCollapsed: false,
+                  });
+                  
+                  // Track that this tool has been shown
+                  setToolsShown(prev => 
+                    prev.includes(data.toolType) ? prev : [...prev, data.toolType]
+                  );
+                }
               } else if (data.type === 'complete') {
                 // Update conversation ID if new
                 if (!conversationId && data.conversationId) {
@@ -385,7 +410,55 @@ export default function ChatInterface({
       setPendingMessage(null);
       setIsLoading(false);
     }
-  }, [conversationId, messages, userId, userProfile?.timezone, animationConfig, handleAnimationAutoExpand]);
+  }, [conversationId, messages, userId, userProfile?.timezone, animationConfig, handleAnimationAutoExpand, toolsShown]);
+
+  // ========================================================================
+  // SMART TOOL HANDLERS
+  // ========================================================================
+  
+  const handleToolComplete = useCallback(async (toolType: ToolType, values: Record<string, unknown>) => {
+    console.log('[Smart Tool] Completed:', toolType, values);
+    
+    // Format tool response as natural language
+    const { message: toolMessage } = formatToolResponse(toolType, values);
+    
+    // Log behavioral event
+    await logBehavioralEvent(
+      userId,
+      'smart_tool_completed',
+      {
+        conversationId,
+        toolType,
+        values,
+        timeSpent: 0, // TODO: Track actual time
+      }
+    );
+    
+    // Collapse the tool (keep showing summary)
+    setActiveTool(prev => prev ? { ...prev, isCollapsed: true, completedValues: values } : null);
+    
+    // Send the formatted response as a new user message
+    // This continues the conversation naturally
+    await handleSendMessage(toolMessage);
+  }, [userId, conversationId, handleSendMessage]);
+  
+  const handleToolDismiss = useCallback(async (toolType: ToolType) => {
+    console.log('[Smart Tool] Dismissed:', toolType);
+    
+    // Log behavioral event
+    await logBehavioralEvent(
+      userId,
+      'smart_tool_dismissed',
+      {
+        conversationId,
+        toolType,
+        reason: 'user_clicked_type_instead',
+      }
+    );
+    
+    // Hide the tool
+    setActiveTool(null);
+  }, [userId, conversationId]);
 
   const handleEditMessage = useCallback(async (messageIndex: number, newContent: string) => {
     // Delete all messages after the edited message (branching)
@@ -394,6 +467,9 @@ export default function ChatInterface({
     
     // Clear animation when branching conversation
     setAnimationConfig(null);
+    
+    // Clear active tool when editing
+    setActiveTool(null);
     
     // CRITICAL: Reset accumulated rules to only include rules from messages BEFORE the edit
     // We need to re-extract rules from the remaining messages
@@ -726,6 +802,17 @@ export default function ChatInterface({
           isLoading={isLoading}
           onEditMessage={handleEditMessage}
         />
+
+        {/* Smart Tool - appears inline when Claude asks specific questions */}
+        {activeTool && !strategyComplete && (
+          <div className="max-w-3xl mx-auto px-6 w-full">
+            <ToolsManager
+              activeTool={activeTool}
+              onToolComplete={handleToolComplete}
+              onToolDismiss={handleToolDismiss}
+            />
+          </div>
+        )}
 
         {/* Strategy confirmation card */}
         {strategyComplete && strategyData && (

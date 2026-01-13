@@ -31,6 +31,12 @@ export type BehavioralEventType =
   | 'multi_strategy_cta_clicked'
   | 'dashboard_add_strategy_clicked'
   
+  // Smart Tools events (Token savings initiative)
+  | 'smart_tool_shown'
+  | 'smart_tool_completed'
+  | 'smart_tool_dismissed'
+  | 'smart_tool_interaction'
+  
   // Validation events (Firm rules)
   | 'strategy_validated'
   | 'validation_warnings_ignored'

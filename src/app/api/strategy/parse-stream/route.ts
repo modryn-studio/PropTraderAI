@@ -8,10 +8,22 @@ import {
 } from '@/lib/trading';
 import { extractFromMessage } from '@/lib/utils/ruleExtractor';
 import type { StrategyRule } from '@/lib/utils/ruleExtractor';
+import { 
+  detectToolTrigger, 
+  extractContextFromConversation, 
+  mergePrefillData,
+  FIRM_DEFAULTS,
+  type ToolType 
+} from '@/lib/utils/toolDetection';
 
 interface ParseRequest {
   message: string;
   conversationId?: string;
+  toolsShown?: ToolType[]; // Track which tools have already been shown
+  toolResponse?: {
+    toolType: ToolType;
+    values: Record<string, unknown>;
+  };
 }
 
 interface ConversationRecord {
@@ -25,7 +37,7 @@ interface ConversationRecord {
 export async function POST(request: Request) {
   try {
     const body: ParseRequest = await request.json();
-    const { message, conversationId } = body;
+    const { message, conversationId, toolsShown = [] } = body;
 
     // Validate input
     if (!message || typeof message !== 'string' || message.trim().length === 0) {
@@ -45,6 +57,13 @@ export async function POST(request: Request) {
         { status: 401, headers: { 'Content-Type': 'application/json' } }
       );
     }
+
+    // Get user profile for prefill data (firm, account size)
+    const { data: userProfile } = await supabase
+      .from('profiles')
+      .select('firm_name, account_size, account_type')
+      .eq('id', user.id)
+      .single();
 
     let conversation: ConversationRecord | null = null;
     let isNewConversation = false;
@@ -183,6 +202,59 @@ export async function POST(request: Request) {
           await stream.finalMessage();
           
           console.log(`[Pass 1] Conversation complete. Length: ${fullText.length} chars`);
+          
+          // ================================================================
+          // SMART TOOL DETECTION (After Pass 1, Before Pass 2)
+          // Detect if Claude's response should trigger an inline calculator
+          // ================================================================
+          
+          const toolTrigger = detectToolTrigger(fullText, toolsShown);
+          
+          if (toolTrigger.shouldShowTool && toolTrigger.toolType) {
+            // Extract context from conversation for prefilling
+            const allMessages = [
+              ...conversationHistory.map(m => ({ role: m.role, content: m.content })),
+              { role: 'user' as const, content: message },
+              { role: 'assistant' as const, content: fullText },
+            ];
+            const conversationContext = extractContextFromConversation(allMessages);
+            
+            // Merge prefill data with fallback chain
+            const prefilledData = mergePrefillData(
+              conversationContext,
+              userProfile,
+              FIRM_DEFAULTS
+            );
+            
+            console.log(`[Smart Tool] Detected trigger for: ${toolTrigger.toolType}`, {
+              confidence: toolTrigger.confidence,
+              pattern: toolTrigger.matchedPattern,
+              prefilled: prefilledData,
+            });
+            
+            // Send tool SSE event to frontend
+            controller.enqueue(
+              encoder.encode(`data: ${JSON.stringify({
+                type: 'tool',
+                toolType: toolTrigger.toolType,
+                prefilledData,
+              })}\n\n`)
+            );
+            
+            // Log behavioral event for PATH 2 analytics
+            await logBehavioralEventServer(
+              supabase,
+              user.id,
+              'smart_tool_shown',
+              {
+                conversationId: conversation!.id,
+                toolType: toolTrigger.toolType,
+                triggerPattern: toolTrigger.matchedPattern,
+                confidence: toolTrigger.confidence,
+                prefilledFields: Object.keys(prefilledData).filter(k => prefilledData[k as keyof typeof prefilledData] !== undefined),
+              }
+            );
+          }
           
           // ================================================================
           // PASS 2: Extract rules in background (TOOLS ONLY)
