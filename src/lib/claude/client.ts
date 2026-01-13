@@ -360,9 +360,10 @@ export async function parseStrategyStream(
     });
 
     return stream;
-  } catch (error: any) {
-    console.error('[Claude API] Streaming error:', error.message);
-    throw new Error(`Failed to stream from Claude: ${error.message}`);
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error('[Claude API] Streaming error:', errorMessage);
+    throw new Error(`Failed to stream from Claude: ${errorMessage}`);
   }
 }
 
@@ -578,8 +579,9 @@ export async function ruleExtractionPass(
     }
     
     return { rules: extractedRules, isComplete, strategyData };
-  } catch (error: any) {
-    console.error('[Claude API] Rule extraction error:', error.message);
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error('[Claude API] Rule extraction error:', errorMessage);
     // Don't fail the whole request - just return no rules
     return { rules: [], isComplete: false };
   }

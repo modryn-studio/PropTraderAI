@@ -399,7 +399,7 @@ export default function ChatInterface({
       setPendingMessage(null);
       setIsLoading(false);
     }
-  }, [conversationId, messages, userId, userProfile?.timezone, animationConfig, handleAnimationAutoExpand]);
+  }, [conversationId, messages, userId, userProfile?.timezone, animationConfig, handleAnimationAutoExpand, accumulatedRules]);
 
   const handleEditMessage = useCallback(async (messageIndex: number, newContent: string) => {
     // Delete all messages after the edited message (branching)
