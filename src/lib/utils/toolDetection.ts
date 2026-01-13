@@ -106,7 +106,26 @@ const TOOL_TRIGGERS: Record<ToolType, RegExp[]> = {
 
 /**
  * Extract numerical values and context from conversation history.
- * Used to prefill tool inputs.
+ * Used to prefill tool inputs with values the user has already mentioned.
+ * 
+ * @description Parses all messages to find:
+ * - Account size (e.g., "$50k account", "150k funded")
+ * - Drawdown limits (e.g., "$2000 max drawdown")
+ * - Daily loss limits (e.g., "$1000 daily limit")
+ * - Risk percentage (e.g., "risking 1%")
+ * - Stop loss in ticks (e.g., "10 tick stop")
+ * - Instrument (e.g., "NQ", "MES", "CL")
+ * 
+ * @param messages - Array of conversation messages with role and content
+ * @returns PrefilledData object with any extracted values (undefined if not found)
+ * 
+ * @example
+ * const messages = [
+ *   { role: 'user', content: 'I have a $50k Topstep account' },
+ *   { role: 'assistant', content: 'Great! What\'s your risk per trade?' }
+ * ];
+ * const context = extractContextFromConversation(messages);
+ * // Returns: { accountSize: 50000 }
  */
 export function extractContextFromConversation(
   messages: Array<{ role: string; content: string }>
@@ -227,11 +246,26 @@ export function extractContextFromConversation(
 // ============================================================================
 
 /**
- * Detect if Claude's response should trigger a tool.
- * Only triggers on high-confidence pattern matches.
+ * Detect if Claude's response should trigger an inline Smart Tool.
  * 
- * @param responseText - Claude's complete response text (after Pass 1)
- * @param toolsAlreadyShown - Tools already shown in this conversation (prevent duplicates)
+ * @description Analyzes Claude's response for specific question patterns that indicate
+ * the user should use an interactive calculator instead of typing. Only triggers on
+ * high-confidence pattern matches (>90% accuracy) to avoid false positives.
+ * 
+ * Tools are checked in priority order:
+ * 1. position_size_calculator - "What's your risk per trade?"
+ * 2. contract_selector - "Which contract are you trading?"
+ * 3. drawdown_visualizer - "What's your drawdown limit?"
+ * 4. stop_loss_calculator - "Where do you place your stop?"
+ * 5. timeframe_helper - "What times do you trade?"
+ * 
+ * @param responseText - Claude's complete response text (after Pass 1 streaming)
+ * @param toolsAlreadyShown - Tools already shown in this conversation (prevents duplicates)
+ * @returns ToolTriggerResult with shouldShowTool, toolType, confidence, and matched pattern
+ * 
+ * @example
+ * const result = detectToolTrigger("Great! What's your risk per trade?", []);
+ * // Returns: { shouldShowTool: true, toolType: 'position_size_calculator', confidence: 0.95 }
  */
 export function detectToolTrigger(
   responseText: string,
@@ -282,11 +316,27 @@ export function detectToolTrigger(
 // ============================================================================
 
 /**
- * Merge prefill data from multiple sources with fallback chain:
- * 1. Conversation context (highest priority - most recent)
- * 2. User profile (firm name, account size from settings)
- * 3. Firm defaults (if firm is known)
- * 4. null (user must fill)
+ * Merge prefill data from multiple sources with intelligent fallback chain.
+ * 
+ * @description Combines values from conversation, user profile, and firm defaults
+ * to prefill tool inputs. Priority order (highest to lowest):
+ * 1. Conversation context - Values user explicitly mentioned
+ * 2. User profile - Settings from their PropTraderAI profile
+ * 3. Firm defaults - Standard values for their prop firm
+ * 4. undefined - User must fill in manually
+ * 
+ * @param conversationContext - Values extracted from current conversation
+ * @param userProfile - User's profile data (firm_name, account_size, account_type)
+ * @param firmDefaults - Optional record of firm-specific default values
+ * @returns Merged PrefilledData object with best available values
+ * 
+ * @example
+ * const merged = mergePrefillData(
+ *   { riskPercent: 1.5 },                    // User said 1.5%
+ *   { firm_name: 'topstep', account_size: 50000 },
+ *   FIRM_DEFAULTS
+ * );
+ * // Returns: { accountSize: 50000, riskPercent: 1.5, drawdownLimit: 2000 }
  */
 export function mergePrefillData(
   conversationContext: PrefilledData,
@@ -370,7 +420,28 @@ export const FIRM_DEFAULTS: Record<string, Partial<PrefilledData>> = {
 
 /**
  * Format tool response values as natural language for Claude.
- * This becomes the "user message" that continues the conversation.
+ * 
+ * @description Converts structured tool values into a human-readable message
+ * that continues the conversation naturally. The message is sent as a "user"
+ * message so Claude can process the information and continue.
+ * 
+ * Also returns metadata that can be stored for:
+ * - PATH 2 behavioral analytics
+ * - Prefilling future tools in the same conversation
+ * - Debugging and audit trails
+ * 
+ * @param toolType - The type of tool that was completed
+ * @param values - The values selected/calculated by the user in the tool
+ * @returns Object with message (for Claude) and metadata (for analytics)
+ * 
+ * @example
+ * const { message, metadata } = formatToolResponse('position_size_calculator', {
+ *   accountSize: 50000,
+ *   riskPercent: 1.0,
+ *   riskAmount: 500
+ * });
+ * // message: "1% risk per trade ($500)"
+ * // metadata: { source: 'tool', toolType: 'position_size_calculator', values: {...} }
  */
 export function formatToolResponse(
   toolType: ToolType,

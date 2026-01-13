@@ -805,7 +805,9 @@ export default function ChatInterface({
 
         {/* Smart Tool - appears inline when Claude asks specific questions */}
         {activeTool && !strategyComplete && (
-          <div className="max-w-3xl mx-auto px-6 w-full">
+          <div className={`mx-auto w-full ${
+            isMobile ? 'px-4' : 'max-w-3xl px-6'
+          }`}>
             <ToolsManager
               activeTool={activeTool}
               onToolComplete={handleToolComplete}
