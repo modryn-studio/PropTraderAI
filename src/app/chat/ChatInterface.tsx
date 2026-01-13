@@ -302,11 +302,6 @@ export default function ChatInterface({
                     value: data.rule.value
                   };
                   
-                  // Check if this is an overwrite of existing rule
-                  const wasOverwrite = accumulatedRules.some(
-                    r => r.category === newRule.category && r.label === newRule.label
-                  );
-                  
                   // Use existing accumulation logic
                   setAccumulatedRules(prev => accumulateRules(prev, [newRule]));
                   
