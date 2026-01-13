@@ -39,8 +39,6 @@ export default function StrategySummaryPanel({
   strategyName,
   rules,
   isVisible = true,
-  isAnimationExpanded: _isAnimationExpanded,
-  onToggleAnimation: _onToggleAnimation,
   onValidationChange,
 }: StrategySummaryPanelProps) {
   const { isMobile } = useResponsiveBreakpoints();
