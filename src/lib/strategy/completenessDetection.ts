@@ -483,7 +483,6 @@ export function getSmartDefaults(patternType?: string): StrategyDefaults {
  * Get list of which components would use defaults
  */
 export function identifyDefaultsNeeded(completeness: CompletenessResult): string[] {
-  const criticalComponents = ['stop']; // Always ask about stop
   const defaultableComponents = ['target', 'sizing', 'session'];
   
   const needsDefault = completeness.missing.filter(

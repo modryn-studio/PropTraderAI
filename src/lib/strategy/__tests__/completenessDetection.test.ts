@@ -8,9 +8,7 @@
 import { 
   calculateCompleteness, 
   detectExpertiseLevel,
-  getSmartDefaults,
-  type CompletenessResult,
-  type ExpertiseDetectionResult
+  getSmartDefaults
 } from '../completenessDetection';
 
 // ============================================================================
