@@ -298,6 +298,15 @@ export default function ChatInterface({
                     ? { ...msg, content: displayText }
                     : msg
                 ));
+              } else if (data.type === 'metadata') {
+                // Expertise detection metadata from backend (first message only)
+                // Log for analytics - frontend doesn't need to display this
+                console.log('[Expertise] Detected:', {
+                  level: data.expertiseLevel,
+                  questionCount: data.questionCount,
+                  completeness: data.completeness,
+                  detectedComponents: data.detectedComponents,
+                });
               } else if (data.type === 'rule_update') {
                 // Claude called update_rule tool - add to summary panel
                 // Defensive validation
@@ -307,7 +316,11 @@ export default function ChatInterface({
                   const newRule: StrategyRule = {
                     category: data.rule.category,
                     label: data.rule.label,
-                    value: data.rule.value
+                    value: data.rule.value,
+                    // Include smart defaults metadata
+                    isDefaulted: data.rule.isDefaulted || false,
+                    explanation: data.rule.explanation,
+                    source: data.rule.source || 'user',
                   };
                   
                   // Use existing accumulation logic

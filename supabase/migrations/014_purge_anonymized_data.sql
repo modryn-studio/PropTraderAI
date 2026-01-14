@@ -13,12 +13,12 @@
 -- ============================================
 
 -- Uncomment to execute:
--- DELETE FROM public.behavioral_data WHERE user_id IS NULL;
--- DELETE FROM public.trades WHERE user_id IS NULL;
--- DELETE FROM public.strategies WHERE user_id IS NULL;
--- DELETE FROM public.challenges WHERE user_id IS NULL;
--- DELETE FROM public.feedback WHERE user_id IS NULL;
--- DELETE FROM public.strategy_conversations WHERE user_id IS NULL;
+DELETE FROM public.behavioral_data WHERE user_id IS NULL;
+DELETE FROM public.trades WHERE user_id IS NULL;
+DELETE FROM public.strategies WHERE user_id IS NULL;
+DELETE FROM public.challenges WHERE user_id IS NULL;
+DELETE FROM public.feedback WHERE user_id IS NULL;
+DELETE FROM public.strategy_conversations WHERE user_id IS NULL;
 
 -- ============================================
 -- OPTION 2: Function - Scheduled purging
