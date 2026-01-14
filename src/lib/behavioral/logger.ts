@@ -86,6 +86,11 @@ export type BehavioralEventType =
   | 'response_validation_failed'
   | 'professional_standard_enforced'
   
+  // Rapid Flow events (Expertise detection & smart defaults)
+  | 'expertise_detected'
+  | 'smart_defaults_applied'
+  | 'completeness_calculated'
+  
   // API error events
   | 'claude_api_error'
   

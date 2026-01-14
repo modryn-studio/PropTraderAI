@@ -15,6 +15,8 @@ import {
   FIRM_DEFAULTS,
   type ToolType 
 } from '@/lib/utils/toolDetection';
+import { detectExpertiseLevel } from '@/lib/strategy/completenessDetection';
+import { applySmartDefaults } from '@/lib/strategy/applyDefaults';
 
 interface ParseRequest {
   message: string;
@@ -112,6 +114,34 @@ export async function POST(request: Request) {
     // Get conversation history
     const conversationHistory: ConversationMessage[] = conversation.messages || [];
 
+    // ========================================================================
+    // EXPERTISE DETECTION (First message only)
+    // Detect user expertise level to adapt conversation flow
+    // ========================================================================
+    
+    let expertiseData = null;
+    if (isNewConversation || conversationHistory.length === 0) {
+      expertiseData = detectExpertiseLevel(message);
+      
+      console.log(`[Expertise] Detected: ${expertiseData.level}, Questions: ${expertiseData.questionCount}, Completeness: ${(expertiseData.completeness.percentage * 100).toFixed(0)}%`);
+      
+      // Log expertise detection event
+      await logBehavioralEventServer(
+        supabase,
+        user.id,
+        'expertise_detected',
+        {
+          conversationId: conversation.id,
+          level: expertiseData.level,
+          questionCount: expertiseData.questionCount,
+          approach: expertiseData.approach,
+          completeness: expertiseData.completeness.percentage,
+          detectedComponents: expertiseData.completeness.detected,
+          missingComponents: expertiseData.completeness.missing,
+        }
+      );
+    }
+
     // Log behavioral event: message sent
     await logBehavioralEventServer(
       supabase,
@@ -176,6 +206,24 @@ export async function POST(request: Request) {
         let isComplete = false;
 
         try {
+          // ================================================================
+          // SEND EXPERTISE METADATA (if detected on first message)
+          // Allows frontend to log/display user expertise level
+          // ================================================================
+          
+          if (expertiseData) {
+            controller.enqueue(
+              encoder.encode(`data: ${JSON.stringify({
+                type: 'metadata',
+                expertiseLevel: expertiseData.level,
+                questionCount: expertiseData.questionCount,
+                approach: expertiseData.approach,
+                completeness: expertiseData.completeness.percentage,
+                detectedComponents: expertiseData.completeness.detected,
+              })}\n\n`)
+            );
+          }
+          
           // ================================================================
           // PASS 1: Stream conversational response (NO TOOLS)
           // This guarantees text output with Socratic questions
@@ -269,15 +317,51 @@ export async function POST(request: Request) {
           
           console.log(`[Pass 2] Extracted ${extractionResult.rules.length} rules. Complete: ${extractionResult.isComplete}`);
           
-          // Send extracted rules to frontend (slight delay from text, but still fast)
-          for (const rule of extractionResult.rules) {
+          // ================================================================
+          // SMART DEFAULTS APPLICATION
+          // Apply defaults for missing components (target, sizing, session)
+          // Always run through applySmartDefaults for proper typing
+          // ================================================================
+          
+          // Get the first user message for pattern detection
+          const firstUserMessage = conversationHistory.length === 0 
+            ? message 
+            : conversationHistory.find(m => m.role === 'user')?.content || message;
+          
+          // Always apply smart defaults (handles empty rules case too)
+          const defaultsResult = applySmartDefaults(extractionResult.rules, firstUserMessage);
+          const rulesToSend = defaultsResult.rules;
+          const defaultsApplied = defaultsResult.defaultsApplied;
+          
+          if (defaultsApplied.length > 0) {
+            console.log(`[Smart Defaults] Applied defaults for: ${defaultsApplied.join(', ')}`);
+            
+            // Log defaults application
+            await logBehavioralEventServer(
+              supabase,
+              user.id,
+              'smart_defaults_applied',
+              {
+                conversationId: conversation!.id,
+                defaultsApplied,
+                patternDetected: defaultsResult.completeness.components.pattern.value,
+                completenessPercentage: defaultsResult.completeness.percentage,
+              }
+            );
+          }
+          
+          // Send extracted rules to frontend (including defaults with isDefaulted flag)
+          for (const rule of rulesToSend) {
             controller.enqueue(
               encoder.encode(`data: ${JSON.stringify({
                 type: 'rule_update',
                 rule: {
                   category: rule.category,
                   label: rule.label,
-                  value: rule.value
+                  value: rule.value,
+                  isDefaulted: rule.isDefaulted || false,
+                  explanation: rule.explanation,
+                  source: rule.source || 'user',
                 }
               })}\n\n`)
             );

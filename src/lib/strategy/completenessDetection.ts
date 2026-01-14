@@ -139,10 +139,29 @@ export function detectInstrument(message: string): CompletionComponent {
 
 /**
  * Detect strategy pattern from message
+ * 
+ * PRIORITY ORDER: Check more specific patterns first to avoid false matches.
+ * e.g., "opening range breakout" should match 'orb' not 'breakout'
  */
 export function detectPattern(message: string): CompletionComponent {
-  for (const [patternType, regex] of Object.entries(PATTERN_TYPES)) {
-    if (regex.test(message)) {
+  // Priority order: most specific patterns first
+  const prioritizedPatterns = [
+    'orb',       // "opening range breakout" - most specific, check first
+    'vwap',      // Specific indicator
+    'ema',       // Specific indicator  
+    'sma',       // Specific indicator
+    'rsi',       // Specific indicator
+    'macd',      // Specific indicator
+    'pullback',  // Specific pattern
+    'momentum',  // Specific pattern
+    'scalp',     // Trading style
+    'swing',     // Trading style
+    'breakout',  // Generic - check last to avoid matching ORB
+  ] as const;
+  
+  for (const patternType of prioritizedPatterns) {
+    const regex = PATTERN_TYPES[patternType];
+    if (regex && regex.test(message)) {
       return { detected: true, value: patternType, confidence: 'high' };
     }
   }
