@@ -47,7 +47,6 @@ export default function ChatInput({
   disabled = false,
   placeholder = "Describe your trading strategy...",
   showAnimation = false,
-  hasSidebar = false,
 }: ChatInputProps) {
   const [value, setValue] = useState('');
   const [animatedPlaceholder, setAnimatedPlaceholder] = useState('');
