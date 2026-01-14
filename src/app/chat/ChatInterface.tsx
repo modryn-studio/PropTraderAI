@@ -570,6 +570,11 @@ export default function ChatInterface({
     // Calculate completion time in seconds
     const completionTimeSeconds = Math.round((Date.now() - sessionStartRef.current) / 1000);
     const messageCount = messages.filter(m => m.role === 'user').length;
+    
+    // Track which defaults were used (for analytics)
+    const defaultsUsed = accumulatedRules
+      .filter(r => r.isDefaulted)
+      .map(r => r.label);
 
     const response = await fetch('/api/strategy/save', {
       method: 'POST',
@@ -584,6 +589,7 @@ export default function ChatInterface({
         // Completion tracking for analytics
         completionTimeSeconds,
         messageCount,
+        defaultsUsed, // Track which components used smart defaults
       }),
     });
 
@@ -597,7 +603,7 @@ export default function ChatInterface({
     
     // Update strategy status to 'saved' - enables post-save tools
     setStrategyStatus('saved');
-  }, [conversationId, strategyData, fullConversationText, messages]);
+  }, [conversationId, strategyData, fullConversationText, messages, accumulatedRules]);
 
   // Handler for validation changes from StrategySummaryPanel
   const handleValidationChange = useCallback((validation: ValidationResult) => {
@@ -886,8 +892,8 @@ export default function ChatInterface({
           onEditMessage={handleEditMessage}
         />
 
-        {/* Smart Tool - appears inline when Claude asks specific questions */}
-        {activeTool && !strategyComplete && (
+        {/* Smart Tool - appears ONLY after save for optional refinement (rapid flow philosophy) */}
+        {activeTool && strategyStatus === 'saved' && (
           <div className={`mx-auto w-full ${
             isMobile ? 'px-4' : 'max-w-3xl px-6'
           }`}>

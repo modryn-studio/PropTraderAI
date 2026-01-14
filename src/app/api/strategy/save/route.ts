@@ -2,6 +2,9 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { logBehavioralEvent } from '@/lib/behavioral/logger';
 import { ParsedRules } from '@/lib/claude/client';
+import { validateStrategyQuality } from '@/lib/strategy/strategyQualityMetrics';
+import { clearConversationState, getChangesSummary } from '@/lib/strategy/componentHistoryTracker';
+import type { StrategyRule } from '@/lib/utils/ruleExtractor';
 
 interface SaveRequest {
   conversationId: string;
@@ -13,6 +16,7 @@ interface SaveRequest {
   // Completion tracking for analytics
   completionTimeSeconds?: number;
   messageCount?: number;
+  defaultsUsed?: string[]; // Array of component labels that used defaults
 }
 
 export async function POST(request: Request) {
@@ -27,6 +31,7 @@ export async function POST(request: Request) {
       summary,
       completionTimeSeconds,
       messageCount,
+      defaultsUsed,
     } = body;
 
     // Validate required fields
@@ -114,6 +119,14 @@ export async function POST(request: Request) {
     if (messageCount !== undefined) {
       updateData.message_count_to_save = messageCount;
     }
+    // Track which components used smart defaults
+    if (Array.isArray(defaultsUsed) && defaultsUsed.length > 0) {
+      updateData.defaults_used = defaultsUsed;
+    }
+    // Track which components used smart defaults
+    if (Array.isArray(defaultsUsed) && defaultsUsed.length > 0) {
+      updateData.defaults_used = defaultsUsed;
+    }
     
     const { error: updateError } = await supabase
       .from('strategy_conversations')
@@ -149,6 +162,69 @@ export async function POST(request: Request) {
       // Non-critical, don't fail the request
     }
 
+    // ========================================================================
+    // STRATEGY QUALITY VALIDATION
+    // Validate that the strategy is executable and backtestable
+    // ========================================================================
+    
+    // Convert parsedRules to StrategyRule[] for quality validation
+    const rulesForValidation: StrategyRule[] = [];
+    
+    // Add entry conditions
+    if (parsedRules.entry_conditions) {
+      for (const condition of parsedRules.entry_conditions) {
+        rulesForValidation.push({
+          category: 'entry',
+          label: condition.indicator || 'Entry Condition',
+          value: condition.description || `${condition.indicator} ${condition.relation} ${condition.value || ''}`.trim(),
+          isDefaulted: false,
+        });
+      }
+    }
+    
+    // Add exit conditions
+    if (parsedRules.exit_conditions) {
+      for (const exit of parsedRules.exit_conditions) {
+        rulesForValidation.push({
+          category: 'exit',
+          label: exit.type || 'Exit',
+          value: String(exit.value || ''),
+          isDefaulted: false,
+        });
+      }
+    }
+    
+    // Add position sizing
+    if (parsedRules.position_sizing) {
+      rulesForValidation.push({
+        category: 'risk',
+        label: 'Position Size',
+        value: `${parsedRules.position_sizing.value}${parsedRules.position_sizing.method === 'risk_percent' ? '%' : ''}`,
+        isDefaulted: defaultsUsed?.includes('Position Size') || false,
+      });
+    }
+    
+    // Add instrument if provided
+    if (instrument) {
+      rulesForValidation.push({
+        category: 'setup',
+        label: 'Instrument',
+        value: instrument,
+        isDefaulted: false,
+      });
+    }
+    
+    // Validate quality
+    const qualityMetrics = validateStrategyQuality(strategy.id, rulesForValidation);
+    
+    console.log(`[Quality] Strategy ${strategy.id}: Score=${qualityMetrics.qualityScore}, Backtestable=${qualityMetrics.isBacktestable}, Errors=${qualityMetrics.errors.length}`);
+    
+    // Get component change history for behavioral analytics
+    const changesSummary = getChangesSummary(conversationId);
+    
+    // Clear component tracking state for this conversation
+    clearConversationState(conversationId);
+
     // Log behavioral event: strategy created
     await logBehavioralEvent(
       user.id,
@@ -167,6 +243,18 @@ export async function POST(request: Request) {
         // Completion tracking for rapid flow analytics
         completionTimeSeconds,
         messageCount,
+        // Track which defaults were applied
+        defaultsUsed: defaultsUsed || [],
+        defaultsCount: defaultsUsed?.length || 0,
+        // Quality metrics for data moat
+        qualityScore: qualityMetrics.qualityScore,
+        isBacktestable: qualityMetrics.isBacktestable,
+        isExecutable: qualityMetrics.isExecutable,
+        qualityErrors: qualityMetrics.errors.length,
+        qualityWarnings: qualityMetrics.warnings.length,
+        // Component change history (indecision tracking)
+        componentChanges: changesSummary.totalChanges,
+        indecisiveComponents: changesSummary.indecisiveComponents,
       }
     );
 

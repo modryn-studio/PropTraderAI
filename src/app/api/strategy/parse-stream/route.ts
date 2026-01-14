@@ -24,6 +24,11 @@ import {
   getTemplate,
   type BeginnerResponseResult 
 } from '@/lib/strategy/templates';
+import { detectMultiInstrument } from '@/lib/strategy/multiInstrumentDetection';
+import { 
+  trackComponentChange, 
+  checkForIndecision 
+} from '@/lib/strategy/componentHistoryTracker';
 
 interface ParseRequest {
   message: string;
@@ -208,6 +213,66 @@ export async function POST(request: Request) {
     }
 
     // ========================================================================
+    // MULTI-INSTRUMENT DETECTION
+    // Check if user mentions multiple instruments and handle appropriately
+    // ========================================================================
+    
+    let multiInstrumentResult = null;
+    
+    if (isNewConversation || conversationHistory.length <= 2) {
+      multiInstrumentResult = detectMultiInstrument(message);
+      
+      if (multiInstrumentResult.hasMultipleInstruments) {
+        console.log(`[Multi-Instrument] Detected: ${multiInstrumentResult.instruments.join(', ')}`);
+        
+        // Log multi-instrument detection
+        await logBehavioralEventServer(
+          supabase,
+          user.id,
+          'multi_instrument_detected',
+          {
+            conversationId: conversation.id,
+            instruments: multiInstrumentResult.instruments,
+            action: multiInstrumentResult.suggestedAction,
+          }
+        );
+      }
+    }
+
+    // ========================================================================
+    // CROSS-MESSAGE COMPONENT TRACKING
+    // Track component changes for indecision detection
+    // ========================================================================
+    
+    // Extract components from this message for tracking
+    const messageRules = extractFromMessage(message, 'user', []);
+    for (const rule of messageRules) {
+      const indecisionResult = trackComponentChange(
+        conversation.id,
+        rule.label,
+        rule.value,
+        conversationHistory.length + 1,
+        rule.category
+      );
+      
+      if (indecisionResult?.hasIndecision) {
+        console.log(`[Indecision] Detected for ${indecisionResult.component}: ${indecisionResult.changeCount} changes`);
+        
+        await logBehavioralEventServer(
+          supabase,
+          user.id,
+          'indecision_detected',
+          {
+            conversationId: conversation.id,
+            component: indecisionResult.component,
+            changeCount: indecisionResult.changeCount,
+            values: indecisionResult.values,
+          }
+        );
+      }
+    }
+
+    // ========================================================================
     // TWO-PASS SYSTEM
     // Pass 1: Stream conversational response (no tools)
     // Pass 2: Extract rules in background (tools only, after Pass 1 completes)
@@ -272,6 +337,45 @@ export async function POST(request: Request) {
                 hasContradictions: contradictionData?.hasContradictions || false,
                 contradictions: contradictionData?.contradictions || [],
                 suggestedClarification: contradictionData?.suggestedResponse,
+                // Include multi-instrument info
+                hasMultipleInstruments: multiInstrumentResult?.hasMultipleInstruments || false,
+                instruments: multiInstrumentResult?.instruments || [],
+                multiInstrumentMessage: multiInstrumentResult?.clarificationMessage,
+              })}\n\n`)
+            );
+          }
+          
+          // ================================================================
+          // SEND MULTI-INSTRUMENT CLARIFICATION (if detected)
+          // Prompts user to choose single instrument or create multiple
+          // ================================================================
+          
+          if (multiInstrumentResult?.hasMultipleInstruments) {
+            controller.enqueue(
+              encoder.encode(`data: ${JSON.stringify({
+                type: 'multi_instrument_detected',
+                instruments: multiInstrumentResult.instruments,
+                suggestedAction: multiInstrumentResult.suggestedAction,
+                clarificationMessage: multiInstrumentResult.clarificationMessage,
+              })}\n\n`)
+            );
+          }
+          
+          // ================================================================
+          // SEND INDECISION HELP (if cross-message changes detected)
+          // Helps users who keep changing their mind
+          // ================================================================
+          
+          const indecisionCheck = checkForIndecision(conversation.id);
+          if (indecisionCheck?.hasIndecision) {
+            controller.enqueue(
+              encoder.encode(`data: ${JSON.stringify({
+                type: 'indecision_detected',
+                component: indecisionCheck.component,
+                changeCount: indecisionCheck.changeCount,
+                values: indecisionCheck.values,
+                helpMessage: indecisionCheck.decisionHelpMessage,
+                suggestedValue: indecisionCheck.suggestedValue,
               })}\n\n`)
             );
           }

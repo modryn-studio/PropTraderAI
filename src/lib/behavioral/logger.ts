@@ -93,6 +93,15 @@ export type BehavioralEventType =
   | 'template_offered'
   | 'template_accepted'
   
+  // Edge Case Handling events
+  | 'multi_instrument_detected'
+  | 'multi_instrument_choice_made'
+  | 'indecision_detected'
+  | 'indecision_resolved'
+  | 'quality_validation_completed'
+  | 'session_boundary_detected'
+  | 'session_insights_generated'
+  
   // API error events
   | 'claude_api_error'
   
