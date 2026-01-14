@@ -129,6 +129,14 @@ export default function ChatInterface({
   const [currentCompleteness, setCurrentCompleteness] = useState(0);
   const [showPreviewCard, setShowPreviewCard] = useState(false);
   
+  // Rapid flow tracking for analytics
+  const [expertiseData, setExpertiseData] = useState<{
+    level: 'beginner' | 'intermediate' | 'advanced';
+    questionCount: number;
+    initialCompleteness: number;
+    approach: string;
+  } | null>(null);
+  
   // Log strategy status for debugging (prevents unused warning)
   console.debug('[StrategyStatus]', strategyStatus);
   const { isMobile, defaultAnimationExpanded, animationAutoExpandable } = useResponsiveBreakpoints();
@@ -320,6 +328,16 @@ export default function ChatInterface({
                   completeness: data.completeness,
                   detectedComponents: data.detectedComponents,
                 });
+                
+                // Store expertise data for rapid flow tracking
+                if (data.expertiseLevel && !expertiseData) {
+                  setExpertiseData({
+                    level: data.expertiseLevel,
+                    questionCount: data.questionCount || 0,
+                    initialCompleteness: typeof data.completeness === 'number' ? data.completeness / 100 : 0,
+                    approach: data.approach || 'unknown',
+                  });
+                }
                 
                 // Store completeness for preview card trigger
                 if (typeof data.completeness === 'number') {
@@ -590,6 +608,10 @@ export default function ChatInterface({
         completionTimeSeconds,
         messageCount,
         defaultsUsed, // Track which components used smart defaults
+        // Rapid flow tracking
+        expertiseDetected: expertiseData?.level,
+        initialCompleteness: expertiseData?.initialCompleteness,
+        finalCompleteness: currentCompleteness ? currentCompleteness / 100 : undefined,
       }),
     });
 
@@ -603,7 +625,7 @@ export default function ChatInterface({
     
     // Update strategy status to 'saved' - enables post-save tools
     setStrategyStatus('saved');
-  }, [conversationId, strategyData, fullConversationText, messages, accumulatedRules]);
+  }, [conversationId, strategyData, fullConversationText, messages, accumulatedRules, expertiseData, currentCompleteness]);
 
   // Handler for validation changes from StrategySummaryPanel
   const handleValidationChange = useCallback((validation: ValidationResult) => {

@@ -13,10 +13,14 @@ interface SaveRequest {
   parsedRules: ParsedRules;
   instrument: string;
   summary?: string;
-  // Completion tracking for analytics
+  // Rapid flow tracking for analytics
   completionTimeSeconds?: number;
   messageCount?: number;
   defaultsUsed?: string[]; // Array of component labels that used defaults
+  // Expertise detection data from first message
+  expertiseDetected?: 'beginner' | 'intermediate' | 'advanced';
+  initialCompleteness?: number; // 0-1 percentage from first message
+  finalCompleteness?: number;   // 0-1 percentage at save time
 }
 
 export async function POST(request: Request) {
@@ -32,6 +36,9 @@ export async function POST(request: Request) {
       completionTimeSeconds,
       messageCount,
       defaultsUsed,
+      expertiseDetected,
+      initialCompleteness,
+      finalCompleteness,
     } = body;
 
     // Validate required fields
@@ -105,7 +112,7 @@ export async function POST(request: Request) {
     }
 
     // Update conversation to completed status with strategy reference
-    // Also save completion time tracking for analytics (if columns exist)
+    // Also save rapid flow tracking for analytics (if columns exist)
     const updateData: Record<string, unknown> = {
       status: 'completed',
       strategy_id: strategy.id,
@@ -123,9 +130,16 @@ export async function POST(request: Request) {
     if (Array.isArray(defaultsUsed) && defaultsUsed.length > 0) {
       updateData.defaults_used = defaultsUsed;
     }
-    // Track which components used smart defaults
-    if (Array.isArray(defaultsUsed) && defaultsUsed.length > 0) {
-      updateData.defaults_used = defaultsUsed;
+    // Track expertise detection from first message
+    if (expertiseDetected) {
+      updateData.expertise_detected = expertiseDetected;
+    }
+    // Track completeness percentages (0-1)
+    if (initialCompleteness !== undefined) {
+      updateData.initial_completeness = initialCompleteness;
+    }
+    if (finalCompleteness !== undefined) {
+      updateData.final_completeness = finalCompleteness;
     }
     
     const { error: updateError } = await supabase
@@ -255,6 +269,12 @@ export async function POST(request: Request) {
         // Component change history (indecision tracking)
         componentChanges: changesSummary.totalChanges,
         indecisiveComponents: changesSummary.indecisiveComponents,
+        // Rapid flow tracking for success metrics
+        expertiseDetected,
+        initialCompleteness,
+        finalCompleteness,
+        wasRapidFlow: (messageCount || 0) <= 4,
+        wasSlowFlow: (messageCount || 0) > 8,
       }
     );
 
