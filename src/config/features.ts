@@ -16,6 +16,11 @@ export const FEATURES = {
   behavioral_logging: true, // Always on - data collection from Day 1
   account_protection_card: true, // Shows $ protected, not discipline metrics
   
+  // RAPID STRATEGY BUILDER - New optimized flow
+  // Set to true for <2 minute completion (grouped questions, smart defaults)
+  // Set to false for legacy Socratic method (one question at a time)
+  rapid_strategy_builder: true,
+  
   // Phase 1B (Weeks 5-8)
   autopilot_mode: false,
   websocket_monitoring: false,

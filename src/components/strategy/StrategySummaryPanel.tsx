@@ -570,14 +570,29 @@ function RulesCategoryList({ rules }: { rules: StrategyRule[] }) {
                         initial={{ opacity: 0, x: -10 }}
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ delay: index * 0.05 }}
-                        className="group/rule"
+                        className="group/rule relative"
                       >
-                        {/* Rule Label */}
-                        <div className="text-[rgba(255,255,255,0.5)] text-[10px] font-mono uppercase tracking-wide mb-0.5">
-                          {rule.label}
+                        {/* Rule Label with Default Indicator */}
+                        <div className="flex items-center gap-1.5 mb-0.5">
+                          <span className="text-[rgba(255,255,255,0.5)] text-[10px] font-mono uppercase tracking-wide">
+                            {rule.label}
+                          </span>
+                          {/* Smart Default Indicator (new) */}
+                          {rule.isDefaulted && (
+                            <span 
+                              className="text-[8px] font-mono text-amber-400/70 px-1 py-0.5 bg-amber-400/10 rounded cursor-help"
+                              title={rule.explanation || 'Smart default - you can change this'}
+                            >
+                              DEFAULT
+                            </span>
+                          )}
                         </div>
-                        {/* Rule Value */}
-                        <div className="text-white text-xs font-mono leading-relaxed border-l-2 border-[rgba(0,255,209,0.3)] pl-2 group-hover/rule:border-[#00FFD1] transition-colors">
+                        {/* Rule Value with different styling for defaults */}
+                        <div className={`text-xs font-mono leading-relaxed border-l-2 pl-2 transition-colors ${
+                          rule.isDefaulted 
+                            ? 'text-white/70 border-amber-400/30 group-hover/rule:border-amber-400/60' 
+                            : 'text-white border-[rgba(0,255,209,0.3)] group-hover/rule:border-[#00FFD1]'
+                        }`}>
                           {rule.value}
                         </div>
                       </motion.div>

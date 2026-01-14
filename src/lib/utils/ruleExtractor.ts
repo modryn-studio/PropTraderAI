@@ -32,6 +32,11 @@ export interface StrategyRule {
   label: string;
   value: string;
   category: 'setup' | 'entry' | 'exit' | 'risk' | 'timeframe' | 'filters';
+  
+  // NEW: Smart defaults tracking (for rapid flow)
+  isDefaulted?: boolean;       // True if this value came from smart defaults, not user
+  explanation?: string;        // Why this default was chosen (shown in tooltip)
+  source?: 'user' | 'default' | 'smart_tool';  // Where this value originated
 }
 
 // ============================================================================
