@@ -21,6 +21,7 @@ import { shouldExpectAnimation } from '@/lib/claude/promptManager';
 import { logAnimationGenerated } from '@/lib/behavioral/animationLogger';
 import StrategySummaryPanel, { StrategyRule } from '@/components/strategy/StrategySummaryPanel';
 import StrategyReadinessGate, { type GateMode } from '@/components/strategy/StrategyReadinessGate';
+import StrategyPreviewCard from '@/components/strategy/StrategyPreviewCard';
 import { validateStrategy, type ValidationResult } from '@/lib/strategy/strategyValidator';
 import { useResponsiveBreakpoints } from '@/lib/hooks/useResponsiveBreakpoints';
 import { 
@@ -118,6 +119,18 @@ export default function ChatInterface({
   // Animation expand/collapse state (controlled by Summary Panel)
   const [isAnimationExpanded, setIsAnimationExpanded] = useState(false);
   const [wasAnimationManuallySet, setWasAnimationManuallySet] = useState(false);
+  
+  // Strategy status for smart tools gating
+  // 'building' = in progress, hide refinement tools
+  // 'saved' = complete, show all tools for optional refinement
+  const [strategyStatus, setStrategyStatus] = useState<'building' | 'saved'>('building');
+  
+  // Completeness tracking for quick-save preview card
+  const [currentCompleteness, setCurrentCompleteness] = useState(0);
+  const [showPreviewCard, setShowPreviewCard] = useState(false);
+  
+  // Log strategy status for debugging (prevents unused warning)
+  console.debug('[StrategyStatus]', strategyStatus);
   const { isMobile, defaultAnimationExpanded, animationAutoExpandable } = useResponsiveBreakpoints();
   const prevRuleCountRef = useRef(0);
   
@@ -307,6 +320,16 @@ export default function ChatInterface({
                   completeness: data.completeness,
                   detectedComponents: data.detectedComponents,
                 });
+                
+                // Store completeness for preview card trigger
+                if (typeof data.completeness === 'number') {
+                  setCurrentCompleteness(data.completeness);
+                  
+                  // Show preview card if completeness >= 70% (ready for quick save)
+                  if (data.completeness >= 70) {
+                    setShowPreviewCard(true);
+                  }
+                }
               } else if (data.type === 'rule_update') {
                 // Claude called update_rule tool - add to summary panel
                 // Defensive validation
@@ -513,6 +536,10 @@ export default function ChatInterface({
       throw new Error('No strategy to save');
     }
 
+    // Calculate completion time in seconds
+    const completionTimeSeconds = Math.round((Date.now() - sessionStartRef.current) / 1000);
+    const messageCount = messages.filter(m => m.role === 'user').length;
+
     const response = await fetch('/api/strategy/save', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -523,6 +550,9 @@ export default function ChatInterface({
         parsedRules: strategyData.parsedRules,
         instrument: strategyData.instrument,
         summary: strategyData.summary,
+        // Completion tracking for analytics
+        completionTimeSeconds,
+        messageCount,
       }),
     });
 
@@ -533,7 +563,10 @@ export default function ChatInterface({
 
     const data = await response.json();
     setCurrentStrategyCount(data.userStrategyCount);
-  }, [conversationId, strategyData, fullConversationText]);
+    
+    // Update strategy status to 'saved' - enables post-save tools
+    setStrategyStatus('saved');
+  }, [conversationId, strategyData, fullConversationText, messages]);
 
   // Handler for validation changes from StrategySummaryPanel
   const handleValidationChange = useCallback((validation: ValidationResult) => {
@@ -655,6 +688,9 @@ export default function ChatInterface({
     setAccumulatedRules([]);
     setIsAnimationExpanded(false);
     setWasAnimationManuallySet(false);
+    setStrategyStatus('building'); // Reset to building mode
+    setCurrentCompleteness(0); // Reset completeness tracking
+    setShowPreviewCard(false); // Hide preview card
     sessionStartRef.current = Date.now();
     prevRuleCountRef.current = 0;
     setError(null);
@@ -717,6 +753,9 @@ export default function ChatInterface({
     setCurrentValidation(null);
     setIsAnimationExpanded(false);
     setWasAnimationManuallySet(false);
+    setStrategyStatus('building'); // Reset to building mode
+    setCurrentCompleteness(0); // Reset completeness tracking
+    setShowPreviewCard(false); // Hide preview card
     sessionStartRef.current = Date.now();
     prevRuleCountRef.current = 0;
     setError(null);
@@ -825,6 +864,29 @@ export default function ChatInterface({
               activeTool={activeTool}
               onToolComplete={handleToolComplete}
               onToolDismiss={handleToolDismiss}
+            />
+          </div>
+        )}
+
+        {/* Quick-save preview card - appears when completeness >= 70% */}
+        {showPreviewCard && !strategyComplete && accumulatedRules.length >= 3 && (
+          <div className={`mx-auto w-full ${
+            isMobile ? 'px-4' : 'max-w-3xl px-6'
+          } mb-4`}>
+            <StrategyPreviewCard
+              strategyName={accumulatedRules.find(r => r.label === 'Strategy')?.value || 'My Strategy'}
+              rules={accumulatedRules}
+              completenessPercentage={currentCompleteness}
+              onSave={() => {
+                // Send finalization request to Claude
+                setShowPreviewCard(false);
+                handleSendMessage("I'm happy with this strategy. Please finalize it.");
+              }}
+              onCustomize={() => {
+                // Dismiss card and continue refining
+                setShowPreviewCard(false);
+                toast.info('Continue chatting to refine your strategy');
+              }}
             />
           </div>
         )}

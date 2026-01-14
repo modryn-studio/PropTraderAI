@@ -10,12 +10,24 @@ interface SaveRequest {
   parsedRules: ParsedRules;
   instrument: string;
   summary?: string;
+  // Completion tracking for analytics
+  completionTimeSeconds?: number;
+  messageCount?: number;
 }
 
 export async function POST(request: Request) {
   try {
     const body: SaveRequest = await request.json();
-    const { conversationId, name, naturalLanguage, parsedRules, instrument, summary } = body;
+    const { 
+      conversationId, 
+      name, 
+      naturalLanguage, 
+      parsedRules, 
+      instrument, 
+      summary,
+      completionTimeSeconds,
+      messageCount,
+    } = body;
 
     // Validate required fields
     if (!conversationId || !name || !parsedRules) {
@@ -88,13 +100,24 @@ export async function POST(request: Request) {
     }
 
     // Update conversation to completed status with strategy reference
+    // Also save completion time tracking for analytics (if columns exist)
+    const updateData: Record<string, unknown> = {
+      status: 'completed',
+      strategy_id: strategy.id,
+      updated_at: new Date().toISOString(),
+    };
+    
+    // Add completion tracking if provided
+    if (completionTimeSeconds !== undefined) {
+      updateData.completion_time_seconds = completionTimeSeconds;
+    }
+    if (messageCount !== undefined) {
+      updateData.message_count_to_save = messageCount;
+    }
+    
     const { error: updateError } = await supabase
       .from('strategy_conversations')
-      .update({
-        status: 'completed',
-        strategy_id: strategy.id,
-        updated_at: new Date().toISOString(),
-      })
+      .update(updateData)
       .eq('id', conversationId);
 
     if (updateError) {
@@ -141,6 +164,9 @@ export async function POST(request: Request) {
         positionSizingMethod: parsedRules.position_sizing?.method,
         userStrategyCount: (strategyCount || 0) + 1,
         conversationMessageCount: conversation.messages?.length || 0,
+        // Completion tracking for rapid flow analytics
+        completionTimeSeconds,
+        messageCount,
       }
     );
 

@@ -17,6 +17,7 @@ import {
 } from '@/lib/utils/toolDetection';
 import { detectExpertiseLevel } from '@/lib/strategy/completenessDetection';
 import { applySmartDefaults } from '@/lib/strategy/applyDefaults';
+import { detectTextContradictions } from '@/lib/strategy/contradictionDetection';
 
 interface ParseRequest {
   message: string;
@@ -120,10 +121,19 @@ export async function POST(request: Request) {
     // ========================================================================
     
     let expertiseData = null;
+    let contradictionData = null;
+    
     if (isNewConversation || conversationHistory.length === 0) {
       expertiseData = detectExpertiseLevel(message);
       
+      // Also check for contradictions in first message
+      contradictionData = detectTextContradictions(message);
+      
       console.log(`[Expertise] Detected: ${expertiseData.level}, Questions: ${expertiseData.questionCount}, Completeness: ${(expertiseData.completeness.percentage * 100).toFixed(0)}%`);
+      
+      if (contradictionData.hasContradictions) {
+        console.log(`[Contradictions] Found ${contradictionData.contradictions.length} potential conflicts: ${contradictionData.contradictions.map(c => c.component).join(', ')}`);
+      }
       
       // Log expertise detection event
       await logBehavioralEventServer(
@@ -138,6 +148,8 @@ export async function POST(request: Request) {
           completeness: expertiseData.completeness.percentage,
           detectedComponents: expertiseData.completeness.detected,
           missingComponents: expertiseData.completeness.missing,
+          hasContradictions: contradictionData.hasContradictions,
+          contradictionCount: contradictionData.contradictions.length,
         }
       );
     }
@@ -220,6 +232,10 @@ export async function POST(request: Request) {
                 approach: expertiseData.approach,
                 completeness: expertiseData.completeness.percentage,
                 detectedComponents: expertiseData.completeness.detected,
+                // Include contradiction info for frontend handling
+                hasContradictions: contradictionData?.hasContradictions || false,
+                contradictions: contradictionData?.contradictions || [],
+                suggestedClarification: contradictionData?.suggestedResponse,
               })}\n\n`)
             );
           }
