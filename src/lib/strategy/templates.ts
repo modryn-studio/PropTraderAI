@@ -52,7 +52,6 @@ export interface BeginnerResponseResult {
   type: 'offer_template' | 'simplify_options' | 'proceed_normal';
   message?: string;
   templateId?: string;
-  action?: string;
 }
 
 // ============================================================================
@@ -217,7 +216,6 @@ Most successful new traders start with **Opening Range Breakout (ORB)**:
 
 Want to build this first? Takes 30 seconds.
 You can always create custom strategies later.`,
-      action: 'offer_template_or_custom',
     };
   }
   
@@ -232,7 +230,6 @@ b) **Pullbacks** - when price bounces off support
 c) **Show me the fastest path** (I'll pick for you)
 
 Just type the letter (a, b, or c).`,
-    action: 'simplify_options',
   };
 }
 

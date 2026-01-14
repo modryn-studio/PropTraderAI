@@ -369,6 +369,37 @@ export default function ChatInterface({
                     prev.includes(data.toolType) ? prev : [...prev, data.toolType]
                   );
                 }
+              } else if (data.type === 'template_offered') {
+                // Template offered to frustrated user - add rules to summary panel
+                console.log('[Template] Offered:', data.templateName);
+                
+                if (Array.isArray(data.rules)) {
+                  const templateRules: StrategyRule[] = data.rules.map((r: {
+                    category: string;
+                    label: string;
+                    value: string;
+                    isDefaulted?: boolean;
+                    explanation?: string;
+                    source?: string;
+                  }) => ({
+                    category: r.category as StrategyRule['category'],
+                    label: r.label,
+                    value: r.value,
+                    isDefaulted: r.isDefaulted ?? true,
+                    explanation: r.explanation,
+                    source: r.source || 'template',
+                  }));
+                  
+                  setAccumulatedRules(prev => accumulateRules(prev, templateRules));
+                  
+                  // Set high completeness since template has all components
+                  setCurrentCompleteness(100);
+                  setShowPreviewCard(true);
+                  
+                  toast.success('Template loaded!', {
+                    description: `${data.templateName} - ready to save or customize`,
+                  });
+                }
               } else if (data.type === 'complete') {
                 // Update conversation ID if new
                 if (!conversationId && data.conversationId) {

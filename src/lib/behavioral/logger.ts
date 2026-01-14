@@ -90,6 +90,8 @@ export type BehavioralEventType =
   | 'expertise_detected'
   | 'smart_defaults_applied'
   | 'completeness_calculated'
+  | 'template_offered'
+  | 'template_accepted'
   
   // API error events
   | 'claude_api_error'

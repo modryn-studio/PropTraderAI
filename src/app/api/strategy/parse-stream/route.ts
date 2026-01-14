@@ -18,6 +18,12 @@ import {
 import { detectExpertiseLevel } from '@/lib/strategy/completenessDetection';
 import { applySmartDefaults } from '@/lib/strategy/applyDefaults';
 import { detectTextContradictions } from '@/lib/strategy/contradictionDetection';
+import { 
+  handleBeginnerResponse, 
+  templateToRules, 
+  getTemplate,
+  type BeginnerResponseResult 
+} from '@/lib/strategy/templates';
 
 interface ParseRequest {
   message: string;
@@ -172,6 +178,36 @@ export async function POST(request: Request) {
     );
 
     // ========================================================================
+    // BEGINNER FRUSTRATION HANDLING
+    // Check if user is frustrated and offer templates as escape hatch
+    // Only applies on 2nd+ message (after they've had one Claude interaction)
+    // ========================================================================
+    
+    let templateResponse: BeginnerResponseResult | null = null;
+    
+    if (!isNewConversation && conversationHistory.length >= 2) {
+      // Check if user response indicates frustration or confusion
+      templateResponse = handleBeginnerResponse(message, []);
+      
+      if (templateResponse.type === 'offer_template' && templateResponse.templateId) {
+        console.log(`[Templates] Frustrated user detected, offering template: ${templateResponse.templateId}`);
+        
+        // Log template offer
+        await logBehavioralEventServer(
+          supabase,
+          user.id,
+          'template_offered',
+          {
+            conversationId: conversation.id,
+            templateId: templateResponse.templateId,
+            reason: 'frustration_detected',
+            messageContent: message.substring(0, 100),
+          }
+        );
+      }
+    }
+
+    // ========================================================================
     // TWO-PASS SYSTEM
     // Pass 1: Stream conversational response (no tools)
     // Pass 2: Extract rules in background (tools only, after Pass 1 completes)
@@ -238,6 +274,36 @@ export async function POST(request: Request) {
                 suggestedClarification: contradictionData?.suggestedResponse,
               })}\n\n`)
             );
+          }
+          
+          // ================================================================
+          // SEND TEMPLATE OFFER (if user is frustrated)
+          // Provides escape hatch for struggling users
+          // ================================================================
+          
+          if (templateResponse?.type === 'offer_template' && templateResponse.templateId) {
+            const template = getTemplate(templateResponse.templateId);
+            if (template) {
+              // Send template rules as pre-filled defaults
+              const templateRules = templateToRules(template);
+              
+              controller.enqueue(
+                encoder.encode(`data: ${JSON.stringify({
+                  type: 'template_offered',
+                  templateId: templateResponse.templateId,
+                  templateName: template.name,
+                  message: templateResponse.message,
+                  rules: templateRules.map(r => ({
+                    category: r.category,
+                    label: r.label,
+                    value: r.value,
+                    isDefaulted: true,
+                    explanation: r.explanation,
+                    source: 'template',
+                  })),
+                })}\n\n`)
+              );
+            }
           }
           
           // ================================================================
