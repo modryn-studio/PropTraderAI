@@ -148,10 +148,18 @@ export function trackComponentChange(
   
   const history = state.components.get(normalizedComponent)!;
   
-  // Don't track if same value
-  if (history.currentValue === value) {
+  // Get last change source for comparison
+  const lastChange = history.changes[history.changes.length - 1];
+  const lastSource = lastChange?.source;
+  
+  // Don't track if same value AND same source
+  // BUT track if source changed (e.g., default -> user confirms same value)
+  if (history.currentValue === value && lastSource === source) {
     return null;
   }
+  
+  // Track if value changed OR if source changed (user explicitly confirmed a default)
+  const isConfirmation = history.currentValue === value && lastSource !== source;
   
   // Add change
   history.changes.push({
@@ -160,8 +168,17 @@ export function trackComponentChange(
     messageIndex,
     source,
   });
-  history.currentValue = value;
-  state.totalChanges++;
+  
+  // Only update current value if value actually changed
+  if (history.currentValue !== value) {
+    history.currentValue = value;
+    state.totalChanges++;
+  }
+  
+  // Don't count source-only changes toward indecision
+  if (isConfirmation) {
+    return null;
+  }
   
   // Check for indecision (3+ changes)
   if (history.changes.length >= INDECISION_THRESHOLD) {

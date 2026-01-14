@@ -198,7 +198,7 @@ export function adjustStopForInstrument(
 export function parseMultiInstrumentChoice(
   response: string,
   instruments: string[]
-): { choice: 'single' | 'multiple'; selectedInstruments: string[] } {
+): { choice: 'single' | 'multiple' | 'unclear'; selectedInstruments: string[]; needsClarification?: boolean } {
   const normalized = response.toLowerCase().trim();
   
   // Check for letter choice (a, b, c, etc.)
@@ -228,8 +228,13 @@ export function parseMultiInstrumentChoice(
     return { choice: 'multiple', selectedInstruments: instruments };
   }
   
-  // Default to first instrument if unclear
-  return { choice: 'single', selectedInstruments: [instruments[0]] };
+  // Check for uncertainty phrases - need to ask again
+  if (/\b(not sure|don't know|i'm not|unsure|help|which|what)\b/i.test(normalized)) {
+    return { choice: 'unclear', selectedInstruments: [], needsClarification: true };
+  }
+  
+  // No clear choice detected - flag for re-clarification instead of silent default
+  return { choice: 'unclear', selectedInstruments: [], needsClarification: true };
 }
 
 const multiInstrumentExports = {
