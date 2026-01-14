@@ -904,7 +904,7 @@ export default function ChatInterface({
       />
 
       {/* Messages area - scrollable (with margin for sidebar on desktop) */}
-      <div className={`flex-1 overflow-hidden flex flex-col ${
+      <div className={`flex-1 overflow-y-auto min-h-0 flex flex-col ${
         !isMobile && accumulatedRules.length > 0 ? 'ml-80' : ''
       }`}>
         <ChatMessageList
@@ -975,24 +975,23 @@ export default function ChatInterface({
         )}
       </div>
 
-      {/* Input area - fixed at bottom (hide when strategy complete) */}
-      {!strategyComplete && (
-        <ChatInput
-          onSubmit={handleSendMessage}
-          onStop={handleStopGeneration}
-          disabled={isLoading}
-          showAnimation={messages.length === 0}
-          hasSidebar={!isMobile && accumulatedRules.length > 0}
-          placeholder={
-            messages.length === 0
-              ? ""
-              : "Answer the question or add more details..."
-          }
-        />
+      {/* Input area - in flow at bottom (hide when preview or confirmation card shows) */}
+      {!showPreviewCard && !strategyComplete && (
+        <div className={!isMobile && accumulatedRules.length > 0 ? 'ml-80' : ''}>
+          <ChatInput
+            onSubmit={handleSendMessage}
+            onStop={handleStopGeneration}
+            disabled={isLoading}
+            showAnimation={messages.length === 0}
+            hasSidebar={!isMobile && accumulatedRules.length > 0}
+            placeholder={
+              messages.length === 0
+                ? ""
+                : "Answer the question or add more details..."
+            }
+          />
+        </div>
       )}
-
-      {/* Spacer for fixed input */}
-      {!strategyComplete && <div className="h-32" />}
 
       {/* Start Over Confirmation Modal */}
       {showStartOverModal && (

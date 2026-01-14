@@ -186,9 +186,7 @@ export default function ChatInput({
   return (
     <div
       ref={containerRef}
-      className={`fixed bottom-0 right-0 bg-[#000000] border-t border-[rgba(255,255,255,0.1)] z-40 ${
-        hasSidebar ? 'left-80' : 'left-0'
-      }`}
+      className="w-full bg-[#000000] border-t border-[rgba(255,255,255,0.1)] flex-shrink-0"
       style={{
         paddingBottom: `max(env(safe-area-inset-bottom, 0px), ${keyboardHeight}px)`,
       }}
