@@ -505,12 +505,6 @@ Strategy is complete. Ready to save and start trading?"
 
 Remember: Traders are on mobile, possibly in a hurry. Respect their time.`;
 
-Pass 2 extracts:
-- Pattern: "Opening Range Breakout" (capitalized)
-- Stop Loss: "50% of opening range" (common sense)
-- Trading Hours: "9:30 AM - 10:30 AM ET" (from assistant's context)
-`;
-
 // ============================================================================
 // LEGACY SOCRATIC PROMPT (DEPRECATED - January 2026)
 // ============================================================================
