@@ -28,11 +28,11 @@ This roadmap consolidates PATH 1, PATH 2, and PATH 3 from the Build Specificatio
 - [ ] Tradovate OAuth flow validation (standalone test)
 - [ ] Tradovate WebSocket connection test
 - [ ] Tradovate order placement test (paper/demo)
-- [ ] Next.js 14 + TypeScript project setup
-- [ ] Supabase project & database schema
-- [ ] Environment configuration (secrets, API keys)
-- [ ] Vercel deployment pipeline
-- [ ] Claude API integration test
+- [x] Next.js 14 + TypeScript project setup
+- [x] Supabase project & database schema
+- [x] Environment configuration (secrets, API keys)
+- [x] Vercel deployment pipeline
+- [x] Claude API integration test
 
 ---
 
@@ -41,16 +41,16 @@ This roadmap consolidates PATH 1, PATH 2, and PATH 3 from the Build Specificatio
 **Goal:** Natural language strategy → user-approved execution.
 
 ### Authentication & Accounts
-- [ ] Supabase auth (magic link or OAuth)
+- [x] Supabase auth (magic link or OAuth)
 - [ ] User profile & preferences
 - [ ] Tradovate OAuth integration (production)
 - [ ] Token storage & refresh logic
 
 ### Strategy Builder
-- [ ] Natural language input interface
-- [ ] Claude strategy parsing (Socratic questioning)
-- [ ] Parsed rules display & confirmation
-- [ ] Strategy storage (database)
+- [x] Natural language input interface
+- [x] Claude strategy parsing (Socratic questioning)
+- [x] Parsed rules display & confirmation
+- [x] Strategy storage (database)
 - [ ] Basic backtest results display
 
 ### Challenge Tracking
