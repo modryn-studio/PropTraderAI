@@ -235,11 +235,26 @@ Update iteration number.
 - Agents can EDIT the issue body OR add comments (either works)
 - Use labels: `spec-in-progress`, `ready-for-critique`, `ready-to-implement`
 - 2-4 iterations is typical—don't rush to code
+- **For long comments**: Use `--body-file` instead of `--body` to avoid CLI issues
 
 **During Implementation Phase:**
 - Only pull code when spec is finalized
 - Test locally before pushing
-- RefereCapabilities:**
+- Reference issue number in commits: `"Implement feature from issue #X"`
+- Push frequently so other agent can review incrementally
+
+**GitHub CLI Tips:**
+- **Short comments** (1-2 lines): `gh issue comment X --body "Quick note"`
+- **Long comments** (paragraphs/tables/code): Save to file first, use `gh issue comment X --body-file comment.md`
+- **Why?** PowerShell struggles with multiline strings, special characters, and markdown formatting
+- **Pattern**: Create temp file → Post with `--body-file` → Delete temp file
+
+**If You Get Interrupted:**
+- Just check the status tracker at top of issue
+- See which phase and agent's turn
+- Continue exactly where you left off
+
+**Agent Capabilities:**
 
 | Agent | Create Issues | Read Issues | Comment | Review Commits |
 |-------|--------------|-------------|---------|----------------|
@@ -254,9 +269,6 @@ Update iteration number.
 **Choose starting agent based on where you are:**
 - In VS Code → Start with Copilot (use CLI)
 - In Claude Desktop app → Start with Claude Desktop (use MCP)
-- **Claude Desktop**: Full GitHub MCP access (create issues, read/write comments, review commits, read diffs)
-- **VS Code Copilot**: GitHub extension (read issues) + CLI (create issues, write comments)
-- **Both agents**: Can read each other's work directly from GitHub
 
 **Key Difference:**
 - Claude Desktop can CREATE issues via MCP  
@@ -310,9 +322,24 @@ gh issue list --label "agent-spec"
 # View specific issue
 gh issue view X
 
-# Add comment to issue (or use web UI)
+# Add SHORT comment to issue
 gh issue comment X --body "Implementation complete, ready for review"
+
+# Add LONG comment (use file to avoid PowerShell issues)
+# 1. Save comment to temp file
+echo "Your long markdown comment here..." > temp_comment.md
+# 2. Post from file
+gh issue comment X --body-file temp_comment.md
+# 3. Clean up
+rm temp_comment.md
 ```
+
+**Best Practice for Long Comments:**
+Always use `--body-file` for comments longer than a few lines. Direct CLI strings break with:
+- Multiple paragraphs
+- Code blocks
+- Special characters
+- Markdown tables
 
 ---
 
