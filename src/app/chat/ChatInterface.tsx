@@ -37,6 +37,7 @@ import {
 import ToolsManager from '@/components/chat/SmartTools';
 import type { ActiveTool } from '@/components/chat/SmartTools/types';
 import { formatToolResponse, type ToolType } from '@/lib/utils/toolDetection';
+import { FEATURES } from '@/config/features';
 
 interface ChatInterfaceProps {
   userId: string;
@@ -894,18 +895,21 @@ export default function ChatInterface({
       </header>
 
       {/* Strategy Summary Panel (desktop: left sidebar, mobile: FAB + slide-up) */}
-      <StrategySummaryPanel
-        strategyName={accumulatedRules.find(r => r.label === 'Strategy')?.value || strategyData?.strategyName}
-        rules={accumulatedRules}
-        isVisible={accumulatedRules.length > 0}
-        isAnimationExpanded={isAnimationExpanded}
-        onToggleAnimation={handleToggleAnimation}
-        onValidationChange={handleValidationChange}
-      />
+      {/* PHASE 1: Hidden for vibe-first simplicity. Enable via FEATURES.summary_panel_visible */}
+      {FEATURES.summary_panel_visible && (
+        <StrategySummaryPanel
+          strategyName={accumulatedRules.find(r => r.label === 'Strategy')?.value || strategyData?.strategyName}
+          rules={accumulatedRules}
+          isVisible={accumulatedRules.length > 0}
+          isAnimationExpanded={FEATURES.chart_animations_visible && isAnimationExpanded}
+          onToggleAnimation={handleToggleAnimation}
+          onValidationChange={handleValidationChange}
+        />
+      )}
 
-      {/* Messages area - scrollable (with margin for sidebar on desktop) */}
+      {/* Messages area - scrollable (with margin for sidebar on desktop when panel visible) */}
       <div className={`flex-1 overflow-y-auto min-h-0 flex flex-col ${
-        !isMobile && accumulatedRules.length > 0 ? 'ml-80' : ''
+        FEATURES.summary_panel_visible && !isMobile && accumulatedRules.length > 0 ? 'ml-80' : ''
       }`}>
         <ChatMessageList
           messages={messages}
@@ -915,7 +919,8 @@ export default function ChatInterface({
         />
 
         {/* Smart Tool - appears ONLY after save for optional refinement (rapid flow philosophy) */}
-        {activeTool && strategyStatus === 'saved' && (
+        {/* PHASE 1: Hidden during chat. Enable via FEATURES.smart_tools_visible */}
+        {FEATURES.smart_tools_visible && activeTool && strategyStatus === 'saved' && (
           <div className={`mx-auto w-full ${
             isMobile ? 'px-4' : 'max-w-3xl px-6'
           }`}>

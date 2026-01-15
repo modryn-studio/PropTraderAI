@@ -90,9 +90,31 @@ function hasComponent(rules: ExtractedRule[], component: string): boolean {
                label.includes('window');
                
       case 'stop':
-        return label.includes('stop') || 
-               label.includes('sl') ||
-               (label.includes('loss') && !label.includes('profit'));
+        // Check label for stop loss references
+        const hasStopLabel = label.includes('stop') || 
+                            label.includes('sl') ||
+                            (label.includes('loss') && !label.includes('profit')) ||
+                            label.includes('exit') ||
+                            label.includes('risk');
+        
+        // Expanded value patterns to catch more stop types
+        const stopPatterns = [
+          'tick', 'ticks',                    // "20 ticks"
+          'point', 'points', 'pip', 'pips',   // "15 points"
+          'range', 'swing', 'structure',      // Structure-based
+          'below', 'above', 'break',          // "break below low"
+          'mental', 'initial',                // Mental stops
+          'atr',                              // "1.5 ATR"
+          'middle', 'half', '50%',            // Range-based
+          'low', 'high',                      // "below the low"
+          'get out', 'exit when',             // Natural language
+        ];
+        
+        const hasStopValue = stopPatterns.some(pattern => value.includes(pattern)) ||
+                            /\d+\s*(tick|point|pip)/i.test(value) ||
+                            /\d+(\.\d+)?\s*atr/i.test(value);
+        
+        return hasStopLabel || hasStopValue;
                
       default:
         return label.includes(normalizedComponent);

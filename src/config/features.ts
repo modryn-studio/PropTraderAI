@@ -5,6 +5,23 @@
  * Phase 1B (Weeks 5-8): Autopilot mode, WebSocket monitoring
  * Phase 2 (Weeks 9-16): Advanced mode, behavioral insights UI
  * Phase 3 (Months 5+): API access, strategy editing
+ * 
+ * STRATEGY BUILDER VISIBILITY (Phase 1 vs Phase 2)
+ * ================================================
+ * Phase 1 (NOW): Vibe-first simplicity
+ * - Hide: Summary panel, animations, smart tools during conversation
+ * - Focus: Fast strategy articulation (0-3 questions, <2 min)
+ * - Show complexity only AFTER strategy generation
+ * 
+ * Phase 2 (FUTURE): Power user features
+ * - Show: Real-time rule extraction, visualizations, inline editing
+ * - Activation: TBD (user preference toggle? automatic after 5+ strategies?)
+ * 
+ * To enable Phase 2 features:
+ * 1. Set summary_panel_visible: true
+ * 2. Set chart_animations_visible: true  
+ * 3. Set smart_tools_visible: true
+ * 4. Test with power users before rolling out to all
  */
 
 export const FEATURES = {
@@ -18,8 +35,16 @@ export const FEATURES = {
   
   // RAPID STRATEGY BUILDER - New optimized flow
   // Set to true for <2 minute completion (grouped questions, smart defaults)
-  // Set to false for legacy Socratic method (one question at a time)
+  // Set to false ONLY for debugging or A/B testing legacy Socratic method
+  // WARNING: Legacy mode had 40%+ abandonment rate vs 15% for rapid flow
   rapid_strategy_builder: true,
+  
+  // PHASE 1: STRATEGY BUILDER VISUAL FEATURES (Hidden for vibe-first simplicity)
+  // These features work but add visual complexity during conversation
+  // Hide in Phase 1, enable in Phase 2 for power users
+  summary_panel_visible: false,        // Real-time rule extraction panel
+  chart_animations_visible: false,     // Strategy visualizations during chat
+  smart_tools_visible: false,          // Position calc, timeframe helper during chat
   
   // Phase 1B (Weeks 5-8)
   autopilot_mode: false,

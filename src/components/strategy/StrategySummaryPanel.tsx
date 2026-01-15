@@ -486,8 +486,62 @@ function RulesCategoryList({ rules }: { rules: StrategyRule[] }) {
     new Set(['setup', 'entry', 'exit', 'risk'])
   );
 
+  // Deduplicate rules (Fix Issue #3: Multiple pattern references)
+  const deduplicatedRules = useMemo(() => {
+    const seen = new Map<string, StrategyRule>();
+    
+    rules.forEach(rule => {
+      // Create a unique key based on EXACT label matching (not .includes())
+      const normalizedLabel = rule.label.toLowerCase().trim();
+      
+      // EXACT label matching to avoid over-aggressive deduplication
+      const exactMatches: Record<string, string> = {
+        'pattern': 'setup:pattern',
+        'strategy': 'setup:pattern',
+        'entry pattern': 'setup:pattern',
+        
+        'stop loss': 'risk:stop',
+        'stop': 'risk:stop',
+        'sl': 'risk:stop',
+        
+        'target': 'exit:target',
+        'profit target': 'exit:target',
+        'take profit': 'exit:target',
+        'profit': 'exit:target',
+        'r:r': 'exit:target',
+        'risk:reward': 'exit:target',
+        
+        'position size': 'risk:sizing',
+        'position sizing': 'risk:sizing',
+        'contracts': 'risk:sizing',
+      };
+      
+      // Get semantic key from exact match OR fall back to category:label
+      const semanticKey = exactMatches[normalizedLabel] || `${rule.category}:${normalizedLabel}`;
+      
+      // Keep the most specific/complete rule (prefer longer values, non-defaulted)
+      const existing = seen.get(semanticKey);
+      if (!existing) {
+        seen.set(semanticKey, rule);
+      } else {
+        // Prefer user-specified over defaults
+        if (existing.isDefaulted && !rule.isDefaulted) {
+          seen.set(semanticKey, rule);
+        }
+        // If both user-specified, prefer longer/more descriptive value
+        else if (!existing.isDefaulted && !rule.isDefaulted) {
+          if (rule.value.length > existing.value.length) {
+            seen.set(semanticKey, rule);
+          }
+        }
+      }
+    });
+    
+    return Array.from(seen.values());
+  }, [rules]);
+
   // Group rules by category
-  const rulesByCategory = rules.reduce((acc, rule) => {
+  const rulesByCategory = deduplicatedRules.reduce((acc, rule) => {
     const category = rule.category || 'setup';
     if (!acc[category]) acc[category] = [];
     acc[category].push(rule);

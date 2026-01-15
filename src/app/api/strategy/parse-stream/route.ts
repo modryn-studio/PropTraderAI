@@ -516,8 +516,11 @@ export async function POST(request: Request) {
           
           // Always apply smart defaults (handles empty rules case too)
           const defaultsResult = applySmartDefaults(extractionResult.rules, firstUserMessage);
-          const rulesToSend = defaultsResult.rules;
+          let rulesToSend = defaultsResult.rules;
           const defaultsApplied = defaultsResult.defaultsApplied;
+          
+          // No normalization needed - Pass 2 already extracts in final, clean form
+          const detectedPattern = defaultsResult.completeness.components.pattern.value;
           
           if (defaultsApplied.length > 0) {
             console.log(`[Smart Defaults] Applied defaults for: ${defaultsApplied.join(', ')}`);
