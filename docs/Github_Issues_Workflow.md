@@ -35,12 +35,12 @@ Live demonstration showing:
 
 1. **Create issue on GitHub** — method depends on which agent you start with:
    
-   **Option A: Starting with VS Code Copilot**
+   **Option A: Starting with VS Code Copilot (Agent 2)**
    ```bash
    gh issue create --title "Feature: X" --body "What needs to happen..."
    ```
    
-   **Option B: Starting with Claude Desktop (MCP)**
+   **Option B: Starting with Claude Desktop (Agent 1 with GitHub MCP)**
    ```
    "Create a GitHub issue in modryn-studio/PropTraderAI titled 'Feature: X' 
    with [describe the task]"
@@ -50,17 +50,17 @@ Live demonstration showing:
    - Go to: https://github.com/modryn-studio/PropTraderAI/issues/new/choose
    - Select "Agent Task" template (optional, just sets label)
 
-2. **Agent 1** (Copilot in VS Code or Claude Desktop): 
+2. **Claude Desktop (Agent 1)** or **VS Code Copilot (Agent 2)**: 
    - Reads issue from GitHub via MCP/API
    - Fills spec directly in the issue (no code yet)
    - Updates status tracker
 
-3. **Agent 2** (Claude Desktop):
-   - Reads same issue from GitHub via MCP
-   - Adds critique as a comment on the issue
+3. **The other agent** reviews:
+   - **Claude Desktop**: Reads via GitHub MCP, adds critique as comment
+   - **VS Code Copilot**: Reads via GitHub extension, adds critique via CLI comment
    - Questions, edge cases, security concerns
 
-4. **Agent 1** responds via GitHub issue comments
+4. **Original agent** responds via GitHub issue comments
    - Addresses concerns
    - Updates spec if needed
 
@@ -75,7 +75,7 @@ Live demonstration showing:
    # Pull latest code
    git pull origin main
    
-   # Agent 1 (in VS Code) writes the code
+   # Write the code (either agent can implement in VS Code)
    # Test locally
    
    # Commit and push
@@ -84,16 +84,17 @@ Live demonstration showing:
    git push origin main
    ```
 
-7. **Agent 2 reviews code:**
-   - Reads the actual commits from GitHub via MCP (no local pull needed)
+7. **Code review:**
+   - **Claude Desktop**: Reads commits from GitHub via MCP (no local pull needed)
+   - **VS Code Copilot**: Reviews via GitHub extension or git commands
    - Comments on the issue with code review feedback
    - Checks if implementation matches the spec
    - Verifies security, performance, edge cases
 
 8. **Iterate on code** if needed:
-   - Agent 1 makes changes locally
+   - Make changes locally
    - Push again
-   - Agent 2 reviews
+   - Review
    - Close issue when complete
 
 ### Quick Reference (5 Steps)
@@ -112,34 +113,42 @@ gh issue create --title "Task description" --body "Details..."
 
 **Via Web UI:**
 - https://github.com/modryn-studio/PropTraderAI/issues/new/choose
+First Agent - Initial Spec**
 
-**Step 2: Agent 1 Initial Spec (VS Code Copilot or Claude Desktop)**
+**Via VS Code Copilot (Agent 2):**
 ```
 Prompt: "Read GitHub issue #[NUMBER] from modryn-studio/PropTraderAI 
 and fill in the initial spec sections for [FEATURE/TASK]."
 ```
 
-**Step 3: Agent 2 Review (The OTHER Agent)**
+**Via Claude Desktop (Agent 1):**
+```
+Prompt: "Read GitHub issue #[NUMBER] from modryn-studio/PropTraderAI 
+and create initial spec for [FEATURE/TASK]."
+```
+
+**Step 3: Second Agent - Critical Review**
 ```
 Prompt: "Review GitHub issue #[NUMBER] from modryn-studio/PropTraderAI 
 with top 0.1% developer thinking. Add your critical review as a comment."
 ```
 
 **Step 4: Iterate (Both Agents)**
-- Agent 1 responds via comments
-- Agent 2 reviews response
+- Original agent responds via comments
+- Reviewing agent reviews response
 - Repeat 2-4 times until consensus
 
 **Step 5: Implement & Review**
-- Agent 1 codes (local)
+- Either agent codes (in VS Code)
 - Push to GitHub
+- Other agent reviews commits
 - Agent 2 reviews commits via MCP
 
 ---
 
 ## Agent Prompts
 
-### For Agent 1 (Initial Spec)
+### For Initial Spec (Either Agent)
 ```
 I need you to create a technical specification for [FEATURE] in GitHub issue format.
 
@@ -151,10 +160,10 @@ Read issue #[NUMBER] in modryn-studio/PropTraderAI and fill in these sections:
 - Trade-offs: What are we giving up?
 
 Be specific about implementation details but don't write the code yet.
-Update the status tracker to show you're Agent 1, Phase: Spec, Iteration: 1
+Update the status tracker to show current agent (Claude Desktop or VS Code Copilot), Phase: Spec, Iteration: 1
 ```
 
-### For Agent 2 (Critical Review)  
+### For Critical Review (The Other Agent)  
 ```
 Review GitHub issue #[NUMBER] in modryn-studio/PropTraderAI with top 0.1% developer critical thinking.
 
@@ -173,12 +182,12 @@ Add a comment to the issue with your critique organized by:
 - Security
 - Better Alternatives
 
-Update the status to Phase: Review, Agent: Agent 2, Iteration: 2
+Update the status to Phase: Review, current agent, Iteration: 2
 ```
 
-### For Agent 1 (Response to Critique)
+### For Response to Critique (Original Agent)
 ```
-Read the critique on GitHub issue #[NUMBER] from Agent 2.
+Read the critique on GitHub issue #[NUMBER].
 
 Respond to their concerns by:
 1. Answering all questions directly
@@ -188,8 +197,8 @@ Respond to their concerns by:
 
 Add your response as a comment or edit the issue body.
 Update iteration number.
-```
-
+```Claude Desktop (Agent 1)**: Uses GitHub MCP server — can create issues, read/write comments, review commits
+- **VS Code Copilot (Agent 2)**: Uses GitHub extension (read) + CLI (write) — can read issues, comment via CLI
 ---
 
 ## Why This Workflow Works
@@ -230,15 +239,21 @@ Update iteration number.
 **During Implementation Phase:**
 - Only pull code when spec is finalized
 - Test locally before pushing
-- Reference issue number in commits: `"Implement feature from issue #X"`
-- Push frequently so Agent 2 can review incrementally
+- RefereCapabilities:**
 
-**If You Get Interrupted:**
-- Just check the status tracker at top of issue
-- See which phase and agent's turn
-- Continue exactly where you left off
+| Agent | Create Issues | Read Issues | Comment | Review Commits |
+|-------|--------------|-------------|---------|----------------|
+| **Claude Desktop (Agent 1)** | ✅ Via MCP | ✅ Via MCP | ✅ Via MCP | ✅ Via MCP (diffs, history) |
+| **VS Code Copilot (Agent 2)** | ✅ Via CLI | ✅ Via extension | ✅ Via CLI | ✅ Via extension/git |
 
-**Agent Access:**
+**Key Differences:**
+- **Claude Desktop**: Full write access via MCP (can create issues directly)
+- **VS Code Copilot**: Uses CLI for writes (`gh issue create`, `gh issue comment`)
+- **Both**: Can read each other's work directly from GitHub
+
+**Choose starting agent based on where you are:**
+- In VS Code → Start with Copilot (use CLI)
+- In Claude Desktop app → Start with Claude Desktop (use MCP)
 - **Claude Desktop**: Full GitHub MCP access (create issues, read/write comments, review commits, read diffs)
 - **VS Code Copilot**: GitHub extension (read issues) + CLI (create issues, write comments)
 - **Both agents**: Can read each other's work directly from GitHub
