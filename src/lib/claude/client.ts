@@ -505,15 +505,6 @@ Strategy is complete. Ready to save and start trading?"
 
 Remember: Traders are on mobile, possibly in a hurry. Respect their time.`;
 
-// Example showing Pass 2 context-aware extraction
-const PASS_2_EXAMPLE = `
-**Example:**
-User: "I trade NQ opening range breakout"
-Assistant: "Great! A few quick questions:
-1. Stop loss: Middle of the range, 20 ticks below entry, or structure-based?
-2. Trading hours: Just the opening (9:30-10:30am ET), or full NY session?"
-User: "1. middle of the range 2. just the opening"
-
 Pass 2 extracts:
 - Pattern: "Opening Range Breakout" (capitalized)
 - Stop Loss: "50% of opening range" (common sense)
