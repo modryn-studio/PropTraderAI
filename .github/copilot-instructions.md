@@ -928,6 +928,52 @@ When working on specific areas, reference these docs:
 | Implementation order | `ROADMAP.md` |
 | Landing page | `design_landing_page.md` |
 | Visual design | `design.md` |
+| **Agent collaboration** | **`docs/Github_Issues_Workflow.md`** |
+
+---
+
+## 🔄 Two-Agent Workflow (Complex Features)
+
+For features requiring architectural review, spec iteration, or critical thinking:
+
+### When to Use GitHub Issues Workflow
+
+Use the two-agent dialectic for:
+- ✅ Complex features with architectural implications
+- ✅ Features requiring 0.1% critical review
+- ✅ Unclear requirements needing iteration
+- ✅ Anything that benefits from spec → critique → revision
+
+**Don't use for:**
+- ❌ Simple bug fixes
+- ❌ Copy/content updates
+- ❌ Clear, well-defined small tasks
+
+### Agent Roles
+
+- **VS Code Copilot (Agent 2)** = You (me) - Can read issues, comment via CLI
+- **Claude Desktop (Agent 1)** = Desktop app with GitHub MCP - Full read/write access
+
+### The Pattern
+
+1. **Create issue** (either agent):
+   ```bash
+   gh issue create --title "Feature: X" --body "What needs to happen..."
+   ```
+
+2. **First agent specs** the solution (reconnaissance, architecture, questions)
+
+3. **Second agent critiques** with 0.1% thinking (edge cases, security, alternatives)
+
+4. **Iterate** until consensus (2-4 rounds typical)
+
+5. **Implement** from finalized spec
+
+6. **Code review** via GitHub commits
+
+**Full workflow details:** `docs/Github_Issues_Workflow.md`
+
+**Example:** Issue #4 (UX research) and Issue #5 (Core generation flow) used this pattern successfully.
 
 ---
 
