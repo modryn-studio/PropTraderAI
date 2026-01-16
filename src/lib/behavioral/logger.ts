@@ -93,6 +93,16 @@ export type BehavioralEventType =
   | 'template_offered'
   | 'template_accepted'
   
+  // Generate-First Rapid Flow events (Phase 1 vibe-first)
+  | 'rapid_flow_started'
+  | 'rapid_flow_completed'
+  | 'rapid_flow_abandoned'
+  | 'rapid_flow_error'
+  | 'critical_question_shown'
+  | 'critical_question_answered'
+  | 'critical_question_ignored'
+  | 'strategy_parameter_edited'
+  
   // Edge Case Handling events
   | 'multi_instrument_detected'
   | 'multi_instrument_choice_made'

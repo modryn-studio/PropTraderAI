@@ -39,6 +39,12 @@ export const FEATURES = {
   // WARNING: Legacy mode had 40%+ abandonment rate vs 15% for rapid flow
   rapid_strategy_builder: true,
   
+  // GENERATE-FIRST RAPID FLOW (Phase 1 vibe-first)
+  // True = Generate strategy immediately, ask only critical questions (stop loss)
+  // False = Use existing Socratic dialogue flow
+  // Route: /api/strategy/generate-rapid
+  generate_first_flow: true,
+  
   // PHASE 1: STRATEGY BUILDER VISUAL FEATURES (Hidden for vibe-first simplicity)
   // These features work but add visual complexity during conversation
   // Hide in Phase 1, enable in Phase 2 for power users
