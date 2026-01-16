@@ -151,7 +151,7 @@ export default function ChatInterface({
   const [toolsShown, setToolsShown] = useState<ToolType[]>([]);
   
   // Rapid Flow state (Week 2 implementation)
-  const { flags, isLoading: _flagsLoading } = useFeatureFlags();
+  const { flags } = useFeatureFlags();
   const [devOverrideRapidFlow, setDevOverrideRapidFlow] = useState(false);
   const isDev = process.env.NODE_ENV === 'development';
   const useRapidFlow = isDev ? devOverrideRapidFlow : (flags.generate_first_flow ?? false);

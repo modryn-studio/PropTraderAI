@@ -331,7 +331,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<RapidGene
     await logBehavioralEventServer(
       supabase,
       user.id,
-      'rapid_flow_started' as any, // Will add to types
+      'rapid_flow_started',
       {
         conversationId: currentConversationId,
         messageLength: message.length,
@@ -374,7 +374,6 @@ export async function POST(request: NextRequest): Promise<NextResponse<RapidGene
     // ========================================================================
     
     const gapsResult = detectCriticalGaps(message, rulesWithDefaults);
-    const mostCriticalGap = getMostCriticalGap(gapsResult);
     
     // ========================================================================
     // STEP 6: If stop loss missing, ask critical question
