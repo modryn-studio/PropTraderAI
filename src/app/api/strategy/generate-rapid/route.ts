@@ -17,7 +17,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { logBehavioralEventServer } from '@/lib/behavioral/logger';
 import { createAnthropicClient } from '@/lib/claude/client';
-import { detectCriticalGaps } from '@/lib/strategy/criticalGapsDetection';
+import { 
+  validateInputQuality,
+  detectAllGaps,
+  type GapDetectionResult,
+} from '@/lib/strategy/gapDetection';
 import { applyPhase1Defaults } from '@/lib/strategy/applyPhase1Defaults';
 import { detectInstrument, detectPattern as detectPatternFromMessage } from '@/lib/strategy/completenessDetection';
 import type { StrategyRule } from '@/lib/utils/ruleExtractor';
@@ -31,14 +35,20 @@ interface RapidGenerateRequest {
   message: string;
   /** Optional conversation ID for tracking */
   conversationId?: string;
-  /** Answer to critical question (if this is message 2) */
+  /** Answer to critical question (if this is message 2+) */
   criticalAnswer?: {
-    questionType: 'stopLoss' | 'instrument' | 'entryTrigger' | 'direction';
+    questionType: 'stopLoss' | 'instrument' | 'entryTrigger' | 'direction' | 'profitTarget' | 'positionSizing';
     value: string;
+  };
+  /** Previous partial strategy (for stateless re-evaluation) */
+  partialStrategy?: {
+    rules: StrategyRule[];
+    pattern?: string;
+    instrument?: string;
   };
 }
 
-interface StopLossOption {
+interface AnswerOption {
   value: string;
   label: string;
   default?: boolean;
@@ -47,14 +57,16 @@ interface StopLossOption {
 interface CriticalQuestionResponse {
   type: 'critical_question';
   question: string;
-  questionType: 'stopLoss' | 'instrument' | 'entryTrigger' | 'direction';
-  options: StopLossOption[];
+  questionType: 'stopLoss' | 'instrument' | 'entryTrigger' | 'direction' | 'profitTarget' | 'positionSizing';
+  options: AnswerOption[];
   partialStrategy: {
     rules: StrategyRule[];
     pattern?: string;
     instrument?: string;
   };
   conversationId: string;
+  /** All gaps detected (for debugging/analytics) */
+  allGaps?: GapDetectionResult;
 }
 
 interface StrategyCompleteResponse {
@@ -80,9 +92,11 @@ type RapidGenerateResponse = CriticalQuestionResponse | StrategyCompleteResponse
 
 // ============================================================================
 // STOP LOSS OPTIONS BY PATTERN
+// NOTE: Currently unused as gap detection provides its own questions
 // ============================================================================
 
-function getStopLossOptions(pattern?: string): StopLossOption[] {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+function getStopLossOptions(pattern?: string): AnswerOption[] {
   // Pattern-specific options
   if (pattern === 'opening_range_breakout' || pattern === 'orb') {
     return [
@@ -276,6 +290,87 @@ function stopLossAnswerToRule(answer: string): StrategyRule {
   };
 }
 
+/**
+ * Convert any critical answer to a rule
+ */
+function answerToRule(
+  questionType: 'stopLoss' | 'instrument' | 'entryTrigger' | 'direction' | 'profitTarget' | 'positionSizing',
+  value: string
+): StrategyRule | null {
+  switch (questionType) {
+    case 'stopLoss':
+      return stopLossAnswerToRule(value);
+    
+    case 'instrument':
+      return {
+        category: 'setup',
+        label: 'Instrument',
+        value: value.toUpperCase(),
+        isDefaulted: false,
+        source: 'user',
+      };
+    
+    case 'entryTrigger':
+      return {
+        category: 'entry',
+        label: 'Entry Trigger',
+        value,
+        isDefaulted: false,
+        source: 'user',
+      };
+    
+    case 'direction':
+      return {
+        category: 'entry',
+        label: 'Direction',
+        value: value.toLowerCase().includes('long') ? 'Long' : 
+               value.toLowerCase().includes('short') ? 'Short' : 'Both',
+        isDefaulted: false,
+        source: 'user',
+      };
+    
+    case 'profitTarget':
+      return {
+        category: 'exit',
+        label: 'Profit Target',
+        value,
+        isDefaulted: false,
+        source: 'user',
+      };
+    
+    case 'positionSizing':
+      return {
+        category: 'risk',
+        label: 'Position Sizing',
+        value,
+        isDefaulted: false,
+        source: 'user',
+      };
+    
+    default:
+      return null;
+  }
+}
+
+/**
+ * Map gap component to question type for response
+ */
+function mapComponentToQuestionType(
+  component?: string
+): 'stopLoss' | 'instrument' | 'entryTrigger' | 'direction' | 'profitTarget' | 'positionSizing' {
+  const mapping: Record<string, 'stopLoss' | 'instrument' | 'entryTrigger' | 'direction' | 'profitTarget' | 'positionSizing'> = {
+    'stop_loss': 'stopLoss',
+    'instrument': 'instrument',
+    'entry_criteria': 'entryTrigger',
+    'direction': 'direction',
+    'profit_target': 'profitTarget',
+    'position_sizing': 'positionSizing',
+    'input_quality': 'entryTrigger', // Generic fallback
+  };
+  
+  return mapping[component || ''] || 'stopLoss';
+}
+
 // ============================================================================
 // MAIN HANDLER
 // ============================================================================
@@ -301,7 +396,50 @@ export async function POST(request: NextRequest): Promise<NextResponse<RapidGene
     }
     
     // ========================================================================
-    // STEP 1: Get or create conversation
+    // STEP 1: INPUT QUALITY VALIDATION (BEFORE Claude call - save costs)
+    // ========================================================================
+    
+    const inputQuality = validateInputQuality(message);
+    
+    if (!inputQuality.canProceed) {
+      // Log rejection
+      await logBehavioralEventServer(
+        supabase,
+        user.id,
+        'input_quality_rejected',
+        {
+          message: message.substring(0, 100), // Don't log full message
+          issues: inputQuality.issues,
+          severity: inputQuality.severity,
+        }
+      );
+      
+      // If we have suggested questions, return them
+      if (inputQuality.suggestedQuestions && inputQuality.suggestedQuestions.length > 0) {
+        const q = inputQuality.suggestedQuestions[0];
+        return NextResponse.json({
+          type: 'critical_question',
+          question: q.question,
+          questionType: 'entryTrigger', // Generic for input quality
+          options: q.options.map(o => ({ value: o.value, label: o.label, default: o.default })),
+          partialStrategy: {
+            rules: [],
+            pattern: undefined,
+            instrument: undefined,
+          },
+          conversationId: conversationId || '',
+        });
+      }
+      
+      // Otherwise return error
+      return NextResponse.json({ 
+        type: 'error', 
+        error: inputQuality.issues[0] || 'Please describe your trading strategy',
+      }, { status: 400 });
+    }
+    
+    // ========================================================================
+    // STEP 2: Get or create conversation
     // ========================================================================
     
     let currentConversationId: string = conversationId || '';
@@ -336,6 +474,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<RapidGene
         conversationId: currentConversationId,
         messageLength: message.length,
         hasCriticalAnswer: !!criticalAnswer,
+        inputQualityScore: inputQuality.confidence || 0,
       }
     );
     
@@ -360,57 +499,77 @@ export async function POST(request: NextRequest): Promise<NextResponse<RapidGene
     let rulesWithDefaults = defaultsResult.rules;
     
     // ========================================================================
-    // STEP 4: Handle critical answer (if this is message 2)
+    // STEP 4: Handle critical answer (if this is follow-up message)
     // ========================================================================
     
-    if (criticalAnswer && criticalAnswer.questionType === 'stopLoss') {
-      // Add stop loss rule from user's answer
-      const stopLossRule = stopLossAnswerToRule(criticalAnswer.value);
-      rulesWithDefaults = [...rulesWithDefaults, stopLossRule];
+    if (criticalAnswer) {
+      const answerRule = answerToRule(criticalAnswer.questionType, criticalAnswer.value);
+      if (answerRule) {
+        rulesWithDefaults = [...rulesWithDefaults, answerRule];
+      }
     }
     
     // ========================================================================
-    // STEP 5: Check critical gaps
+    // STEP 5: Check ALL gaps using comprehensive detection
     // ========================================================================
     
-    const gapsResult = detectCriticalGaps(message, rulesWithDefaults);
+    const gapsResult = detectAllGaps(message, rulesWithDefaults, {
+      pattern,
+      instrument,
+      isFollowUp: !!criticalAnswer,
+    });
     
     // ========================================================================
-    // STEP 6: If stop loss missing, ask critical question
+    // STEP 6: Handle gaps based on action type
     // ========================================================================
     
-    if (!gapsResult.gaps.stopLoss && !criticalAnswer) {
-      // Log critical question shown
-      await logBehavioralEventServer(
-        supabase,
-        user.id,
-        'critical_question_shown',
-        {
+    if (gapsResult.action.type === 'ask_question') {
+      const questions = gapsResult.action.questions || [];
+      
+      if (questions.length > 0) {
+        const topQuestion = questions[0];
+        
+        // Determine question type from the first gap
+        const firstGap = gapsResult.gaps.find(g => g.status !== 'present');
+        const questionType = mapComponentToQuestionType(firstGap?.component);
+        
+        // Log critical question shown
+        await logBehavioralEventServer(
+          supabase,
+          user.id,
+          'critical_question_shown',
+          {
+            conversationId: currentConversationId,
+            questionType,
+            gapSeverity: gapsResult.severity,
+            pattern,
+            instrument,
+            timeToQuestion: Date.now() - startTime,
+          }
+        );
+        
+        return NextResponse.json({
+          type: 'critical_question',
+          question: topQuestion.question,
+          questionType,
+          options: topQuestion.options.map(o => ({ 
+            value: o.value, 
+            label: o.label, 
+            default: o.default,
+          })),
+          partialStrategy: {
+            rules: rulesWithDefaults,
+            pattern: gapsResult.pattern || pattern,
+            instrument: gapsResult.instrument || instrument,
+          },
           conversationId: currentConversationId,
-          questionType: 'stopLoss',
-          pattern,
-          instrument,
-          timeToQuestion: Date.now() - startTime,
-        }
-      );
-      
-      // Build question based on pattern
-      const patternLabel = pattern?.replace(/_/g, ' ') || 'strategy';
-      const question = `Where's your stop loss for this ${patternLabel}?`;
-      
-      return NextResponse.json({
-        type: 'critical_question',
-        question,
-        questionType: 'stopLoss',
-        options: getStopLossOptions(pattern),
-        partialStrategy: {
-          rules: rulesWithDefaults,
-          pattern,
-          instrument,
-        },
-        conversationId: currentConversationId,
-      });
+          allGaps: gapsResult,
+        });
+      }
     }
+    
+    // If action is 'apply_defaults', the defaults were already applied in Step 3
+    // If action is 'reject', we already handled that in input validation
     
     // ========================================================================
     // STEP 7: Generate complete strategy

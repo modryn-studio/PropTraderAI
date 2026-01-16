@@ -111,6 +111,7 @@ export type BehavioralEventType =
   | 'quality_validation_completed'
   | 'session_boundary_detected'
   | 'session_insights_generated'
+  | 'input_quality_rejected'
   
   // API error events
   | 'claude_api_error'
