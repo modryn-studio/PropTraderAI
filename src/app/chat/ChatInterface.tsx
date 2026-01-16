@@ -438,11 +438,24 @@ export default function ChatInterface({
   // ============================================================================
 
   const handleSendMessage = useCallback(async (message: string) => {
+    // Debug logging
+    console.log('[ChatInterface] handleSendMessage called', {
+      message,
+      useRapidFlow,
+      generatedStrategy: !!generatedStrategy,
+      isDev,
+      devOverrideRapidFlow,
+      'flags.generate_first_flow': flags.generate_first_flow,
+      'final useRapidFlow': useRapidFlow,
+    });
+
     // Route to rapid flow if enabled
     if (useRapidFlow && !generatedStrategy) {
+      console.log('[ChatInterface] ✅ Routing to RAPID FLOW');
       return handleRapidFlowMessage(message);
     }
 
+    console.log('[ChatInterface] ❌ Routing to TRADITIONAL flow');
     // Traditional Socratic flow continues below...
     // Optimistic UI: show user message immediately
     const userMsg: ChatMessage = {
@@ -1206,9 +1219,12 @@ export default function ChatInterface({
         {generatedStrategy && (
           <div className="max-w-3xl mx-auto px-6 pb-4">
             <StrategyEditableCard
-              strategy={generatedStrategy}
-              onParameterEdit={(param) => {
-                console.log('[RapidFlow] Parameter edited:', param);
+              name={generatedStrategy.name}
+              rules={generatedStrategy.parsed_rules}
+              pattern={generatedStrategy.pattern}
+              instrument={generatedStrategy.instrument}
+              onParameterEdit={(rule, newValue) => {
+                console.log('[RapidFlow] Parameter edited:', rule, newValue);
                 // TODO: Handle parameter editing
               }}
               onSave={async () => {
@@ -1241,6 +1257,7 @@ export default function ChatInterface({
                   setIsLoading(false);
                 }
               }}
+              isSaving={isLoading}
             />
           </div>
         )}
