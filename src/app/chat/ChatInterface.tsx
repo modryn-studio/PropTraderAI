@@ -151,7 +151,7 @@ export default function ChatInterface({
   const [toolsShown, setToolsShown] = useState<ToolType[]>([]);
   
   // Rapid Flow state (Week 2 implementation)
-  const { flags, isLoading: flagsLoading } = useFeatureFlags();
+  const { flags, isLoading: _flagsLoading } = useFeatureFlags();
   const [devOverrideRapidFlow, setDevOverrideRapidFlow] = useState(false);
   const isDev = process.env.NODE_ENV === 'development';
   const useRapidFlow = isDev ? devOverrideRapidFlow : (flags.generate_first_flow ?? false);
@@ -305,7 +305,7 @@ export default function ChatInterface({
         // Log completion
         await logBehavioralEvent(
           userId,
-          'rapid_flow_completed' as any,
+          'rapid_flow_completed',
           {
             conversationId,
             messageCount: 2,
@@ -378,7 +378,7 @@ export default function ChatInterface({
         // Log critical question shown
         await logBehavioralEvent(
           userId,
-          'critical_question_shown' as any,
+          'critical_question_shown',
           {
             conversationId: data.conversationId,
             questionType: data.questionType,
@@ -406,7 +406,7 @@ export default function ChatInterface({
         // Log completion
         await logBehavioralEvent(
           userId,
-          'rapid_flow_completed' as any,
+          'rapid_flow_completed',
           {
             conversationId: data.conversationId,
             messageCount: 1,

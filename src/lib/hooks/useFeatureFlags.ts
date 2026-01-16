@@ -107,7 +107,7 @@ export function useFeatureFlags(): UseFeatureFlagsReturn {
  * const useRapidFlow = isDev ? devOverride : flags.generate_first_flow ?? false;
  * ```
  */
-export function useFeatureFlagOverride(flagName: string) {
+export function useFeatureFlagOverride(_flagName: string) {
   const [override, setOverride] = useState<boolean | null>(null);
 
   // Only allow overrides in development

@@ -17,9 +17,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { logBehavioralEventServer } from '@/lib/behavioral/logger';
 import { createAnthropicClient } from '@/lib/claude/client';
-import { detectCriticalGaps, getMostCriticalGap, type CriticalGapsResult } from '@/lib/strategy/criticalGapsDetection';
-import { applyPhase1Defaults, type Phase1DefaultsResult } from '@/lib/strategy/applyPhase1Defaults';
-import { detectInstrument, detectStopLoss, detectPattern as detectPatternFromMessage } from '@/lib/strategy/completenessDetection';
+import { detectCriticalGaps, getMostCriticalGap } from '@/lib/strategy/criticalGapsDetection';
+import { applyPhase1Defaults } from '@/lib/strategy/applyPhase1Defaults';
+import { detectInstrument, detectPattern as detectPatternFromMessage } from '@/lib/strategy/completenessDetection';
 import type { StrategyRule } from '@/lib/utils/ruleExtractor';
 
 // ============================================================================
@@ -255,7 +255,7 @@ function generateStrategyName(pattern?: string, instrument?: string, rules?: Str
 /**
  * Convert stop loss answer to rule
  */
-function stopLossAnswerToRule(answer: string, pattern?: string): StrategyRule {
+function stopLossAnswerToRule(answer: string): StrategyRule {
   const valueMap: Record<string, string> = {
     'below_range': 'Below opening range low',
     'range_50': '50% of opening range',
@@ -385,7 +385,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<RapidGene
       await logBehavioralEventServer(
         supabase,
         user.id,
-        'critical_question_shown' as any,
+        'critical_question_shown',
         {
           conversationId: currentConversationId,
           questionType: 'stopLoss',
@@ -455,7 +455,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<RapidGene
     await logBehavioralEventServer(
       supabase,
       user.id,
-      'rapid_flow_completed' as any,
+      'rapid_flow_completed',
       {
         conversationId: currentConversationId,
         strategyId: savedStrategy.id,

@@ -9,8 +9,7 @@ import {
   detectPattern,
   previewPhase1Defaults,
   stripDefaults,
-  replaceDefault,
-  type Phase1DefaultsResult 
+  replaceDefault
 } from '../applyPhase1Defaults';
 import type { StrategyRule } from '@/lib/utils/ruleExtractor';
 
