@@ -219,16 +219,24 @@ export class ExecutionEngine {
     this.lastCheck = new Date();
 
     try {
-      // 1. Check all active strategies for potential setups
-      const strategyArray = Array.from(this.strategies.values());
-      for (const strategy of strategyArray) {
-        if (!strategy.isActive) continue;
+      // 1. Check all active strategies IN PARALLEL (FIX per Agent 1 Fresh Review Issue #3)
+      // Sequential checking caused race conditions where queue couldn't drain fast enough
+      const strategyArray = Array.from(this.strategies.values()).filter(s => s.isActive);
+      
+      // Run all strategy checks concurrently
+      const strategyChecks = strategyArray.map(strategy => 
+        this.checkStrategy(strategy).catch(err => {
+          console.error(`[Engine] Error checking strategy ${strategy.id}:`, err);
+        })
+      );
+      
+      // Wait for all checks to complete
+      await Promise.allSettled(strategyChecks);
 
-        await this.checkStrategy(strategy);
-      }
-
-      // 2. Process setup queue
-      await this.processSetupQueue();
+      // 2. Process setup queue (run async, don't block next tick)
+      this.processSetupQueue().catch(err => {
+        console.error('[Engine] Error processing setup queue:', err);
+      });
 
       // 3. Check safety limits
       await this.checkSafetyLimits();

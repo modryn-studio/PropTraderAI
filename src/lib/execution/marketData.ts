@@ -424,8 +424,30 @@ export class MarketDataAggregator {
   async subscribe(symbol: string): Promise<void> {
     this.subscriptions.add(symbol);
     
+    // Initialize empty candle buffer if not exists
+    const isNewSubscription = !this.candles.has(symbol) || this.candles.get(symbol)!.length === 0;
     if (!this.candles.has(symbol)) {
       this.candles.set(symbol, []);
+    }
+
+    // CRITICAL FIX per Agent 1 Fresh Review Issue #4:
+    // Fetch historical bars on INITIAL subscription (not just reconnection)
+    // Without this, indicators won't have enough data for 16+ hours
+    if (isNewSubscription && this.historicalBarsFetcher) {
+      try {
+        console.log(`[MarketData] Fetching historical bars for ${symbol} (initial subscription)...`);
+        const historicalBars = await this.historicalBarsFetcher(symbol, CANDLE_BUFFER_SIZE, 5);
+        
+        if (historicalBars.length > 0) {
+          this.candles.set(symbol, historicalBars);
+          console.log(`[MarketData] Loaded ${historicalBars.length} historical candles for ${symbol}`);
+        } else {
+          console.warn(`[MarketData] No historical data available for ${symbol}`);
+        }
+      } catch (error) {
+        console.error(`[MarketData] Failed to fetch historical bars for ${symbol}:`, error);
+        // Continue with subscription anyway - will aggregate from live data
+      }
     }
 
     if (this.isConnected()) {

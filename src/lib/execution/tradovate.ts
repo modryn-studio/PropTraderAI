@@ -882,15 +882,36 @@ export class TradovateClient {
  * Enhanced per Agent 1 code review: Issue #4
  * - Added direction (already was included but now documented)
  * - Added nonce for sub-millisecond collision prevention
- *   Using random hex instead of hrtime for browser compatibility
+ * 
+ * FIXED per Agent 1 Fresh Review Issue #5:
+ * - Use crypto.randomBytes instead of Math.random for true randomness
+ * - Math.random has birthday paradox collision at ~4000 IDs with 6 hex chars
+ * - crypto.randomBytes(8) provides 2^64 possibilities - effectively collision-free
  */
 export function generateSetupId(strategyId: string, timestamp: Date, direction?: string): string {
   // Use ISO timestamp (millisecond precision)
   const ts = timestamp.toISOString();
   
-  // Add random nonce for sub-millisecond collisions
-  // 6 hex chars = 16 million possibilities
-  const nonce = Math.random().toString(16).substring(2, 8);
+  // Use cryptographically secure random bytes instead of Math.random
+  // 8 bytes = 16 hex chars = 2^64 possibilities (collision-free for practical purposes)
+  let nonce: string;
+  try {
+    // Node.js environment - dynamic require to avoid bundling issues
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const crypto = require('crypto');
+    nonce = crypto.randomBytes(8).toString('hex');
+  } catch {
+    // Browser fallback - use crypto.getRandomValues
+    if (typeof window !== 'undefined' && window.crypto) {
+      const array = new Uint8Array(8);
+      window.crypto.getRandomValues(array);
+      nonce = Array.from(array, b => b.toString(16).padStart(2, '0')).join('');
+    } else {
+      // Last resort fallback (should never happen in our environments)
+      nonce = Math.random().toString(16).substring(2, 10) + 
+              Math.random().toString(16).substring(2, 10);
+    }
+  }
   
   // Direction is important to prevent long/short collision on same bar
   const dir = direction || 'unknown';

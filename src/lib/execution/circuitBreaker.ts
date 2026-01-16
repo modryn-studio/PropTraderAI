@@ -29,10 +29,17 @@ export class CircuitBreaker {
   private lastSuccessTime: Date | null = null;
   private config: CircuitBreakerConfig;
   private name: string;
+  
+  // FIX per Agent 1 Fresh Review Issue #7: Track consecutive HALF_OPEN failures
+  // Prevents infinite loop where HALF_OPEN keeps failing and reopening
+  private consecutiveHalfOpenFailures: number = 0;
+  private maxHalfOpenFailures: number = 3;
+  private currentTimeout: number;
 
   constructor(name: string, config: Partial<CircuitBreakerConfig> = {}) {
     this.name = name;
     this.config = { ...DEFAULT_CONFIG, ...config };
+    this.currentTimeout = this.config.timeout;
   }
 
   /**
@@ -85,6 +92,9 @@ export class CircuitBreaker {
 
   /**
    * Record a failed operation
+   * Enhanced per Agent 1 Fresh Review Issue #7: 
+   * - Track consecutive HALF_OPEN failures
+   * - Double timeout after repeated failures to prevent infinite retry loop
    */
   private onFailure(error: unknown): void {
     this.failures++;
@@ -94,6 +104,16 @@ export class CircuitBreaker {
     console.error(`[CircuitBreaker:${this.name}] Failure #${this.failures}:`, error);
 
     if (this.state === 'HALF_OPEN') {
+      // Track consecutive HALF_OPEN failures
+      this.consecutiveHalfOpenFailures++;
+      
+      // After maxHalfOpenFailures, double the timeout (exponential backoff)
+      if (this.consecutiveHalfOpenFailures >= this.maxHalfOpenFailures) {
+        this.currentTimeout = Math.min(this.currentTimeout * 2, 300000); // Max 5 minutes
+        this.consecutiveHalfOpenFailures = 0;
+        console.warn(`[CircuitBreaker:${this.name}] Timeout doubled to ${this.currentTimeout}ms after ${this.maxHalfOpenFailures} HALF_OPEN failures`);
+      }
+      
       // Any failure in HALF_OPEN immediately opens the circuit
       this.state = 'OPEN';
       console.warn(`[CircuitBreaker:${this.name}] Circuit OPENED (failed in HALF_OPEN)`);
@@ -106,12 +126,13 @@ export class CircuitBreaker {
 
   /**
    * Check if enough time has passed to attempt reset
+   * Uses dynamic timeout that increases after repeated HALF_OPEN failures
    */
   private shouldAttemptReset(): boolean {
     if (!this.lastFailureTime) return true;
     
     const elapsed = Date.now() - this.lastFailureTime.getTime();
-    return elapsed >= this.config.timeout;
+    return elapsed >= this.currentTimeout;
   }
 
   /**
@@ -119,7 +140,7 @@ export class CircuitBreaker {
    */
   private getNextRetryTime(): Date | undefined {
     if (!this.lastFailureTime) return undefined;
-    return new Date(this.lastFailureTime.getTime() + this.config.timeout);
+    return new Date(this.lastFailureTime.getTime() + this.currentTimeout);
   }
 
   /**
@@ -129,6 +150,8 @@ export class CircuitBreaker {
     this.state = 'CLOSED';
     this.failures = 0;
     this.successes = 0;
+    this.consecutiveHalfOpenFailures = 0;
+    this.currentTimeout = this.config.timeout; // Reset timeout to original value
   }
 
   /**
