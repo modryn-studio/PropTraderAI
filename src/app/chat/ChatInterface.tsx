@@ -38,6 +38,9 @@ import ToolsManager from '@/components/chat/SmartTools';
 import type { ActiveTool } from '@/components/chat/SmartTools/types';
 import { formatToolResponse, type ToolType } from '@/lib/utils/toolDetection';
 import { FEATURES } from '@/config/features';
+import { useFeatureFlags } from '@/lib/hooks/useFeatureFlags';
+import InlineCriticalQuestion from '@/components/strategy/InlineCriticalQuestion';
+import StrategyEditableCard from '@/components/strategy/StrategyEditableCard';
 
 interface ChatInterfaceProps {
   userId: string;
@@ -147,6 +150,34 @@ export default function ChatInterface({
   const [activeTool, setActiveTool] = useState<ActiveTool | null>(null);
   const [toolsShown, setToolsShown] = useState<ToolType[]>([]);
   
+  // Rapid Flow state (Week 2 implementation)
+  const { flags, isLoading: flagsLoading } = useFeatureFlags();
+  const [devOverrideRapidFlow, setDevOverrideRapidFlow] = useState(false);
+  const isDev = process.env.NODE_ENV === 'development';
+  const useRapidFlow = isDev ? devOverrideRapidFlow : (flags.generate_first_flow ?? false);
+  
+  // Critical question state (for rapid flow)
+  const [criticalQuestion, setCriticalQuestion] = useState<{
+    question: string;
+    questionType: 'stopLoss' | 'instrument' | 'entryTrigger' | 'direction';
+    options: Array<{ value: string; label: string; default?: boolean }>;
+    partialStrategy: {
+      rules: StrategyRule[];
+      pattern?: string;
+      instrument?: string;
+    };
+  } | null>(null);
+  
+  // Generated strategy state (for rapid flow complete)
+  const [generatedStrategy, setGeneratedStrategy] = useState<{
+    id: string;
+    name: string;
+    natural_language: string;
+    parsed_rules: StrategyRule[];
+    pattern?: string;
+    instrument?: string;
+  } | null>(null);
+  
   // AbortController for canceling requests
   const abortControllerRef = useRef<AbortController | null>(null);
   
@@ -211,7 +242,208 @@ export default function ChatInterface({
     }
   }, []);
 
+  // ============================================================================
+  // RAPID FLOW HANDLERS (Week 2 Implementation)
+  // ============================================================================
+
+  /**
+   * Handle critical question answer (rapid flow message 2)
+   */
+  const handleCriticalAnswer = useCallback(async (value: string) => {
+    if (!criticalQuestion) return;
+
+    // Get label for display
+    const answerLabel = criticalQuestion.options.find(o => o.value === value)?.label || value;
+    
+    // Add user's answer to chat
+    const userMsg: ChatMessage = {
+      id: `user-${Date.now()}`,
+      role: 'user',
+      content: answerLabel,
+      timestamp: new Date().toISOString(),
+    };
+    setMessages(prev => [...prev, userMsg]);
+    setIsLoading(true);
+
+    try {
+      const response = await fetch('/api/strategy/generate-rapid', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: answerLabel,
+          conversationId,
+          criticalAnswer: {
+            questionType: criticalQuestion.questionType,
+            value,
+          },
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.type === 'strategy_complete') {
+        // Strategy generated successfully
+        setGeneratedStrategy(data.strategy);
+        setCriticalQuestion(null);
+
+        // Add confirmation message
+        const assistantMsg: ChatMessage = {
+          id: `assistant-${Date.now()}`,
+          role: 'assistant',
+          content: 'Perfect! Strategy created. Review and edit below:',
+          timestamp: new Date().toISOString(),
+        };
+        setMessages(prev => [...prev, assistantMsg]);
+
+        // Log completion
+        await logBehavioralEvent(
+          userId,
+          'rapid_flow_completed' as any,
+          {
+            conversationId,
+            messageCount: 2,
+            defaultsApplied: data.defaultsApplied || [],
+          }
+        );
+      } else if (data.type === 'error') {
+        throw new Error(data.error);
+      }
+    } catch (err) {
+      console.error('[RapidFlow] Error handling answer:', err);
+      setError(err instanceof Error ? err.message : 'Failed to process answer');
+      
+      // Add error message to chat
+      const errorMsg: ChatMessage = {
+        id: `assistant-${Date.now()}`,
+        role: 'assistant',
+        content: 'Sorry, something went wrong. Please try again.',
+        timestamp: new Date().toISOString(),
+      };
+      setMessages(prev => [...prev, errorMsg]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [criticalQuestion, conversationId, userId]);
+
+  /**
+   * Handle rapid flow message (generate-first approach)
+   */
+  const handleRapidFlowMessage = useCallback(async (message: string) => {
+    // Optimistic UI: show user message immediately
+    const userMsg: ChatMessage = {
+      id: `user-${Date.now()}`,
+      role: 'user',
+      content: message,
+      timestamp: new Date().toISOString(),
+    };
+    setMessages(prev => [...prev, userMsg]);
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const response = await fetch('/api/strategy/generate-rapid', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message,
+          conversationId,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.type === 'critical_question') {
+        // Need stop loss or other critical param
+        setCriticalQuestion({
+          question: data.question,
+          questionType: data.questionType,
+          options: data.options,
+          partialStrategy: data.partialStrategy,
+        });
+
+        // Add question to chat
+        const assistantMsg: ChatMessage = {
+          id: `assistant-${Date.now()}`,
+          role: 'assistant',
+          content: data.question,
+          timestamp: new Date().toISOString(),
+        };
+        setMessages(prev => [...prev, assistantMsg]);
+
+        // Set conversation ID from response
+        if (data.conversationId && !conversationId) {
+          setConversationId(data.conversationId);
+        }
+
+        // Log critical question shown
+        await logBehavioralEvent(
+          userId,
+          'critical_question_shown' as any,
+          {
+            conversationId: data.conversationId,
+            questionType: data.questionType,
+            pattern: data.partialStrategy.pattern,
+          }
+        );
+      } else if (data.type === 'strategy_complete') {
+        // Strategy generated without questions!
+        setGeneratedStrategy(data.strategy);
+
+        // Add confirmation message
+        const assistantMsg: ChatMessage = {
+          id: `assistant-${Date.now()}`,
+          role: 'assistant',
+          content: 'Strategy created! Review and edit below:',
+          timestamp: new Date().toISOString(),
+        };
+        setMessages(prev => [...prev, assistantMsg]);
+
+        // Set conversation ID from response
+        if (data.conversationId && !conversationId) {
+          setConversationId(data.conversationId);
+        }
+
+        // Log completion
+        await logBehavioralEvent(
+          userId,
+          'rapid_flow_completed' as any,
+          {
+            conversationId: data.conversationId,
+            messageCount: 1,
+            defaultsApplied: data.defaultsApplied || [],
+          }
+        );
+      } else if (data.type === 'error') {
+        throw new Error(data.error);
+      }
+    } catch (err) {
+      console.error('[RapidFlow] Error:', err);
+      setError(err instanceof Error ? err.message : 'Failed to send message');
+      
+      // Add error message to chat
+      const errorMsg: ChatMessage = {
+        id: `assistant-${Date.now()}`,
+        role: 'assistant',
+        content: 'Sorry, something went wrong. Please try again.',
+        timestamp: new Date().toISOString(),
+      };
+      setMessages(prev => [...prev, errorMsg]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [conversationId, userId]);
+
+  // ============================================================================
+  // MAIN MESSAGE HANDLER (Routes between rapid flow and traditional)
+  // ============================================================================
+
   const handleSendMessage = useCallback(async (message: string) => {
+    // Route to rapid flow if enabled
+    if (useRapidFlow && !generatedStrategy) {
+      return handleRapidFlowMessage(message);
+    }
+
+    // Traditional Socratic flow continues below...
     // Optimistic UI: show user message immediately
     const userMsg: ChatMessage = {
       id: `user-${Date.now()}`,
@@ -882,15 +1114,30 @@ export default function ChatInterface({
             </div>
           </div>
           
-          {messages.length > 0 && !strategyComplete && (
-            <button
-              onClick={handleStartOver}
-              className="p-2 text-[rgba(255,255,255,0.5)] hover:text-white transition-colors"
-              title="Start over"
-            >
-              <RotateCcw className="w-5 h-5" />
-            </button>
-          )}
+          <div className="flex items-center gap-2">
+            {/* Dev mode toggle for rapid flow testing */}
+            {isDev && (
+              <label className="flex items-center gap-2 text-xs text-[rgba(255,255,255,0.5)]">
+                <input
+                  type="checkbox"
+                  checked={devOverrideRapidFlow}
+                  onChange={(e) => setDevOverrideRapidFlow(e.target.checked)}
+                  className="rounded"
+                />
+                Rapid Flow
+              </label>
+            )}
+            
+            {messages.length > 0 && !strategyComplete && !generatedStrategy && (
+              <button
+                onClick={handleStartOver}
+                className="p-2 text-[rgba(255,255,255,0.5)] hover:text-white transition-colors"
+                title="Start over"
+              >
+                <RotateCcw className="w-5 h-5" />
+              </button>
+            )}
+          </div>
         </div>
       </header>
 
@@ -955,6 +1202,49 @@ export default function ChatInterface({
           </div>
         )}
 
+        {/* Rapid Flow: Strategy editable card */}
+        {generatedStrategy && (
+          <div className="max-w-3xl mx-auto px-6 pb-4">
+            <StrategyEditableCard
+              strategy={generatedStrategy}
+              onParameterEdit={(param) => {
+                console.log('[RapidFlow] Parameter edited:', param);
+                // TODO: Handle parameter editing
+              }}
+              onSave={async () => {
+                // Save strategy to database
+                setIsLoading(true);
+                try {
+                  const response = await fetch('/api/strategy/save', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      name: generatedStrategy.name,
+                      natural_language: generatedStrategy.natural_language,
+                      parsed_rules: generatedStrategy.parsed_rules,
+                      instrument: generatedStrategy.instrument,
+                      pattern: generatedStrategy.pattern,
+                      conversationId,
+                    }),
+                  });
+
+                  if (!response.ok) {
+                    throw new Error('Failed to save strategy');
+                  }
+
+                  toast.success('Strategy saved successfully!');
+                  router.push('/dashboard');
+                } catch (err) {
+                  console.error('[RapidFlow] Save error:', err);
+                  toast.error('Failed to save strategy');
+                } finally {
+                  setIsLoading(false);
+                }
+              }}
+            />
+          </div>
+        )}
+
         {/* Strategy confirmation card */}
         {strategyComplete && strategyData && (
           <div className="max-w-3xl mx-auto px-6 pb-4">
@@ -980,19 +1270,33 @@ export default function ChatInterface({
         )}
       </div>
 
-      {/* Input area - in flow at bottom (hide when preview or confirmation card shows) */}
-      {!showPreviewCard && !strategyComplete && (
+      {/* Rapid Flow: Critical question */}
+      {criticalQuestion && (
+        <div className="max-w-3xl mx-auto px-6 pb-4">
+          <InlineCriticalQuestion
+            question={criticalQuestion.question}
+            options={criticalQuestion.options}
+            onSelect={handleCriticalAnswer}
+            variant={criticalQuestion.questionType}
+          />
+        </div>
+      )}
+
+      {/* Input area - in flow at bottom (hide when preview, confirmation, or generated strategy shows) */}
+      {!showPreviewCard && !strategyComplete && !generatedStrategy && (
         <div className={!isMobile && accumulatedRules.length > 0 ? 'ml-80' : ''}>
           <ChatInput
             onSubmit={handleSendMessage}
             onStop={handleStopGeneration}
-            disabled={isLoading}
+            disabled={isLoading || !!criticalQuestion}
             showAnimation={messages.length === 0}
             hasSidebar={!isMobile && accumulatedRules.length > 0}
             placeholder={
               messages.length === 0
                 ? ""
-                : "Answer the question or add more details..."
+                : criticalQuestion
+                  ? "Please answer the question above"
+                  : "Answer the question or add more details..."
             }
           />
         </div>
