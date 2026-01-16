@@ -216,7 +216,46 @@ Respond to their concerns by:
 
 Add your response as a comment or edit the issue body.
 Update iteration number.
-```Claude Desktop (Agent 1)**: Uses GitHub MCP server — can create issues, read/write comments, review commits
+```
+
+---
+
+## Agent Behavior Guidelines
+
+### Autonomous Actions (No Permission Needed)
+When working with GitHub issues, agents should act autonomously:
+
+✅ **Read issue content** via GitHub MCP or extension  
+✅ **Review code files** in the repo to understand context  
+✅ **Read documentation** to check conventions and patterns  
+✅ **Review commits** to see implementation details  
+✅ **Post comments** directly (critiques, reviews, responses)  
+✅ **Update status trackers** in issues  
+✅ **Analyze architecture** and propose solutions  
+✅ **Ask clarifying questions** to the other agent in issue comments
+
+**No need to ask permission** for standard workflow actions. Just:
+1. Read what you need from the repo
+2. Do your analysis
+3. Post your comment
+4. Confirm completion
+
+### When to Ask the User
+Only ask the user when:
+- Clarification needed on **THEIR intent** or requirements
+- Ambiguous user requirements (not technical questions)
+- Safety/security concerns that affect user data
+- Actions outside normal workflow (deleting branches, changing permissions)
+- Strategic decisions (which approach to prioritize)
+
+**Examples:**
+- ✅ Agent-to-Agent: "Your API design doesn't handle rate limiting. How should we address this?" (Post as comment)
+- ✅ Agent-to-Agent: "Should we use Option A (faster) or Option B (more maintainable)?" (Post as comment, let other agent decide)
+- ❌ Agent-to-User: "Can I read the code to review it?" (Just do it)
+- ❌ Agent-to-User: "Should I post my critique now?" (Yes, that's the workflow)
+- ✅ Agent-to-User: "You said 'fast authentication' - do you mean <2s response time or just 'good enough'?" (Genuine ambiguity)
+
+**Claude Desktop (Agent 1)**: Uses GitHub MCP server — can create issues, read/write comments, review commits
 - **VS Code Copilot (Agent 2)**: Uses GitHub extension (read) + CLI (write) — can read issues, comment via CLI
 ---
 
