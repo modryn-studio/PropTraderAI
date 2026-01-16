@@ -1,6 +1,6 @@
 // Mobile Strategy Components
 // Week 3-4: Mobile-First Swipeable Parameter Cards (Issue #7)
-// Week 5-6: Parameter Editing (Issue #7)
+// Week 5-6: Parameter Editing + Risk Calculator (Issue #7)
 
 export { StrategySwipeableCards } from './StrategySwipeableCards';
 export { ParameterCard } from './ParameterCard';
@@ -8,3 +8,4 @@ export { SwipeProgressIndicator } from './SwipeProgressIndicator';
 export { StickyActionBar } from './StickyActionBar';
 export { ReviewAllModal } from './ReviewAllModal';
 export { ParameterEditModal } from './ParameterEditModal';
+export { RiskCalculatorModal } from './RiskCalculatorModal';

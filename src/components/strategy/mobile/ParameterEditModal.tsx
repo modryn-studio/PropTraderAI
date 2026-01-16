@@ -2,10 +2,11 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Check, AlertTriangle, Info, ArrowLeft } from 'lucide-react';
+import { Check, AlertTriangle, Info, ArrowLeft, Calculator } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { StrategyRule } from '@/lib/utils/ruleExtractor';
 import { needsConfirmation } from '@/lib/utils/parameterUtils';
+import { RiskCalculatorModal } from './RiskCalculatorModal';
 
 /**
  * PARAMETER EDIT MODAL
@@ -222,10 +223,18 @@ export function ParameterEditModal({
   const [error, setError] = useState<string | null>(null);
   const [warning, setWarning] = useState<string | null>(null);
   const [hasChanged, setHasChanged] = useState(false);
+  const [showCalculator, setShowCalculator] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   
   const config = getInputConfig(parameter, instrument);
   const requiresConfirmation = needsConfirmation(parameter);
+  
+  // Show calculator button for position sizing or target parameters
+  const label = parameter.label.toLowerCase();
+  const showCalculatorButton = label.includes('sizing') || 
+    label.includes('contracts') || 
+    label.includes('lots') ||
+    label.includes('position');
 
   // Reset state when modal opens with new parameter
   useEffect(() => {
@@ -482,6 +491,23 @@ export function ParameterEditModal({
                 </div>
               )}
               
+              {/* Risk Calculator Button */}
+              {showCalculatorButton && (
+                <button
+                  onClick={() => setShowCalculator(true)}
+                  className={cn(
+                    'w-full flex items-center justify-center gap-2',
+                    'min-h-[48px] px-4 rounded-xl',
+                    'bg-blue-600/10 border border-blue-600/30',
+                    'text-blue-400 font-medium',
+                    'hover:bg-blue-600/20 transition-colors'
+                  )}
+                >
+                  <Calculator className="w-5 h-5" />
+                  <span>Use Risk Calculator</span>
+                </button>
+              )}
+              
               {/* Help Text */}
               {config.helpText && (
                 <div className="flex items-start gap-2 p-3 rounded-lg bg-zinc-800/30">
@@ -532,6 +558,18 @@ export function ParameterEditModal({
               </button>
             </div>
           </motion.div>
+          
+          {/* Risk Calculator Modal (stacked on top) */}
+          <RiskCalculatorModal
+            isOpen={showCalculator}
+            onClose={() => setShowCalculator(false)}
+            onApply={(positionSize) => {
+              setValue(positionSize.toString());
+              setHasChanged(true);
+              setShowCalculator(false);
+            }}
+            instrument={instrument}
+          />
         </>
       )}
     </AnimatePresence>
