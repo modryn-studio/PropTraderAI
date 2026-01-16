@@ -5,3 +5,4 @@ export { StrategySwipeableCards } from './StrategySwipeableCards';
 export { ParameterCard } from './ParameterCard';
 export { SwipeProgressIndicator } from './SwipeProgressIndicator';
 export { StickyActionBar } from './StickyActionBar';
+export { ReviewAllModal } from './ReviewAllModal';

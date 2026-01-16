@@ -41,6 +41,7 @@ import { FEATURES } from '@/config/features';
 import { useFeatureFlags } from '@/lib/hooks/useFeatureFlags';
 import InlineCriticalQuestion from '@/components/strategy/InlineCriticalQuestion';
 import StrategyEditableCard from '@/components/strategy/StrategyEditableCard';
+import { StrategySwipeableCards, ReviewAllModal } from '@/components/strategy/mobile';
 
 interface ChatInterfaceProps {
   userId: string;
@@ -177,6 +178,11 @@ export default function ChatInterface({
     pattern?: string;
     instrument?: string;
   } | null>(null);
+  
+  // Mobile swipeable cards state (Week 3-4, Issue #7)
+  const [mobileConfirmedParams, setMobileConfirmedParams] = useState<Set<number>>(new Set());
+  const [mobileCardIndex, setMobileCardIndex] = useState(0);
+  const [showReviewAllModal, setShowReviewAllModal] = useState(false);
   
   // AbortController for canceling requests
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -1222,58 +1228,133 @@ export default function ChatInterface({
           </div>
         )}
 
-        {/* Rapid Flow: Strategy editable card */}
+        {/* Rapid Flow: Strategy editable card (responsive desktop/mobile) */}
         {generatedStrategy && (
-          <div className="max-w-3xl mx-auto px-6 pb-4">
-            <StrategyEditableCard
-              name={generatedStrategy.name}
-              rules={generatedStrategy.parsed_rules}
-              pattern={generatedStrategy.pattern}
-              instrument={generatedStrategy.instrument}
-              onParameterEdit={(rule, newValue) => {
-                console.log('[RapidFlow] Parameter edited:', rule, newValue);
-                // Update the rule in generatedStrategy state
-                setGeneratedStrategy(prev => {
-                  if (!prev) return prev;
-                  const updatedRules = prev.parsed_rules.map(r =>
-                    r.label === rule.label ? { ...r, value: newValue, isDefaulted: false } : r
-                  );
-                  return { ...prev, parsed_rules: updatedRules };
-                });
-              }}
-              onSave={async () => {
-                // Save strategy to database
-                setIsLoading(true);
-                try {
-                  const response = await fetch('/api/strategy/save', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                      name: generatedStrategy.name,
-                      natural_language: generatedStrategy.natural_language,
-                      parsed_rules: generatedStrategy.parsed_rules,
-                      instrument: generatedStrategy.instrument,
-                      pattern: generatedStrategy.pattern,
-                      conversationId,
-                    }),
-                  });
+          <div className={isMobile ? '' : 'max-w-3xl mx-auto px-6 pb-4'}>
+            {isMobile ? (
+              /* Mobile: Swipeable Cards */
+              <StrategySwipeableCards
+                name={generatedStrategy.name}
+                rules={generatedStrategy.parsed_rules}
+                pattern={generatedStrategy.pattern}
+                instrument={generatedStrategy.instrument}
+                confirmedParams={mobileConfirmedParams}
+                currentIndex={mobileCardIndex}
+                onIndexChange={setMobileCardIndex}
+                onParameterConfirm={(originalIndex) => {
+                  setMobileConfirmedParams(prev => new Set(prev).add(originalIndex));
+                }}
+                onParameterEdit={(originalIndex) => {
+                  // TODO: Week 5-6 - Open edit modal for this parameter
+                  console.log('[RapidFlow] Edit requested for index:', originalIndex);
+                  toast.info('Parameter editing coming soon');
+                }}
+                onReviewAll={() => setShowReviewAllModal(true)}
+                onSave={async () => {
+                  // Save strategy to database
+                  setIsLoading(true);
+                  try {
+                    const response = await fetch('/api/strategy/save', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        name: generatedStrategy.name,
+                        natural_language: generatedStrategy.natural_language,
+                        parsed_rules: generatedStrategy.parsed_rules,
+                        instrument: generatedStrategy.instrument,
+                        pattern: generatedStrategy.pattern,
+                        conversationId,
+                      }),
+                    });
 
-                  if (!response.ok) {
-                    throw new Error('Failed to save strategy');
+                    if (!response.ok) {
+                      throw new Error('Failed to save strategy');
+                    }
+
+                    toast.success('Strategy saved successfully!');
+                    router.push('/dashboard');
+                  } catch (err) {
+                    console.error('[RapidFlow] Save error:', err);
+                    toast.error('Failed to save strategy');
+                  } finally {
+                    setIsLoading(false);
                   }
+                }}
+              />
+            ) : (
+              /* Desktop: Editable Card */
+              <StrategyEditableCard
+                name={generatedStrategy.name}
+                rules={generatedStrategy.parsed_rules}
+                pattern={generatedStrategy.pattern}
+                instrument={generatedStrategy.instrument}
+                onParameterEdit={(rule, newValue) => {
+                  console.log('[RapidFlow] Parameter edited:', rule, newValue);
+                  // Update the rule in generatedStrategy state
+                  setGeneratedStrategy(prev => {
+                    if (!prev) return prev;
+                    const updatedRules = prev.parsed_rules.map(r =>
+                      r.label === rule.label ? { ...r, value: newValue, isDefaulted: false } : r
+                    );
+                    return { ...prev, parsed_rules: updatedRules };
+                  });
+                  // Also sync to mobile confirmation state
+                  const ruleIndex = generatedStrategy.parsed_rules.findIndex(r => r.label === rule.label);
+                  if (ruleIndex !== -1) {
+                    setMobileConfirmedParams(prev => new Set(prev).add(ruleIndex));
+                  }
+                }}
+                onSave={async () => {
+                  // Save strategy to database
+                  setIsLoading(true);
+                  try {
+                    const response = await fetch('/api/strategy/save', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        name: generatedStrategy.name,
+                        natural_language: generatedStrategy.natural_language,
+                        parsed_rules: generatedStrategy.parsed_rules,
+                        instrument: generatedStrategy.instrument,
+                        pattern: generatedStrategy.pattern,
+                        conversationId,
+                      }),
+                    });
 
-                  toast.success('Strategy saved successfully!');
-                  router.push('/dashboard');
-                } catch (err) {
-                  console.error('[RapidFlow] Save error:', err);
-                  toast.error('Failed to save strategy');
-                } finally {
-                  setIsLoading(false);
-                }
-              }}
-              isSaving={isLoading}
-            />
+                    if (!response.ok) {
+                      throw new Error('Failed to save strategy');
+                    }
+
+                    toast.success('Strategy saved successfully!');
+                    router.push('/dashboard');
+                  } catch (err) {
+                    console.error('[RapidFlow] Save error:', err);
+                    toast.error('Failed to save strategy');
+                  } finally {
+                    setIsLoading(false);
+                  }
+                }}
+                isSaving={isLoading}
+              />
+            )}
           </div>
+        )}
+
+        {/* Mobile: Review All Modal */}
+        {generatedStrategy && (
+          <ReviewAllModal
+            isOpen={showReviewAllModal}
+            parameters={generatedStrategy.parsed_rules
+              .filter(r => !r.label.toLowerCase().includes('instrument'))
+              .map((rule, index) => ({ rule, originalIndex: index }))}
+            confirmedParams={mobileConfirmedParams}
+            onClose={() => setShowReviewAllModal(false)}
+            onCardSelect={(displayIndex) => {
+              setMobileCardIndex(displayIndex);
+              setShowReviewAllModal(false);
+            }}
+            strategyName={generatedStrategy.name}
+          />
         )}
 
         {/* Strategy confirmation card */}
