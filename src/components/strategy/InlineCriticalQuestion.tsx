@@ -79,7 +79,16 @@ export default function InlineCriticalQuestion({
     },
   };
   
-  const config = variantConfig[variant];
+  // Default config for unknown variants
+  const defaultConfig = {
+    icon: null,
+    borderColor: 'border-gray-500/30',
+    bgColor: 'bg-gray-500/5',
+    accentColor: 'text-gray-400',
+    hoverBorder: 'hover:border-gray-500/50',
+  };
+  
+  const config = (variant && variantConfig[variant]) || defaultConfig;
   const IconComponent = config.icon;
   
   return (

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Check, Pencil, X, Save, Loader2, ChevronDown, ChevronUp, Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -71,12 +71,37 @@ export default function StrategyEditableCard({
   const [editing, setEditing] = useState<EditingState | null>(null);
   const [isExpanded, setIsExpanded] = useState(true);
   const [showTooltip, setShowTooltip] = useState<number | null>(null);
+  const cardRef = useRef<HTMLDivElement>(null);
+  const editBoxRef = useRef<HTMLDivElement>(null);
+  const tooltipRef = useRef<HTMLDivElement>(null);
   
-  // Group rules by category
+  // Close edit/tooltip when clicking outside their specific containers
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      // Close edit box if clicking outside it (but still inside card is fine)
+      if (editing && editBoxRef.current && !editBoxRef.current.contains(event.target as Node)) {
+        setEditing(null);
+      }
+      // Close tooltip if clicking outside it
+      if (showTooltip !== null && tooltipRef.current && !tooltipRef.current.contains(event.target as Node)) {
+        setShowTooltip(null);
+      }
+    };
+    
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [editing, showTooltip]);
+  
+  // Group rules by category (filter out instrument since it's in header)
   const groupedRules = useMemo(() => {
     const groups: Record<string, { rules: StrategyRule[]; indices: number[] }> = {};
     
     rules.forEach((rule, index) => {
+      // Skip instrument - it's already shown in header badge
+      if (rule.label.toLowerCase().includes('instrument')) {
+        return;
+      }
+      
       const category = rule.category || 'filters';
       if (!groups[category]) {
         groups[category] = { rules: [], indices: [] };
@@ -122,6 +147,7 @@ export default function StrategyEditableCard({
   
   return (
     <motion.div
+      ref={cardRef}
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
@@ -141,7 +167,7 @@ export default function StrategyEditableCard({
           <div>
             <h3 className="text-lg font-semibold text-zinc-100">{name}</h3>
             <div className="flex items-center gap-2 mt-1">
-              {patternDisplay && (
+              {patternDisplay && pattern && !['custom', 'strategy'].includes(pattern.toLowerCase()) && (
                 <Badge variant="secondary" className="text-xs">
                   {patternDisplay}
                 </Badge>
@@ -214,6 +240,7 @@ export default function StrategyEditableCard({
                             {isEditing ? (
                               /* Edit Mode */
                               <motion.div
+                                ref={editBoxRef}
                                 initial={{ scale: 0.98 }}
                                 animate={{ scale: 1 }}
                                 className="flex items-center gap-2 p-2 rounded-md bg-zinc-800 border border-zinc-600"
@@ -302,6 +329,7 @@ export default function StrategyEditableCard({
                             <AnimatePresence>
                               {showTooltip === globalIndex && rule.explanation && (
                                 <motion.div
+                                  ref={tooltipRef}
                                   initial={{ opacity: 0, y: -5 }}
                                   animate={{ opacity: 1, y: 0 }}
                                   exit={{ opacity: 0, y: -5 }}

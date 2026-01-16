@@ -252,8 +252,15 @@ export default function ChatInterface({
   const handleCriticalAnswer = useCallback(async (value: string) => {
     if (!criticalQuestion) return;
 
-    // Get label for display
-    const answerLabel = criticalQuestion.options.find(o => o.value === value)?.label || value;
+    // If they clicked "Other (specify)" button, ignore it - they'll type custom answer
+    const matchingOption = criticalQuestion.options.find(o => o.value === value);
+    if (matchingOption && (matchingOption.label.toLowerCase().includes('other') || matchingOption.label.toLowerCase().includes('specify'))) {
+      // They clicked the "Other (specify)" button - do nothing, they should type instead
+      return;
+    }
+
+    // Use the value as-is (could be from button click or typed text)
+    const answerLabel = matchingOption?.label || value;
     
     // Add user's answer to chat
     const userMsg: ChatMessage = {
@@ -361,14 +368,7 @@ export default function ChatInterface({
           partialStrategy: data.partialStrategy,
         });
 
-        // Add question to chat
-        const assistantMsg: ChatMessage = {
-          id: `assistant-${Date.now()}`,
-          role: 'assistant',
-          content: data.question,
-          timestamp: new Date().toISOString(),
-        };
-        setMessages(prev => [...prev, assistantMsg]);
+        // Don't add to chat - InlineCriticalQuestion component will show it
 
         // Set conversation ID from response
         if (data.conversationId && !conversationId) {
@@ -443,11 +443,18 @@ export default function ChatInterface({
       message,
       useRapidFlow,
       generatedStrategy: !!generatedStrategy,
+      criticalQuestion: !!criticalQuestion,
       isDev,
       devOverrideRapidFlow,
       'flags.generate_first_flow': flags.generate_first_flow,
       'final useRapidFlow': useRapidFlow,
     });
+
+    // If there's a critical question, treat this as an answer to it
+    if (criticalQuestion) {
+      console.log('[ChatInterface] ✅ Routing to CRITICAL ANSWER');
+      return handleCriticalAnswer(message);
+    }
 
     // Route to rapid flow if enabled
     if (useRapidFlow && !generatedStrategy) {
@@ -741,7 +748,7 @@ export default function ChatInterface({
       setPendingMessage(null);
       setIsLoading(false);
     }
-  }, [conversationId, messages, userId, userProfile?.timezone, animationConfig, handleAnimationAutoExpand, toolsShown, expertiseData]);
+  }, [conversationId, messages, userId, userProfile?.timezone, animationConfig, handleAnimationAutoExpand, toolsShown, expertiseData, useRapidFlow, generatedStrategy, handleRapidFlowMessage, criticalQuestion, handleCriticalAnswer, isDev, devOverrideRapidFlow, flags.generate_first_flow]);
 
   // ========================================================================
   // SMART TOOL HANDLERS
@@ -1225,7 +1232,14 @@ export default function ChatInterface({
               instrument={generatedStrategy.instrument}
               onParameterEdit={(rule, newValue) => {
                 console.log('[RapidFlow] Parameter edited:', rule, newValue);
-                // TODO: Handle parameter editing
+                // Update the rule in generatedStrategy state
+                setGeneratedStrategy(prev => {
+                  if (!prev) return prev;
+                  const updatedRules = prev.parsed_rules.map(r =>
+                    r.label === rule.label ? { ...r, value: newValue, isDefaulted: false } : r
+                  );
+                  return { ...prev, parsed_rules: updatedRules };
+                });
               }}
               onSave={async () => {
                 // Save strategy to database
@@ -1305,7 +1319,7 @@ export default function ChatInterface({
           <ChatInput
             onSubmit={handleSendMessage}
             onStop={handleStopGeneration}
-            disabled={isLoading || !!criticalQuestion}
+            disabled={isLoading}
             showAnimation={messages.length === 0}
             hasSidebar={!isMobile && accumulatedRules.length > 0}
             placeholder={

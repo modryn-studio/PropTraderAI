@@ -207,25 +207,49 @@ Respond with ONLY the JSON array, no other text.`;
 /**
  * Generate a strategy name from pattern and instrument
  */
-function generateStrategyName(pattern?: string, instrument?: string): string {
+function generateStrategyName(pattern?: string, instrument?: string, rules?: StrategyRule[]): string {
   const patternNames: Record<string, string> = {
     'opening_range_breakout': 'Opening Range Breakout',
     'orb': 'Opening Range Breakout',
-    'pullback': 'Pullback Strategy',
+    'pullback': 'Pullback',
     'ema_pullback': 'EMA Pullback',
-    'breakout': 'Breakout Strategy',
-    'momentum': 'Momentum Strategy',
-    'vwap_trade': 'VWAP Strategy',
-    'scalp': 'Scalping Strategy',
+    'breakout': 'Breakout',
+    'momentum': 'Momentum',
+    'vwap_trade': 'VWAP',
+    'scalp': 'Scalping',
   };
   
-  const patternName = pattern ? patternNames[pattern] || 'Custom Strategy' : 'Custom Strategy';
-  
-  if (instrument) {
-    return `${instrument} ${patternName}`;
+  // Try to find entry pattern from rules for more specific name
+  let entryDetail = '';
+  if (rules) {
+    const entryRule = rules.find(r => 
+      r.label.toLowerCase().includes('entry') || 
+      r.label.toLowerCase().includes('pattern') ||
+      r.label.toLowerCase().includes('trigger')
+    );
+    if (entryRule && entryRule.value) {
+      // Extract key parts (e.g., "Pullback to 20 EMA" → "20 EMA Pullback")
+      const value = entryRule.value;
+      if (value.match(/\d+\s*(ema|sma|vwap)/i)) {
+        const match = value.match(/(\d+\s*(?:ema|sma|vwap))/i);
+        if (match) entryDetail = match[1].toUpperCase() + ' ';
+      }
+    }
   }
   
-  return patternName;
+  // Use pattern name or fall back to entry detail or "Strategy"
+  let baseName = '';
+  if (pattern && patternNames[pattern]) {
+    baseName = patternNames[pattern];
+  } else if (entryDetail) {
+    baseName = entryDetail.trim();
+  } else {
+    baseName = 'Strategy';
+  }
+  
+  const instrumentPrefix = instrument ? `${instrument} ` : '';
+  
+  return `${instrumentPrefix}${baseName}`;
 }
 
 /**
@@ -393,7 +417,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<RapidGene
     // STEP 7: Generate complete strategy
     // ========================================================================
     
-    const strategyName = generateStrategyName(pattern, instrument);
+    const strategyName = generateStrategyName(pattern, instrument, rulesWithDefaults);
     
     // Save to database
     const { data: savedStrategy, error: saveError } = await supabase

@@ -153,8 +153,8 @@ const UNIVERSAL_DEFAULTS: Record<string, DefaultRule> = {
   target: {
     category: 'exit',
     label: 'Profit Target',
-    value: '2:1 R:R',
-    explanation: 'Industry-standard risk:reward ratio. Most professional traders use 2:1 or higher.',
+    value: '1:2 risk:reward',
+    explanation: 'Industry-standard 1:2 risk:reward ratio.',
   },
   sizing: {
     category: 'risk',
