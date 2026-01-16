@@ -416,6 +416,10 @@ export interface ExecutableStrategyConfig {
   maxDrawdown?: number;
   positionSize?: number;
   isActive: boolean;
+  
+  // Runtime tracking (not persisted)
+  consecutiveFailures?: number;
+  lastErrorMessage?: string;
 }
 
 export interface ParsedRules {

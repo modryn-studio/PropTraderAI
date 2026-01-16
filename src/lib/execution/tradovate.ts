@@ -907,9 +907,18 @@ export function generateSetupId(strategyId: string, timestamp: Date, direction?:
       window.crypto.getRandomValues(array);
       nonce = Array.from(array, b => b.toString(16).padStart(2, '0')).join('');
     } else {
-      // Last resort fallback (should never happen in our environments)
-      nonce = Math.random().toString(16).substring(2, 10) + 
-              Math.random().toString(16).substring(2, 10);
+      // BUG #2 FIX (Agent 1 Fresh Fix Verification):
+      // SSR environment - window may be polyfilled but crypto not available
+      // Use high-resolution timestamp + multiple randoms for uniqueness
+      const hrtime = typeof process !== 'undefined' && process.hrtime ?
+        process.hrtime.bigint().toString(16) :
+        Date.now().toString(16);
+      
+      const random1 = Math.random().toString(16).substring(2, 10);
+      const random2 = Math.random().toString(16).substring(2, 10);
+      
+      // Combine for more entropy: hrtime provides uniqueness, randoms add distribution
+      nonce = `${hrtime.slice(-8)}${random1}${random2}`.slice(0, 16);
     }
   }
   

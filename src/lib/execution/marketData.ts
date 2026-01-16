@@ -82,6 +82,7 @@ export class MarketDataAggregator {
   private onStateChangeCallback?: (state: WebSocketState) => void;
   private onConnectionLostCallback?: () => void;
   private onConnectionRestoredCallback?: () => void;
+  private onHistoricalBarsLoadedCallback?: (symbol: string, count: number) => void;
 
   constructor(config: Partial<WebSocketConfig> = {}) {
     this.config = { ...DEFAULT_WS_CONFIG, ...config };
@@ -433,23 +434,17 @@ export class MarketDataAggregator {
     // CRITICAL FIX per Agent 1 Fresh Review Issue #4:
     // Fetch historical bars on INITIAL subscription (not just reconnection)
     // Without this, indicators won't have enough data for 16+ hours
+    // 
+    // BUG #1 FIX (Agent 1 Fresh Fix Verification):
+    // Fetch ASYNC to avoid blocking - don't await, fire and forget
+    // This prevents 15-second freeze when activating multiple strategies
     if (isNewSubscription && this.historicalBarsFetcher) {
-      try {
-        console.log(`[MarketData] Fetching historical bars for ${symbol} (initial subscription)...`);
-        const historicalBars = await this.historicalBarsFetcher(symbol, CANDLE_BUFFER_SIZE, 5);
-        
-        if (historicalBars.length > 0) {
-          this.candles.set(symbol, historicalBars);
-          console.log(`[MarketData] Loaded ${historicalBars.length} historical candles for ${symbol}`);
-        } else {
-          console.warn(`[MarketData] No historical data available for ${symbol}`);
-        }
-      } catch (error) {
-        console.error(`[MarketData] Failed to fetch historical bars for ${symbol}:`, error);
-        // Continue with subscription anyway - will aggregate from live data
-      }
+      this.fetchHistoricalBarsAsync(symbol).catch(err => {
+        console.error(`[MarketData] Background historical fetch failed for ${symbol}:`, err);
+      });
     }
 
+    // Subscribe to WebSocket immediately (don't wait for historical data)
     if (this.isConnected()) {
       this.send({
         op: 'md/subscribeQuote',
@@ -461,6 +456,42 @@ export class MarketDataAggregator {
         op: 'md/subscribeTrade',
         symbol,
       });
+    }
+  }
+
+  /**
+   * Fetch historical bars asynchronously (non-blocking)
+   * Merges with any live candles that accumulated while fetching
+   * Emits 'historical_bars_loaded' event when complete
+   */
+  private async fetchHistoricalBarsAsync(symbol: string): Promise<void> {
+    if (!this.historicalBarsFetcher) return;
+    
+    try {
+      console.log(`[MarketData] Fetching historical bars for ${symbol} in background...`);
+      const historicalBars = await this.historicalBarsFetcher(symbol, CANDLE_BUFFER_SIZE, 5);
+      
+      if (historicalBars.length > 0) {
+        // Merge with any live candles that accumulated while fetching
+        const liveCandles = this.candles.get(symbol) || [];
+        const lastHistoricalTime = historicalBars[historicalBars.length - 1]?.timestamp.getTime() || 0;
+        const newerLiveCandles = liveCandles.filter(c => c.timestamp.getTime() > lastHistoricalTime);
+        
+        const mergedCandles = [...historicalBars, ...newerLiveCandles].slice(-CANDLE_BUFFER_SIZE);
+        this.candles.set(symbol, mergedCandles);
+        
+        console.log(`[MarketData] Loaded ${mergedCandles.length} candles for ${symbol} (${historicalBars.length} historical + ${newerLiveCandles.length} live)`);
+        
+        // Emit event so strategies know buffer is ready
+        if (this.onHistoricalBarsLoadedCallback) {
+          this.onHistoricalBarsLoadedCallback(symbol, mergedCandles.length);
+        }
+      } else {
+        console.warn(`[MarketData] No historical data available for ${symbol}`);
+      }
+    } catch (error) {
+      console.error(`[MarketData] Failed to fetch historical bars for ${symbol}:`, error);
+      // Continue anyway - will aggregate from live data
     }
   }
 
@@ -897,6 +928,14 @@ export class MarketDataAggregator {
 
   onConnectionRestored(callback: () => void): void {
     this.onConnectionRestoredCallback = callback;
+  }
+
+  /**
+   * Register callback for when historical bars finish loading
+   * Essential for strategies to know when indicators are ready
+   */
+  onHistoricalBarsLoaded(callback: (symbol: string, count: number) => void): void {
+    this.onHistoricalBarsLoadedCallback = callback;
   }
 }
 

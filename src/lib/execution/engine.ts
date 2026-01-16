@@ -108,10 +108,13 @@ export class ExecutionEngine {
     this.setState('starting');
 
     try {
-      // 1. Load active strategies
+      // 1. Set up market data event handlers
+      this.setupMarketDataHandlers();
+      
+      // 2. Load active strategies
       await this.loadStrategies();
 
-      // 2. Start monitoring loop
+      // 3. Start monitoring loop
       this.startMonitoring();
 
       this.setState('running');
@@ -121,6 +124,40 @@ export class ExecutionEngine {
       this.setState('error');
       throw error;
     }
+  }
+
+  /**
+   * Set up event handlers for market data events
+   * Concern #1 FIX (Agent 1 Fresh Fix Verification):
+   * Listen for historical_bars_loaded to immediately check strategies
+   */
+  private setupMarketDataHandlers(): void {
+    // When historical bars finish loading, immediately check strategies using that symbol
+    this.marketData.onHistoricalBarsLoaded((symbol, count) => {
+      console.log(`[Engine] Historical data ready for ${symbol} (${count} candles), checking strategies...`);
+      
+      const strategiesUsingSymbol = Array.from(this.strategies.values())
+        .filter(s => s.instrument === symbol && s.isActive);
+      
+      // Immediately check these strategies (don't wait for next tick)
+      for (const strategy of strategiesUsingSymbol) {
+        this.checkStrategy(strategy).catch(err => {
+          console.error(`[Engine] Error checking strategy ${strategy.id} after historical load:`, err);
+        });
+      }
+    });
+
+    // On candle close, check strategies (hybrid monitoring)
+    this.marketData.onCandleClose((symbol, candle) => {
+      const strategiesUsingSymbol = Array.from(this.strategies.values())
+        .filter(s => s.instrument === symbol && s.isActive);
+      
+      for (const strategy of strategiesUsingSymbol) {
+        this.checkStrategy(strategy).catch(err => {
+          console.error(`[Engine] Error checking strategy ${strategy.id} on candle close:`, err);
+        });
+      }
+    });
   }
 
   /**
@@ -214,6 +251,11 @@ export class ExecutionEngine {
 
   /**
    * Single monitoring tick (runs every 5 seconds)
+   * 
+   * Concern #3 FIX (Agent 1 Fresh Fix Verification):
+   * - Track consecutive failures per strategy
+   * - Auto-pause after 3 consecutive failures
+   * - Alert user about auto-paused strategies
    */
   private async monitoringTick(): Promise<void> {
     this.lastCheck = new Date();
@@ -223,12 +265,31 @@ export class ExecutionEngine {
       // Sequential checking caused race conditions where queue couldn't drain fast enough
       const strategyArray = Array.from(this.strategies.values()).filter(s => s.isActive);
       
-      // Run all strategy checks concurrently
-      const strategyChecks = strategyArray.map(strategy => 
-        this.checkStrategy(strategy).catch(err => {
+      // Run all strategy checks concurrently with error tracking
+      const strategyChecks = strategyArray.map(async (strategy) => {
+        try {
+          await this.checkStrategy(strategy);
+          // Reset failure count on success
+          strategy.consecutiveFailures = 0;
+        } catch (err) {
           console.error(`[Engine] Error checking strategy ${strategy.id}:`, err);
-        })
-      );
+          
+          // Track consecutive failures
+          strategy.consecutiveFailures = (strategy.consecutiveFailures || 0) + 1;
+          strategy.lastErrorMessage = err instanceof Error ? err.message : String(err);
+          
+          // Auto-pause after 3 consecutive failures
+          if (strategy.consecutiveFailures >= 3) {
+            console.error(`[Engine] Auto-pausing strategy ${strategy.id} after ${strategy.consecutiveFailures} consecutive failures`);
+            await this.pauseStrategy(strategy.id, `auto_paused: ${strategy.lastErrorMessage}`);
+            
+            // Notify via error callback
+            if (this.onErrorCallback) {
+              this.onErrorCallback(new Error(`Strategy ${strategy.name} auto-paused: ${strategy.lastErrorMessage}`));
+            }
+          }
+        }
+      });
       
       // Wait for all checks to complete
       await Promise.allSettled(strategyChecks);
@@ -686,11 +747,16 @@ export class ExecutionEngine {
 
   /**
    * Pause a strategy
+   * @param strategyId - ID of the strategy to pause
+   * @param reason - Optional reason for pausing (e.g., 'auto_paused: consecutive failures')
    */
-  pauseStrategy(strategyId: string): void {
+  pauseStrategy(strategyId: string, reason?: string): void {
     const strategy = this.strategies.get(strategyId);
     if (strategy) {
       strategy.isActive = false;
+      if (reason) {
+        console.log(`[Engine] Strategy ${strategyId} paused: ${reason}`);
+      }
     }
   }
 
