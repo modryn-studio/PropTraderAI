@@ -1308,7 +1308,7 @@ export default function ChatInterface({
             question={criticalQuestion.question}
             options={criticalQuestion.options}
             onSelect={handleCriticalAnswer}
-            variant={criticalQuestion.questionType}
+            variant={criticalQuestion.questionType === 'stopLoss' ? 'stop_loss' : criticalQuestion.questionType as 'instrument' | 'entry' | 'direction'}
           />
         </div>
       )}
