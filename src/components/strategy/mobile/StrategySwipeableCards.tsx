@@ -93,11 +93,15 @@ export function StrategySwipeableCards({
 
   // Swipe direction for animation
   const [swipeDirection, setSwipeDirection] = useState<'left' | 'right' | null>(null);
+  
+  // Swipe hint for first-time users (dismisses after first swipe or 6 seconds)
+  const [showSwipeHint, setShowSwipeHint] = useState(true);
 
   // Change card index with optional callback
   const setCardIndex = useCallback((newIndex: number) => {
     setInternalIndex(newIndex);
     onIndexChange?.(newIndex);
+    setShowSwipeHint(false); // Dismiss hint after any navigation
   }, [onIndexChange]);
 
   // Calculate unconfirmed critical indices (for progress indicator)
@@ -309,6 +313,26 @@ export function StrategySwipeableCards({
           <div className="absolute right-0 top-0 bottom-0 w-8 pointer-events-none">
             <div className="h-full bg-gradient-to-l from-zinc-800/20 to-transparent" />
           </div>
+        )}
+        
+        {/* Swipe hint for first-time users */}
+        {showSwipeHint && currentCardIndex === 0 && orderedParams.length > 1 && (
+          <motion.div
+            className="absolute bottom-4 left-1/2 transform -translate-x-1/2 pointer-events-none"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1, x: [-20, 20, -20] }}
+            transition={{ 
+              opacity: { duration: 0.3 },
+              x: { duration: 2, repeat: 2, ease: 'easeInOut' }
+            }}
+            onAnimationComplete={() => setShowSwipeHint(false)}
+          >
+            <div className="flex items-center gap-2 text-zinc-500 text-sm bg-zinc-800/80 px-3 py-2 rounded-full backdrop-blur-sm">
+              <ChevronLeft className="w-4 h-4" />
+              <span>Swipe to navigate</span>
+              <ChevronRight className="w-4 h-4" />
+            </div>
+          </motion.div>
         )}
       </div>
 

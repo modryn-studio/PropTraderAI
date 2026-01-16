@@ -2,7 +2,7 @@
 
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
-import { X, Check, AlertCircle, ChevronRight } from 'lucide-react';
+import { X, Check, AlertCircle, ChevronRight, ChevronDown } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import type { StrategyRule } from '@/lib/utils/ruleExtractor';
 import { needsConfirmation } from '@/lib/utils/parameterUtils';
@@ -109,7 +109,7 @@ export function ReviewAllModal({
             </div>
             
             {/* Parameters List */}
-            <div className="overflow-y-auto max-h-[calc(85vh-120px)] px-4 py-3">
+            <div className="relative overflow-y-auto max-h-[calc(85vh-120px)] px-4 py-3">
               <div className="space-y-2">
                 {parameters.map(({ rule, originalIndex }, displayIndex) => {
                   const requiresConfirmation = needsConfirmation(rule);
@@ -168,6 +168,21 @@ export function ReviewAllModal({
                   );
                 })}
               </div>
+              
+              {/* Scroll indicator for long lists */}
+              {parameters.length > 5 && (
+                <motion.div
+                  className="sticky bottom-0 left-0 right-0 flex justify-center py-2 pointer-events-none"
+                  initial={{ opacity: 1 }}
+                  animate={{ opacity: [1, 0.5, 1] }}
+                  transition={{ duration: 2, repeat: Infinity }}
+                >
+                  <div className="flex items-center gap-1 text-xs text-zinc-500 bg-zinc-900/80 px-2 py-1 rounded-full">
+                    <ChevronDown className="w-3 h-3" />
+                    <span>Scroll for more</span>
+                  </div>
+                </motion.div>
+              )}
             </div>
             
             {/* Footer summary */}
