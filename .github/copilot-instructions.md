@@ -1,7 +1,7 @@
 # GitHub Copilot Instructions for PropTraderAI
 
-**Last Updated:** January 8, 2026  
-**Version:** 1.1
+**Last Updated:** January 16, 2026  
+**Version:** 1.2
 
 ---
 
@@ -918,17 +918,37 @@ await logBehavioralEvent(userId, 'trade_executed', order);
 
 When working on specific areas, reference these docs:
 
+### Documentation Entry Points (Start Here)
+
+| Need | Start With |
+|------|------------|
+| **Any documentation** | `docs/README.md` — Main navigation hub |
+| **Feature context** | `docs/04_FEATURES/{feature}/README.md` → then `decisions.md` |
+| **Architecture decisions** | `docs/04_FEATURES/{feature}/decisions.md` |
+| **Cross-cutting systems** | `docs/05_INTEGRATIONS/` or `docs/01_STRATEGY/` |
+
+### Specific Areas
+
 | Working On | Read This First |
 |------------|-----------------|
-| UX decisions | `PropTraderAI_UX_Philosophy_Roadmap.md` |
-| PATH 1 architecture | `PATH1_Strategy.md` |
-| Behavioral data | `PATH2_Strategy.md` |
-| Platform/APIs | `PATH3_Strategy.md` |
-| Overall strategy | `PropTraderAI_Build_Specification.md` |
-| Implementation order | `ROADMAP.md` |
-| Landing page | `design_landing_page.md` |
-| Visual design | `design.md` |
+| UX decisions | `docs/02_DESIGN/ux_philosophy.md` |
+| PATH 1 architecture | `docs/01_STRATEGY/path1_execution_engine.md` |
+| Behavioral data | `docs/01_STRATEGY/path2_behavioral_intelligence.md` |
+| Platform/APIs | `docs/01_STRATEGY/path3_platform_infrastructure.md` |
+| Overall strategy | `docs/00_OVERVIEW/build_specification.md` |
+| Implementation order | `docs/00_OVERVIEW/roadmap.md` |
+| Visual design | `docs/02_DESIGN/brand_guide.md` |
+| Strategy Builder | `docs/04_FEATURES/strategy_validation_layer/README.md` |
 | **Agent collaboration** | **`docs/Github_Issues_Workflow.md`** |
+
+### LLM Context Gathering Pattern
+
+When you need to understand a feature:
+1. Read `docs/04_FEATURES/{feature}/README.md` — Overview & quick start
+2. Read `docs/04_FEATURES/{feature}/decisions.md` — Why we built it this way
+3. Only then dive into implementation details
+
+**Archived docs** (`archive/` folders) are historical reference only. Do not recommend archived patterns for new development.
 
 ---
 

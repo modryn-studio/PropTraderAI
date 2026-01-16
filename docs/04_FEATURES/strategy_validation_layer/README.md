@@ -1,33 +1,52 @@
-# Strategy Validation Layer - Documentation Hub
+# Strategy Validation Layer
 
-> **Note:** This folder contains legacy validation documentation. For current Strategy Builder documentation (chat system, summary panel, animations), see **[00_INDEX.md](00_INDEX.md)**.
+> **Last Updated:** January 16, 2026  
+> **Status:** 🟢 Active Development
 
----
+## Overview
 
-## 🎯 What We Built
+The Strategy Validation Layer is PropTraderAI's core system for parsing natural language trading strategies into executable rules. It ensures every strategy meets professional prop firm standards before execution.
 
-A comprehensive validation system that ensures **every trading strategy meets professional prop firm standards** before backtesting. This enforces the 5 non-negotiable components identified in your research:
+## Quick Start
 
-1. **Entry Criteria** - Specific, measurable conditions
-2. **Stop-Loss** - Maximum acceptable loss (not "mental stops")
-3. **Profit Target** - Gain realization point (1.5R - 3R standard)
-4. **Position Sizing** - Formula-based (1-2% risk standard)
-5. **Instrument** - Exact contracts (ES, NQ, MES, etc.)
+**For LLMs:** Start with this README, then read [decisions.md](decisions.md) for architectural context.
 
----
+## Current System
 
-## 📚 Current Documentation
+The **Rapid Flow Chat System** (January 2026) handles strategy parsing:
 
-**For the latest Strategy Builder documentation, see:**
+| Component | Documentation |
+|-----------|---------------|
+| Chat System | [01_Rapid_Flow_Chat_System/](01_Rapid_Flow_Chat_System/) |
+| Summary Panel | [02_Summary_Panel/](02_Summary_Panel/) |
+| Animations | [03_Animations/](03_Animations/) |
+| **Architecture Decisions** | [decisions.md](decisions.md) |
 
-### [→ 00_INDEX.md - Master Documentation Index](00_INDEX.md)
+## Five Non-Negotiable Components
 
-**Quick Links:**
-- [Chat System (Two-Pass Architecture)](01_Chat_System/README_TwoPass_Architecture.md)
-- [Rule Streaming V3](01_Chat_System/README_RuleStreaming_V3.md)
+Every strategy MUST have:
+
+1. **Entry Criteria** — Specific, measurable conditions
+2. **Stop-Loss** — Maximum acceptable loss (not "mental stops")
+3. **Profit Target** — Gain realization point (1.5R - 3R standard)
+4. **Position Sizing** — Formula-based (1-2% risk standard)
+5. **Instrument** — Exact contracts (ES, NQ, MES, etc.)
+
+## Deep Dive
+
+See [00_INDEX.md](00_INDEX.md) for the complete documentation index.
+
+### Quick Links
+- [Rapid Flow Chat System](01_Rapid_Flow_Chat_System/STRATEGY_BUILDER_UNIFIED_GUIDE.md)
+- [Edge Case Handling](01_Rapid_Flow_Chat_System/EDGE_CASE_HANDLING_GUIDE.md)
+- [Testing Guide](01_Rapid_Flow_Chat_System/TESTING_GUIDE.md)
 - [Summary Panel](02_Summary_Panel/README_StrategySummaryPanel.md)
 - [Animation System](03_Animations/README_Animation_System.md)
-- [Parameter-Based Animations](03_Animations/README_Parameter_Based.md)
+
+## Archive
+
+Legacy systems are preserved in [archive/](archive/):
+- [2025-12-chat-system-v1/](archive/2025-12-chat-system-v1/) — Original two-pass architecture (replaced)
 
 ---
 
