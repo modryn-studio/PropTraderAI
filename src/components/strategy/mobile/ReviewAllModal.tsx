@@ -2,7 +2,7 @@
 
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
-import { X, Check, AlertCircle, ChevronRight, ChevronDown } from 'lucide-react';
+import { X, Check, AlertCircle, ChevronRight, ChevronDown, Pencil } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import type { StrategyRule } from '@/lib/utils/ruleExtractor';
 import { needsConfirmation } from '@/lib/utils/parameterUtils';
@@ -18,6 +18,7 @@ import { needsConfirmation } from '@/lib/utils/parameterUtils';
  * - Stay in mobile context (no jarring layout shift)
  * - Show all params at once with confirmation status
  * - Jump to card on tap
+ * - Direct edit button (Week 5-6)
  */
 
 interface ReviewAllModalProps {
@@ -31,6 +32,8 @@ interface ReviewAllModalProps {
   onClose: () => void;
   /** Callback when user taps a parameter to jump to it */
   onCardSelect: (displayIndex: number) => void;
+  /** Callback when user taps Edit on a parameter (Week 5-6) */
+  onEditParameter?: (originalIndex: number) => void;
   /** Strategy name for header */
   strategyName?: string;
 }
@@ -51,11 +54,20 @@ export function ReviewAllModal({
   confirmedParams,
   onClose,
   onCardSelect,
+  onEditParameter,
   strategyName = 'Strategy Overview',
 }: ReviewAllModalProps) {
   const handleCardClick = (displayIndex: number) => {
     onCardSelect(displayIndex);
     onClose();
+  };
+  
+  const handleEditClick = (e: React.MouseEvent, originalIndex: number) => {
+    e.stopPropagation(); // Prevent card jump
+    if (onEditParameter) {
+      onEditParameter(originalIndex);
+      // Don't close modal - let edit modal slide on top
+    }
   };
 
   return (
@@ -162,6 +174,22 @@ export function ReviewAllModal({
                             <AlertCircle className="w-4 h-4" />
                           </div>
                         )}
+                        
+                        {/* Edit button (Week 5-6) */}
+                        {onEditParameter && (
+                          <button
+                            onClick={(e) => handleEditClick(e, originalIndex)}
+                            className={cn(
+                              'p-2 rounded-lg',
+                              'hover:bg-zinc-700 transition-colors',
+                              'text-zinc-400 hover:text-zinc-200'
+                            )}
+                            aria-label={`Edit ${rule.label}`}
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </button>
+                        )}
+                        
                         <ChevronRight className="w-4 h-4 text-zinc-600" />
                       </div>
                     </motion.button>

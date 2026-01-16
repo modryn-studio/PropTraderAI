@@ -44,13 +44,20 @@ interface ParameterEditModalProps {
 // INPUT TYPE CONFIGURATION
 // ============================================================================
 
+interface ValidationResult {
+  valid: boolean;
+  error?: string;    // Blocking error (prevent save)
+  warning?: string;  // Non-blocking warning (allow save with caution)
+}
+
 interface InputConfig {
   type: 'text' | 'number' | 'time' | 'select';
+  inputMode: 'text' | 'numeric' | 'decimal' | 'tel';  // Mobile keyboard type
   suggestions?: string[];
   placeholder?: string;
   suffix?: string;
   prefix?: string;
-  validation?: (value: string) => { valid: boolean; error?: string };
+  validation?: (value: string) => ValidationResult;
   helpText?: string;
 }
 
@@ -62,8 +69,17 @@ function getInputConfig(param: StrategyRule, instrument?: string): InputConfig {
   
   // Stop Loss / Risk parameters
   if (label.includes('stop') || label.includes('risk') || label.includes('drawdown')) {
+    // Instrument-specific limits
+    const limits = {
+      'ES': { typical: 50, max: 100 },
+      'NQ': { typical: 100, max: 200 },
+      'YM': { typical: 200, max: 500 },
+    };
+    const limit = limits[instrument as keyof typeof limits] || { typical: 50, max: 200 };
+    
     return {
       type: 'number',
+      inputMode: 'numeric',  // Whole numbers for stop loss
       suffix: label.includes('points') || label.includes('ticks') ? 'points' : 
               label.includes('%') || label.includes('percent') ? '%' : 'points',
       suggestions: instrument === 'ES' || instrument === 'NQ' 
@@ -74,7 +90,11 @@ function getInputConfig(param: StrategyRule, instrument?: string): InputConfig {
         const num = parseFloat(value);
         if (isNaN(num)) return { valid: false, error: 'Must be a number' };
         if (num <= 0) return { valid: false, error: 'Must be greater than 0' };
-        if (num > 100) return { valid: false, error: 'Value seems too high' };
+        if (num < 0) return { valid: false, error: 'Stop loss cannot be negative' };
+        // Warning for wide stops (non-blocking)
+        if (num > limit.typical) {
+          return { valid: true, warning: `Wide stop (>${limit.typical} points). Are you sure?` };
+        }
         return { valid: true };
       },
       helpText: 'Distance from entry to stop loss. Smaller = less risk, tighter stop.',
@@ -85,6 +105,7 @@ function getInputConfig(param: StrategyRule, instrument?: string): InputConfig {
   if (label.includes('target') || label.includes('profit') || label.includes('reward')) {
     return {
       type: 'number',
+      inputMode: 'decimal',  // Allow decimals for R ratios
       suffix: label.includes('R') || label.includes('r:r') ? 'R' : 'points',
       suggestions: ['1.5R', '2R', '2.5R', '3R'],
       placeholder: '2R',
@@ -94,6 +115,11 @@ function getInputConfig(param: StrategyRule, instrument?: string): InputConfig {
         const num = parseFloat(cleaned);
         if (isNaN(num)) return { valid: false, error: 'Must be a number (optionally with R)' };
         if (num <= 0) return { valid: false, error: 'Must be greater than 0' };
+        if (num < 1) return { valid: false, error: 'R:R must be at least 1:1' };
+        // Warning for high R:R (non-blocking)
+        if (num > 5) {
+          return { valid: true, warning: 'High R:R (>5:1) may be unrealistic. Confirm?' };
+        }
         return { valid: true };
       },
       helpText: 'Your profit target. 2R means 2x your risk (stop loss distance).',
@@ -104,13 +130,17 @@ function getInputConfig(param: StrategyRule, instrument?: string): InputConfig {
   if (label.includes('sizing') || label.includes('contracts') || label.includes('lots')) {
     return {
       type: 'select',
+      inputMode: 'numeric',  // Whole numbers for contracts
       suggestions: ['1', '2', '3', '5', '10'],
       placeholder: '1',
       validation: (value) => {
         const num = parseInt(value);
         if (isNaN(num)) return { valid: false, error: 'Must be a whole number' };
         if (num < 1) return { valid: false, error: 'Minimum is 1 contract' };
-        if (num > 100) return { valid: false, error: 'That\'s a lot! Are you sure?' };
+        // Warning for large positions (non-blocking)
+        if (num > 10) {
+          return { valid: true, warning: `Large position size (${num} contracts). Are you sure?` };
+        }
         return { valid: true };
       },
       helpText: 'Number of contracts to trade per setup.',
@@ -121,6 +151,7 @@ function getInputConfig(param: StrategyRule, instrument?: string): InputConfig {
   if (label.includes('time') || label.includes('session') || label.includes('start') || label.includes('end')) {
     return {
       type: 'time',
+      inputMode: 'text',  // Time format
       suggestions: ['9:30 AM', '10:00 AM', '11:00 AM', '2:00 PM', '3:00 PM'],
       placeholder: '9:30 AM',
       validation: (value) => {
@@ -139,6 +170,7 @@ function getInputConfig(param: StrategyRule, instrument?: string): InputConfig {
   if (label.includes('range') && (label.includes('minutes') || label.includes('min'))) {
     return {
       type: 'select',
+      inputMode: 'numeric',  // Whole numbers for minutes
       suggestions: ['5', '15', '30', '60'],
       suffix: 'min',
       placeholder: '30',
@@ -152,15 +184,27 @@ function getInputConfig(param: StrategyRule, instrument?: string): InputConfig {
     };
   }
   
-  // Default text input
+  // Default text input (fallback for unknown param types)
   return {
     type: 'text',
+    inputMode: 'text',  // Default text keyboard
     placeholder: param.value,
     validation: (value) => {
       if (!value.trim()) return { valid: false, error: 'Value cannot be empty' };
       return { valid: true };
     },
+    helpText: 'Enter the value for this parameter.',
   };
+}
+
+// ============================================================================
+// HAPTIC FEEDBACK
+// ============================================================================
+
+function triggerHaptic(pattern: number | number[] = 10) {
+  if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+    navigator.vibrate(pattern);
+  }
 }
 
 // ============================================================================
@@ -176,6 +220,7 @@ export function ParameterEditModal({
 }: ParameterEditModalProps) {
   const [value, setValue] = useState(parameter.value);
   const [error, setError] = useState<string | null>(null);
+  const [warning, setWarning] = useState<string | null>(null);
   const [hasChanged, setHasChanged] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   
@@ -187,6 +232,7 @@ export function ParameterEditModal({
     if (isOpen) {
       setValue(parameter.value);
       setError(null);
+      setWarning(null);
       setHasChanged(false);
       // Focus input after animation
       setTimeout(() => inputRef.current?.focus(), 300);
@@ -198,6 +244,7 @@ export function ParameterEditModal({
     if (hasChanged && config.validation) {
       const result = config.validation(value);
       setError(result.valid ? null : result.error || 'Invalid value');
+      setWarning(result.valid && result.warning ? result.warning : null);
     }
   }, [value, hasChanged, config]);
 
@@ -228,6 +275,9 @@ export function ParameterEditModal({
       }
     }
     
+    // Haptic feedback on successful save (success pattern)
+    triggerHaptic([10, 50, 10]);
+    
     onSave(finalValue);
     onClose();
   };
@@ -236,6 +286,7 @@ export function ParameterEditModal({
     setValue(suggestion);
     setHasChanged(true);
     setError(null);
+    setWarning(null);
   };
 
   // Prevent body scroll when modal is open
@@ -348,7 +399,8 @@ export function ParameterEditModal({
                   <input
                     ref={inputRef}
                     type={config.type === 'number' ? 'text' : config.type}
-                    inputMode={config.type === 'number' ? 'decimal' : 'text'}
+                    inputMode={config.inputMode}
+                    pattern={config.inputMode === 'numeric' ? '[0-9]*' : undefined}
                     value={value}
                     onChange={(e) => handleValueChange(e.target.value)}
                     placeholder={config.placeholder}
@@ -359,7 +411,9 @@ export function ParameterEditModal({
                       'focus:outline-none',
                       error
                         ? 'border-red-500/50 focus:border-red-500'
-                        : 'border-zinc-700 focus:border-zinc-500',
+                        : warning
+                          ? 'border-amber-500/50 focus:border-amber-500'
+                          : 'border-zinc-700 focus:border-zinc-500',
                       config.prefix && 'pl-8',
                       config.suffix && 'pr-16'
                     )}
@@ -372,7 +426,8 @@ export function ParameterEditModal({
                   )}
                 </div>
                 
-                {/* Error Message */}
+                {/* Error Message (blocking) */}
+                {/* Error Message (blocking) */}
                 <AnimatePresence>
                   {error && (
                     <motion.div
@@ -383,6 +438,21 @@ export function ParameterEditModal({
                     >
                       <AlertTriangle className="w-4 h-4" />
                       <span>{error}</span>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+                
+                {/* Warning Message (non-blocking) */}
+                <AnimatePresence>
+                  {warning && !error && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -5 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -5 }}
+                      className="flex items-center gap-2 text-amber-400 text-sm"
+                    >
+                      <AlertTriangle className="w-4 h-4" />
+                      <span>{warning}</span>
                     </motion.div>
                   )}
                 </AnimatePresence>

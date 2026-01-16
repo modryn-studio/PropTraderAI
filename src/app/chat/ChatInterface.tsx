@@ -1359,6 +1359,10 @@ export default function ChatInterface({
               setMobileCardIndex(displayIndex);
               setShowReviewAllModal(false);
             }}
+            onEditParameter={(originalIndex) => {
+              // Open edit modal directly from ReviewAllModal (Week 5-6)
+              setEditingParamIndex(originalIndex);
+            }}
             strategyName={generatedStrategy.name}
           />
         )}
