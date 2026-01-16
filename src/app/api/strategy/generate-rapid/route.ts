@@ -18,7 +18,7 @@ import { createClient } from '@/lib/supabase/server';
 import { logBehavioralEventServer } from '@/lib/behavioral/logger';
 import { createAnthropicClient } from '@/lib/claude/client';
 import { detectCriticalGaps, getMostCriticalGap, type CriticalGapsResult } from '@/lib/strategy/criticalGapsDetection';
-import { applyPhase1Defaults, detectPattern, type Phase1DefaultsResult } from '@/lib/strategy/applyPhase1Defaults';
+import { applyPhase1Defaults, type Phase1DefaultsResult } from '@/lib/strategy/applyPhase1Defaults';
 import { detectInstrument, detectStopLoss, detectPattern as detectPatternFromMessage } from '@/lib/strategy/completenessDetection';
 import type { StrategyRule } from '@/lib/utils/ruleExtractor';
 
@@ -325,7 +325,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<RapidGene
     const instrumentResult = detectInstrument(message);
     const patternResult = detectPatternFromMessage(message);
     
-    const pattern = detectPattern(message) || patternResult.value;
+    const pattern = patternResult.value;
     const instrument = instrumentResult.value;
     
     // ========================================================================

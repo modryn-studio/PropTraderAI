@@ -15,9 +15,31 @@ ADD COLUMN IF NOT EXISTS conversation_type TEXT DEFAULT 'socratic'
 ALTER TABLE strategy_conversations
 ADD COLUMN IF NOT EXISTS message_count INTEGER DEFAULT 0;
 
--- Add index for analytics queries (conversation type + date)
+-- Add completed_at column (needed by analytics view)
+ALTER TABLE strategy_conversations
+ADD COLUMN IF NOT EXISTS completed_at TIMESTAMP WITH TIME ZONE;
+
+-- Trigger to set completed_at when status changes to 'completed'
+CREATE OR REPLACE FUNCTION set_conversation_completed_at()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF NEW.status = 'completed' AND OLD.status != 'completed' THEN
+    NEW.completed_at = NOW();
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS conversation_completed_trigger ON strategy_conversations;
+CREATE TRIGGER conversation_completed_trigger
+  BEFORE UPDATE ON strategy_conversations
+  FOR EACH ROW
+  EXECUTE FUNCTION set_conversation_completed_at();
+
+-- Add index for analytics queries (conversation type + created_at)
+-- Note: Using created_at directly instead of DATE() since DATE() is not IMMUTABLE
 CREATE INDEX IF NOT EXISTS idx_conversations_type_date 
-  ON strategy_conversations(conversation_type, DATE(created_at));
+  ON strategy_conversations(conversation_type, created_at);
 
 -- Add index for message count analytics
 CREATE INDEX IF NOT EXISTS idx_conversations_message_count
@@ -51,16 +73,6 @@ FROM strategy_conversations
 WHERE created_at > NOW() - INTERVAL '30 days'
 GROUP BY conversation_type, DATE(created_at)
 ORDER BY date DESC, conversation_type;
-
--- ============================================================================
--- Update completed_at timestamp when strategy is saved
--- ============================================================================
-
--- Ensure completed_at column exists
-ALTER TABLE strategy_conversations
-ADD COLUMN IF NOT EXISTS completed_at TIMESTAMP WITH TIME ZONE;
-
--- Trigger to set completed_at when status changes to 'completed'
 CREATE OR REPLACE FUNCTION set_conversation_completed_at()
 RETURNS TRIGGER AS $$
 BEGIN
