@@ -63,3 +63,16 @@ export {
   type EngineStatus,
   type EngineConfig,
 } from './engine';
+
+// Rule Interpreter (P0 BLOCKING component per Issue #10)
+export {
+  compileStrategy,
+  validateRulesForCompilation,
+  compileORBPattern,
+  compileEMAPullbackPattern,
+  compileBreakoutPattern,
+  type CompiledStrategy,
+  type EvaluationContext,
+  type IndicatorValues,
+  type EntrySignal,
+} from './ruleInterpreter';

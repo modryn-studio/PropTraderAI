@@ -243,8 +243,8 @@ export interface Quote {
 export interface OpeningRange {
   high: number;
   low: number;
-  startTime: Date;
-  endTime: Date;
+  startTime: Date | string;
+  endTime: Date | string;
   isComplete: boolean;
 }
 
