@@ -41,7 +41,7 @@ import { FEATURES } from '@/config/features';
 import { useFeatureFlags } from '@/lib/hooks/useFeatureFlags';
 import InlineCriticalQuestion from '@/components/strategy/InlineCriticalQuestion';
 import StrategyEditableCard from '@/components/strategy/StrategyEditableCard';
-import { StrategySwipeableCards, ReviewAllModal } from '@/components/strategy/mobile';
+import { StrategySwipeableCards, ReviewAllModal, ParameterEditModal } from '@/components/strategy/mobile';
 
 interface ChatInterfaceProps {
   userId: string;
@@ -183,6 +183,12 @@ export default function ChatInterface({
   const [mobileConfirmedParams, setMobileConfirmedParams] = useState<Set<number>>(new Set());
   const [mobileCardIndex, setMobileCardIndex] = useState(0);
   const [showReviewAllModal, setShowReviewAllModal] = useState(false);
+  
+  // Parameter edit modal state (Week 5-6, Issue #7)
+  const [editingParamIndex, setEditingParamIndex] = useState<number | null>(null);
+  const editingParam = editingParamIndex !== null && generatedStrategy 
+    ? generatedStrategy.parsed_rules[editingParamIndex] 
+    : null;
   
   // AbortController for canceling requests
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -1245,9 +1251,9 @@ export default function ChatInterface({
                   setMobileConfirmedParams(prev => new Set(prev).add(originalIndex));
                 }}
                 onParameterEdit={(originalIndex) => {
-                  // TODO: Week 5-6 - Open edit modal for this parameter
+                  // Week 5-6: Open edit modal for this parameter
                   console.log('[RapidFlow] Edit requested for index:', originalIndex);
-                  toast.info('Parameter editing coming soon');
+                  setEditingParamIndex(originalIndex);
                 }}
                 onReviewAll={() => setShowReviewAllModal(true)}
                 onSave={async () => {
@@ -1354,6 +1360,36 @@ export default function ChatInterface({
               setShowReviewAllModal(false);
             }}
             strategyName={generatedStrategy.name}
+          />
+        )}
+
+        {/* Mobile: Parameter Edit Modal (Week 5-6, Issue #7) */}
+        {generatedStrategy && editingParam && editingParamIndex !== null && (
+          <ParameterEditModal
+            parameter={editingParam}
+            isOpen={editingParamIndex !== null}
+            instrument={generatedStrategy.instrument}
+            onClose={() => setEditingParamIndex(null)}
+            onSave={(newValue) => {
+              // Update the parameter in generatedStrategy
+              const updatedRules = [...generatedStrategy.parsed_rules];
+              updatedRules[editingParamIndex] = {
+                ...updatedRules[editingParamIndex],
+                value: newValue,
+                isDefaulted: false, // User explicitly edited, no longer default
+                source: 'user' as const,
+              };
+              setGeneratedStrategy({
+                ...generatedStrategy,
+                parsed_rules: updatedRules,
+              });
+              
+              // Auto-confirm edited parameter (user reviewed by editing)
+              setMobileConfirmedParams(prev => new Set(prev).add(editingParamIndex));
+              
+              toast.success(`Updated ${editingParam.label}`);
+              console.log('[RapidFlow] Parameter edited:', editingParamIndex, newValue);
+            }}
           />
         )}
 
