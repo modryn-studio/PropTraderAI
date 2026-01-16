@@ -95,6 +95,18 @@ const TYPICAL_STOPS: Record<string, number> = {
   'GC': 50,
 };
 
+// Tick sizes by instrument (for validation - nice to have per Agent 1)
+const TICK_SIZES: Record<string, number> = {
+  'ES': 0.25,   // $12.50 per tick
+  'NQ': 0.25,   // $5 per tick
+  'YM': 1.00,   // $5 per tick
+  'RTY': 0.10,  // $5 per tick
+  'CL': 0.01,   // $10 per tick
+  'GC': 0.10,   // $10 per tick
+  'MES': 0.25,  // $1.25 per tick
+  'MNQ': 0.25,  // $0.50 per tick
+};
+
 // ============================================================================
 // LOCAL STORAGE HELPERS
 // ============================================================================
@@ -181,6 +193,12 @@ function calculatePositionSize(
   const typicalStop = TYPICAL_STOPS[instrument] || 50;
   if (stopDistance > typicalStop) {
     warnings.push(`Wide stop (>${typicalStop} points for ${instrument}). Consider tighter stop.`);
+  }
+  
+  // Tick size validation (nice to have per Agent 1)
+  const tickSize = TICK_SIZES[instrument];
+  if (tickSize && stopDistance % tickSize !== 0) {
+    warnings.push(`Stop should be multiple of ${tickSize} (tick size for ${instrument}).`);
   }
   
   return {
@@ -467,6 +485,31 @@ export function RiskCalculatorModal({
                     points
                   </span>
                 </div>
+                
+                {/* Quick-tap stop buttons */}
+                <div className="flex gap-2">
+                  {(instrument === 'ES' || instrument === 'MES' 
+                    ? [10, 15, 20, 25, 30]
+                    : instrument === 'NQ' || instrument === 'MNQ'
+                      ? [20, 30, 40, 50, 75]
+                      : [10, 15, 20, 25, 50]
+                  ).map((preset) => (
+                    <button
+                      key={preset}
+                      onClick={() => setStopDistance(preset.toString())}
+                      className={cn(
+                        'flex-1 py-2 rounded-lg text-sm font-medium',
+                        'transition-colors min-h-[40px]',
+                        stopDistance === preset.toString()
+                          ? 'bg-zinc-600 text-white'
+                          : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'
+                      )}
+                    >
+                      {preset}
+                    </button>
+                  ))}
+                </div>
+                
                 {stopError && (
                   <div className="flex items-center gap-2 text-red-400 text-sm">
                     <AlertTriangle className="w-4 h-4" />
@@ -496,6 +539,28 @@ export function RiskCalculatorModal({
                     <div className="text-sm text-zinc-500 mt-1">
                       recommended position size
                     </div>
+                    
+                    {/* Visual Risk Bar */}
+                    {result.positionSize > 0 && (
+                      <div className="mt-4 pt-4 border-t border-zinc-700">
+                        <div className="flex justify-between text-xs text-zinc-500 mb-1">
+                          <span>Risk Used</span>
+                          <span>{((result.actualDollarRisk / result.maxDollarRisk) * 100).toFixed(0)}%</span>
+                        </div>
+                        <div className="h-2 bg-zinc-700 rounded-full overflow-hidden">
+                          <motion.div
+                            initial={{ width: 0 }}
+                            animate={{ width: `${(result.actualDollarRisk / result.maxDollarRisk) * 100}%` }}
+                            transition={{ duration: 0.5, ease: 'easeOut' }}
+                            className="h-full bg-gradient-to-r from-emerald-500 to-emerald-400 rounded-full"
+                          />
+                        </div>
+                        <div className="flex justify-between text-xs mt-1">
+                          <span className="text-emerald-400">{formatCurrency(result.actualDollarRisk)}</span>
+                          <span className="text-zinc-500">of {formatCurrency(result.maxDollarRisk)} max</span>
+                        </div>
+                      </div>
+                    )}
                   </div>
                   
                   {/* Risk Breakdown */}
