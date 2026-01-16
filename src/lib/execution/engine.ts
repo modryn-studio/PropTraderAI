@@ -248,7 +248,7 @@ export class ExecutionEngine {
   /**
    * Check a strategy for entry/exit conditions
    */
-  private async checkStrategy(strategy: ExecutableStrategyConfig, _isCandleClose: boolean = false): Promise<void> {
+  private async checkStrategy(strategy: ExecutableStrategyConfig): Promise<void> {
     const symbol = strategy.instrument;
     const rules = strategy.parsedRules;
 
@@ -355,7 +355,7 @@ export class ExecutionEngine {
     let direction: 'long' | 'short' = 'long';
 
     for (const condition of rules.entry_conditions) {
-      const met = this.evaluateCondition(condition as unknown as Record<string, unknown>, indicators, currentPrice, candles);
+      const met = this.evaluateCondition(condition as unknown as Record<string, unknown>, indicators, currentPrice);
       
       if (!met) {
         allConditionsMet = false;
@@ -388,8 +388,7 @@ export class ExecutionEngine {
   private evaluateCondition(
     condition: Record<string, unknown>,
     indicators: Record<string, number | null>,
-    currentPrice: number,
-    _candles: OHLCV[]
+    currentPrice: number
   ): boolean {
     const type = condition.type as string;
     const indicator = condition.indicator as string;

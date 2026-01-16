@@ -546,11 +546,10 @@ export class TradovateClient {
     const daysUntilExpiry = (current.expiryDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24);
     
     // Find next contract
-    let newSymbol: string | undefined;
     const nextMonth = contracts
       .filter((c) => c.expiryDate > current.expiryDate)
       .sort((a, b) => a.expiryDate.getTime() - b.expiryDate.getTime())[0];
-    newSymbol = nextMonth?.tradovateSymbol;
+    const newSymbol = nextMonth?.tradovateSymbol;
     
     // Determine alert severity
     let alertSeverity: 'none' | 'warning' | 'critical' | 'emergency' = 'none';
@@ -739,10 +738,6 @@ export class TradovateClient {
     volume: number;
   }>> {
     try {
-      // Calculate time range (fetch a bit more than needed to ensure we get enough)
-      const endTime = new Date();
-      const startTime = new Date(endTime.getTime() - (barCount * timeframeMinutes * 60 * 1000 * 1.5));
-      
       // Tradovate chart data endpoint
       const response = await this.request('GET', 
         `/md/getchart?symbol=${encodeURIComponent(symbol)}` +

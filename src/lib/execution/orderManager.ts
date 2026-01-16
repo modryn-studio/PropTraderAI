@@ -15,13 +15,12 @@ import {
   OrderStatus,
   Fill,
   Position,
-  TradovateOrderResponse,
   ExecutionMetric,
   SafetyCheck,
   SafetyViolation,
   SafetyLimitError,
 } from './types';
-import { TradovateClient, generateSetupId } from './tradovate';
+import { TradovateClient } from './tradovate';
 
 // ============================================================================
 // ORDER MANAGER CLASS

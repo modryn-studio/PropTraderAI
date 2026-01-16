@@ -15,7 +15,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { isFeatureEnabled, EXECUTION_MODE_REQUIREMENTS, EXECUTION_SAFETY_LIMITS } from '@/config/features';
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     // Get authenticated user
     const supabase = await createClient();
@@ -72,13 +72,13 @@ export async function GET(request: NextRequest) {
     };
 
     // Get connected Tradovate accounts
-    const { data: accounts, error: accountsError } = await supabase
+    const { data: accounts } = await supabase
       .from('tradovate_accounts')
       .select('id, account_id, name, is_live, is_active')
       .eq('user_id', user.id);
 
     // Get active strategies count
-    const { count: activeStrategies, error: strategiesError } = await supabase
+    const { count: activeStrategies } = await supabase
       .from('strategies')
       .select('id', { count: 'exact', head: true })
       .eq('user_id', user.id)
@@ -88,7 +88,7 @@ export async function GET(request: NextRequest) {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    const { data: metrics, error: metricsError } = await supabase
+    const { data: metrics } = await supabase
       .from('execution_metrics')
       .select('*')
       .eq('user_id', user.id)
