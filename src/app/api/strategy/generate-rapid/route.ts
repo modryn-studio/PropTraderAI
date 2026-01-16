@@ -17,7 +17,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { logBehavioralEventServer } from '@/lib/behavioral/logger';
 import { createAnthropicClient } from '@/lib/claude/client';
-import { detectCriticalGaps, getMostCriticalGap } from '@/lib/strategy/criticalGapsDetection';
+import { detectCriticalGaps } from '@/lib/strategy/criticalGapsDetection';
 import { applyPhase1Defaults } from '@/lib/strategy/applyPhase1Defaults';
 import { detectInstrument, detectPattern as detectPatternFromMessage } from '@/lib/strategy/completenessDetection';
 import type { StrategyRule } from '@/lib/utils/ruleExtractor';
