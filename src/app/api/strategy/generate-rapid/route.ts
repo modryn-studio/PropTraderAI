@@ -479,17 +479,32 @@ export async function POST(request: NextRequest): Promise<NextResponse<RapidGene
     );
     
     // ========================================================================
-    // STEP 2: Parse user message
+    // STEP 2: Parse user message (SKIP if follow-up with existing rules)
     // ========================================================================
     
-    const parsedRules = await parseUserStrategy(message);
+    // For follow-up answers, we already have parsed rules from partialStrategy
+    const isFollowUp = !!criticalAnswer && !!body.partialStrategy;
     
-    // Quick extraction for pattern and instrument (faster than Claude for common cases)
-    const instrumentResult = detectInstrument(message);
-    const patternResult = detectPatternFromMessage(message);
+    let parsedRules: StrategyRule[];
+    let pattern: string | undefined;
+    let instrument: string | undefined;
     
-    const pattern = patternResult.value;
-    const instrument = instrumentResult.value;
+    if (isFollowUp && body.partialStrategy) {
+      // Use existing parsed data from previous request
+      parsedRules = body.partialStrategy.rules || [];
+      pattern = body.partialStrategy.pattern;
+      instrument = body.partialStrategy.instrument;
+    } else {
+      // First message: Parse with Claude
+      parsedRules = await parseUserStrategy(message);
+      
+      // Quick extraction for pattern and instrument (faster than Claude for common cases)
+      const instrumentResult = detectInstrument(message);
+      const patternResult = detectPatternFromMessage(message);
+      
+      pattern = patternResult.value;
+      instrument = instrumentResult.value;
+    }
     
     // ========================================================================
     // STEP 3: Apply Phase 1 defaults
@@ -506,17 +521,23 @@ export async function POST(request: NextRequest): Promise<NextResponse<RapidGene
       const answerRule = answerToRule(criticalAnswer.questionType, criticalAnswer.value);
       if (answerRule) {
         rulesWithDefaults = [...rulesWithDefaults, answerRule];
+        
+        // Update context from answer (e.g., if they answered "instrument", update it)
+        if (criticalAnswer.questionType === 'instrument') {
+          instrument = criticalAnswer.value.toUpperCase();
+        }
       }
     }
     
     // ========================================================================
-    // STEP 5: Check ALL gaps using comprehensive detection
+    // STEP 5: Check ALL gaps using comprehensive detection (RE-RUN after answer)
     // ========================================================================
     
+    // Always re-run detection with current state (stateless re-evaluation)
     const gapsResult = detectAllGaps(message, rulesWithDefaults, {
       pattern,
       instrument,
-      isFollowUp: !!criticalAnswer,
+      isFollowUp,
     });
     
     // ========================================================================
@@ -545,6 +566,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<RapidGene
             pattern,
             instrument,
             timeToQuestion: Date.now() - startTime,
+            isFollowUpQuestion: isFollowUp, // Track multi-gap scenarios
           }
         );
         
