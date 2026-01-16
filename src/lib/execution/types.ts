@@ -288,6 +288,17 @@ export interface ContractInfo {
   lastUpdated: Date;
 }
 
+/**
+ * Symbol rollover state tracking
+ * Per Agent 1 code review: Must track rollover to prevent mid-position switches
+ */
+export interface SymbolRolloverState {
+  currentSymbol: string;
+  nextSymbol: string | null;
+  rolloverDate: Date | null;
+  rolloverStatus: 'normal' | 'warning' | 'imminent' | 'switching';
+}
+
 // ============================================================================
 // SAFETY LIMITS TYPES
 // ============================================================================

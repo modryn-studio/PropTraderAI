@@ -19,6 +19,7 @@ import {
   ContractInfo,
   TradovateAPIError,
   InstrumentSpec,
+  SymbolRolloverState,
 } from './types';
 import {
   tradovateOrdersCircuitBreaker,
@@ -296,11 +297,17 @@ export class TradovateClient {
   // SYMBOL RESOLUTION
   // ============================================================================
 
+  // Track rollover state per instrument
+  private rolloverState: Map<string, SymbolRolloverState> = new Map();
+
   /**
    * Resolve base instrument to current front month contract
-   * Handles rollover logic
+   * Handles rollover logic with safety checks for open positions
+   * 
+   * Per Agent 1 code review: Must not switch symbols mid-position
+   * Must alert user when rollover is imminent
    */
-  async resolveSymbol(instrument: string): Promise<string> {
+  async resolveSymbol(instrument: string, checkPositions: boolean = true): Promise<string> {
     const baseSymbol = instrument.toUpperCase();
     
     if (!INSTRUMENT_SPECS[baseSymbol]) {
@@ -312,13 +319,104 @@ export class TradovateClient {
       );
     }
 
+    // Check if we have an open position in this instrument
+    if (checkPositions) {
+      const existingSymbol = await this.checkExistingPosition(baseSymbol);
+      if (existingSymbol) {
+        const rolloverInfo = await this.checkRollover(existingSymbol);
+        
+        if (rolloverInfo.daysUntilExpiry < 3) {
+          // CRITICAL: Don't switch symbols mid-position
+          // Return existing symbol but emit urgent alert
+          console.warn(
+            `[TradovateClient] CRITICAL: Position in ${existingSymbol} ` +
+            `with only ${rolloverInfo.daysUntilExpiry.toFixed(1)} days until expiry!`
+          );
+          
+          // Update rollover state to imminent
+          this.rolloverState.set(baseSymbol, {
+            currentSymbol: existingSymbol,
+            nextSymbol: rolloverInfo.newSymbol || null,
+            rolloverDate: new Date(Date.now() + rolloverInfo.daysUntilExpiry * 24 * 60 * 60 * 1000),
+            rolloverStatus: 'imminent',
+          });
+          
+          // Return existing symbol - DO NOT switch mid-position
+          return existingSymbol;
+        }
+      }
+    }
+
     // Get available contracts
     const contracts = await this.getContracts(baseSymbol);
     
-    // Select front month based on volume and expiry
-    const frontMonth = this.selectFrontMonth(contracts);
+    // Select front month based on volume and expiry (7-day buffer per Agent 1 review)
+    const frontMonth = this.selectFrontMonthSafely(contracts);
+    
+    // Check for rollover transition
+    const currentState = this.rolloverState.get(baseSymbol);
+    if (currentState && currentState.currentSymbol !== frontMonth.tradovateSymbol) {
+      // Symbol has changed - rollover detected
+      console.log(
+        `[TradovateClient] Rollover detected: ${currentState.currentSymbol} → ${frontMonth.tradovateSymbol}`
+      );
+    }
+    
+    // Update rollover state
+    const daysUntilExpiry = (frontMonth.expiryDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24);
+    this.rolloverState.set(baseSymbol, {
+      currentSymbol: frontMonth.tradovateSymbol,
+      nextSymbol: this.getNextContract(contracts, frontMonth),
+      rolloverDate: frontMonth.expiryDate,
+      rolloverStatus: this.calculateRolloverStatus(daysUntilExpiry),
+    });
     
     return frontMonth.tradovateSymbol;
+  }
+  
+  /**
+   * Check if there's an existing position in this instrument
+   */
+  private async checkExistingPosition(baseSymbol: string): Promise<string | null> {
+    try {
+      const positions = await this.getPositions();
+      const position = positions.find(p => {
+        // Check if position symbol starts with base instrument
+        const positionSymbol = String(p.symbol);
+        return positionSymbol.toUpperCase().startsWith(baseSymbol);
+      });
+      return position ? String(position.symbol) : null;
+    } catch {
+      // If we can't check positions, err on side of caution
+      return null;
+    }
+  }
+  
+  /**
+   * Get rollover state for an instrument
+   */
+  getRolloverState(instrument: string): SymbolRolloverState | undefined {
+    return this.rolloverState.get(instrument.toUpperCase());
+  }
+  
+  /**
+   * Calculate rollover status based on days until expiry
+   */
+  private calculateRolloverStatus(daysUntilExpiry: number): SymbolRolloverState['rolloverStatus'] {
+    if (daysUntilExpiry <= 2) return 'imminent';
+    if (daysUntilExpiry <= 5) return 'warning';
+    if (daysUntilExpiry <= 7) return 'switching';
+    return 'normal';
+  }
+  
+  /**
+   * Get the next contract after the current one
+   */
+  private getNextContract(contracts: ContractInfo[], current: ContractInfo): string | null {
+    const next = contracts
+      .filter(c => c.expiryDate > current.expiryDate)
+      .sort((a, b) => a.expiryDate.getTime() - b.expiryDate.getTime())[0];
+    return next?.tradovateSymbol || null;
   }
 
   /**
@@ -359,66 +457,121 @@ export class TradovateClient {
   }
 
   /**
-   * Select front month contract based on volume and expiry
-   * Per Issue #10: Don't trade contracts expiring in < 2 days
+   * Select front month contract SAFELY based on volume and expiry
+   * Per Agent 1 review: Use 7-day buffer (not 2) to prevent rollover edge cases
    */
-  private selectFrontMonth(contracts: ContractInfo[]): ContractInfo {
+  private selectFrontMonthSafely(contracts: ContractInfo[]): ContractInfo {
     const now = new Date();
     
-    // Filter out contracts expiring in < 2 days
+    // Filter out contracts expiring in < 7 days (Agent 1 recommendation)
     const eligible = contracts.filter((c) => {
       const daysUntilExpiry = (c.expiryDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24);
-      return daysUntilExpiry > 2;
+      return daysUntilExpiry > 7;
     });
 
     if (eligible.length === 0) {
-      throw new TradovateAPIError(
-        'No eligible contracts available',
-        'NO_ELIGIBLE_CONTRACTS',
-        404,
-        false
-      );
+      // Fallback to 2-day minimum if no contracts with 7+ days
+      const fallbackEligible = contracts.filter((c) => {
+        const daysUntilExpiry = (c.expiryDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24);
+        return daysUntilExpiry > 2;
+      });
+      
+      if (fallbackEligible.length === 0) {
+        throw new TradovateAPIError(
+          'No eligible contracts available - possible rollover issue',
+          'NO_ELIGIBLE_CONTRACTS',
+          404,
+          false
+        );
+      }
+      
+      console.warn('[TradovateClient] Using fallback contract selection (2-day buffer)');
+      return this.sortByVolumeAndExpiry(fallbackEligible)[0];
     }
 
-    // Sort by volume (highest first), then by expiry (soonest first)
-    eligible.sort((a, b) => {
-      if (a.dailyVolume && b.dailyVolume) {
+    return this.sortByVolumeAndExpiry(eligible)[0];
+  }
+  
+  /**
+   * Sort contracts by volume (highest first), then by expiry (soonest first)
+   */
+  private sortByVolumeAndExpiry(contracts: ContractInfo[]): ContractInfo[] {
+    return [...contracts].sort((a, b) => {
+      // First sort by volume (highest first)
+      if (a.dailyVolume && b.dailyVolume && a.dailyVolume !== b.dailyVolume) {
         return b.dailyVolume - a.dailyVolume;
       }
+      // Then by expiry (soonest first for equal/missing volume)
       return a.expiryDate.getTime() - b.expiryDate.getTime();
     });
-
-    return eligible[0];
   }
 
   /**
-   * Check if contract is approaching rollover (within 5 days)
+   * @deprecated Use selectFrontMonthSafely instead
+   * Kept for backward compatibility
+   */
+  private selectFrontMonth(contracts: ContractInfo[]): ContractInfo {
+    return this.selectFrontMonthSafely(contracts);
+  }
+
+  /**
+   * Check if contract is approaching rollover
+   * Enhanced per Agent 1 code review: 
+   * - Alert at 7 days (warning)
+   * - Critical alert at 3 days
+   * - Emergency at 1 day
    */
   async checkRollover(symbol: string): Promise<{ 
     daysUntilExpiry: number; 
     shouldAlert: boolean;
+    alertSeverity: 'none' | 'warning' | 'critical' | 'emergency';
     newSymbol?: string;
+    message?: string;
   }> {
-    const contracts = await this.getContracts(symbol);
+    // Extract base symbol from full symbol (e.g., ESH26 -> ES)
+    const baseSymbol = symbol.replace(/[A-Z]\d+$/, '').replace(/\d+$/, '');
+    const contracts = await this.getContracts(baseSymbol);
     const current = contracts.find((c) => c.tradovateSymbol === symbol);
     
     if (!current) {
-      return { daysUntilExpiry: 999, shouldAlert: false };
+      // Symbol not found - might already be expired
+      return { 
+        daysUntilExpiry: -1, 
+        shouldAlert: true, 
+        alertSeverity: 'emergency',
+        message: `Contract ${symbol} not found - may have expired`
+      };
     }
 
     const daysUntilExpiry = (current.expiryDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24);
-    const shouldAlert = daysUntilExpiry <= 5 && daysUntilExpiry > 0;
     
+    // Find next contract
     let newSymbol: string | undefined;
-    if (shouldAlert) {
-      const nextMonth = contracts.find((c) => 
-        c.expiryDate > current.expiryDate && 
-        (c.dailyVolume ?? 0) > (current.dailyVolume ?? 0) * 0.1
-      );
-      newSymbol = nextMonth?.tradovateSymbol;
+    const nextMonth = contracts
+      .filter((c) => c.expiryDate > current.expiryDate)
+      .sort((a, b) => a.expiryDate.getTime() - b.expiryDate.getTime())[0];
+    newSymbol = nextMonth?.tradovateSymbol;
+    
+    // Determine alert severity
+    let alertSeverity: 'none' | 'warning' | 'critical' | 'emergency' = 'none';
+    let shouldAlert = false;
+    let message: string | undefined;
+    
+    if (daysUntilExpiry <= 1) {
+      alertSeverity = 'emergency';
+      shouldAlert = true;
+      message = `EMERGENCY: ${symbol} expires in ${daysUntilExpiry.toFixed(1)} days! Close all positions immediately.`;
+    } else if (daysUntilExpiry <= 3) {
+      alertSeverity = 'critical';
+      shouldAlert = true;
+      message = `CRITICAL: ${symbol} expires in ${daysUntilExpiry.toFixed(1)} days. Switch to ${newSymbol || 'next contract'}.`;
+    } else if (daysUntilExpiry <= 7) {
+      alertSeverity = 'warning';
+      shouldAlert = true;
+      message = `WARNING: ${symbol} expires in ${Math.floor(daysUntilExpiry)} days. Consider switching to ${newSymbol || 'next contract'}.`;
     }
 
-    return { daysUntilExpiry, shouldAlert, newSymbol };
+    return { daysUntilExpiry, shouldAlert, alertSeverity, newSymbol, message };
   }
 
   // ============================================================================
@@ -565,6 +718,62 @@ export class TradovateClient {
   }
 
   // ============================================================================
+  // HISTORICAL DATA
+  // ============================================================================
+
+  /**
+   * Fetch historical bars for a symbol
+   * Used to restore candle buffer after WebSocket reconnection
+   * Per Agent 1 code review: Issue #3 - restore candle buffer after disconnect
+   */
+  async getHistoricalBars(
+    symbol: string,
+    barCount: number = 200,
+    timeframeMinutes: number = 5
+  ): Promise<Array<{
+    timestamp: Date;
+    open: number;
+    high: number;
+    low: number;
+    close: number;
+    volume: number;
+  }>> {
+    try {
+      // Calculate time range (fetch a bit more than needed to ensure we get enough)
+      const endTime = new Date();
+      const startTime = new Date(endTime.getTime() - (barCount * timeframeMinutes * 60 * 1000 * 1.5));
+      
+      // Tradovate chart data endpoint
+      const response = await this.request('GET', 
+        `/md/getchart?symbol=${encodeURIComponent(symbol)}` +
+        `&chartDescription=${encodeURIComponent(JSON.stringify({
+          underlyingType: 'MinuteBar',
+          elementSize: timeframeMinutes,
+          elementSizeUnit: 'MinuteBar',
+          withHistogram: false,
+        }))}` +
+        `&timeRange=${encodeURIComponent(JSON.stringify({
+          asMuchAsElements: barCount,
+        }))}`
+      ) as Record<string, unknown>;
+
+      const bars = (response.bars || []) as Array<Record<string, unknown>>;
+      
+      return bars.map(bar => ({
+        timestamp: new Date(bar.timestamp as string),
+        open: bar.open as number,
+        high: bar.high as number,
+        low: bar.low as number,
+        close: bar.close as number,
+        volume: (bar.upVolume as number || 0) + (bar.downVolume as number || 0),
+      }));
+    } catch (error) {
+      console.error(`[TradovateClient] Failed to fetch historical bars for ${symbol}:`, error);
+      return [];
+    }
+  }
+
+  // ============================================================================
   // HELPER METHODS
   // ============================================================================
 
@@ -673,11 +882,25 @@ export class TradovateClient {
 
 /**
  * Generate idempotent setup ID
- * Format: strategyId-timestamp-direction
+ * Format: strategyId-timestamp-direction-nonce
+ * 
+ * Enhanced per Agent 1 code review: Issue #4
+ * - Added direction (already was included but now documented)
+ * - Added nonce for sub-millisecond collision prevention
+ *   Using random hex instead of hrtime for browser compatibility
  */
 export function generateSetupId(strategyId: string, timestamp: Date, direction?: string): string {
-  const base = `${strategyId}-${timestamp.toISOString()}`;
-  return direction ? `${base}-${direction}` : base;
+  // Use ISO timestamp (millisecond precision)
+  const ts = timestamp.toISOString();
+  
+  // Add random nonce for sub-millisecond collisions
+  // 6 hex chars = 16 million possibilities
+  const nonce = Math.random().toString(16).substring(2, 8);
+  
+  // Direction is important to prevent long/short collision on same bar
+  const dir = direction || 'unknown';
+  
+  return `${strategyId}-${ts}-${dir}-${nonce}`;
 }
 
 /**

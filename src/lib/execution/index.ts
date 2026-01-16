@@ -7,6 +7,7 @@
  * - OrderManager/PositionManager: Order lifecycle, safety limits
  * - ExecutionEngine: Setup detection, monitoring, orchestration
  * - CircuitBreaker: Fault tolerance for API failures
+ * - DatabasePool: Singleton connection management (Agent 1 fix)
  * 
  * @module lib/execution
  * @see Issue #10 - Execution Layer Specification
@@ -14,6 +15,13 @@
 
 // Types
 export * from './types';
+
+// Database Pool (Agent 1 code review fix: Issue #1)
+export {
+  getDatabasePool,
+  getDatabase,
+  getDatabaseSync,
+} from './database';
 
 // Circuit Breaker
 export {
@@ -44,6 +52,7 @@ export {
 export {
   MarketDataAggregator,
   getMarketDataAggregator,
+  type HistoricalBarsFetcher,
 } from './marketData';
 
 // Execution Engine

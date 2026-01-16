@@ -6,6 +6,9 @@
  * 
  * Includes reconnection logic with exponential backoff per Issue #10.
  * 
+ * Enhanced per Agent 1 code review:
+ * - Issue #3: Restore candle buffer after WebSocket reconnection
+ * 
  * @module lib/execution/marketData
  * @see Issue #10 - Component 2: Market Data Aggregator
  */
@@ -37,6 +40,19 @@ const DEFAULT_WS_CONFIG: WebSocketConfig = {
 const CANDLE_BUFFER_SIZE = 200;
 
 // ============================================================================
+// TYPES
+// ============================================================================
+
+/**
+ * Function type for fetching historical bars (injected from TradovateClient)
+ */
+export type HistoricalBarsFetcher = (
+  symbol: string,
+  barCount?: number,
+  timeframeMinutes?: number
+) => Promise<OHLCV[]>;
+
+// ============================================================================
 // MARKET DATA AGGREGATOR CLASS
 // ============================================================================
 
@@ -48,6 +64,9 @@ export class MarketDataAggregator {
   private reconnectAttempts: number = 0;
   private reconnectTimeout: NodeJS.Timeout | null = null;
   private pingInterval: NodeJS.Timeout | null = null;
+  
+  // Historical data fetcher (injected from TradovateClient)
+  private historicalBarsFetcher: HistoricalBarsFetcher | null = null;
 
   // Data storage
   private candles: Map<string, OHLCV[]> = new Map();
@@ -189,9 +208,11 @@ export class MarketDataAggregator {
 
   /**
    * Handle successful connection
+   * Enhanced per Agent 1 code review: restore candle buffer after reconnect
    */
   private onConnected(): void {
     this.setState('connected');
+    const wasReconnection = this.reconnectAttempts > 0;
     this.reconnectAttempts = 0;
     
     // Start ping interval
@@ -203,10 +224,62 @@ export class MarketDataAggregator {
       this.subscribe(symbol).catch(console.error);
     }
 
+    // Restore candle buffers if this was a reconnection
+    if (wasReconnection && this.historicalBarsFetcher) {
+      this.restoreCandleBuffers(symbols).catch((error) => {
+        console.error('[MarketData] Failed to restore candle buffers:', error);
+      });
+    }
+
     // Notify callback
-    if (this.onConnectionRestoredCallback && this.reconnectAttempts > 0) {
+    if (this.onConnectionRestoredCallback && wasReconnection) {
       this.onConnectionRestoredCallback();
     }
+  }
+
+  /**
+   * Restore candle buffers after reconnection
+   * Per Agent 1 code review: Issue #3 - fetch 200 candles via REST to restore buffer
+   */
+  private async restoreCandleBuffers(symbols: string[]): Promise<void> {
+    if (!this.historicalBarsFetcher) {
+      console.warn('[MarketData] No historical bars fetcher configured, skipping buffer restoration');
+      return;
+    }
+
+    console.log(`[MarketData] Restoring candle buffers for ${symbols.length} symbols...`);
+
+    for (const symbol of symbols) {
+      try {
+        const historicalBars = await this.historicalBarsFetcher(symbol, CANDLE_BUFFER_SIZE, 5);
+        
+        if (historicalBars.length > 0) {
+          // Preserve any candles from current session that might still be valid
+          const existingCandles = this.candles.get(symbol) || [];
+          const lastHistoricalTime = historicalBars[historicalBars.length - 1]?.timestamp.getTime() || 0;
+          
+          // Only keep existing candles that are newer than the historical data
+          const newerCandles = existingCandles.filter(
+            (c) => c.timestamp.getTime() > lastHistoricalTime
+          );
+          
+          // Merge: historical + newer session candles, limited to buffer size
+          const mergedCandles = [...historicalBars, ...newerCandles].slice(-CANDLE_BUFFER_SIZE);
+          this.candles.set(symbol, mergedCandles);
+          
+          console.log(`[MarketData] Restored ${mergedCandles.length} candles for ${symbol}`);
+        }
+      } catch (error) {
+        console.error(`[MarketData] Failed to restore candles for ${symbol}:`, error);
+      }
+    }
+  }
+
+  /**
+   * Set the historical bars fetcher (called from execution engine with TradovateClient)
+   */
+  setHistoricalBarsFetcher(fetcher: HistoricalBarsFetcher): void {
+    this.historicalBarsFetcher = fetcher;
   }
 
   /**
@@ -603,10 +676,24 @@ export class MarketDataAggregator {
 
   /**
    * Calculate EMA (Exponential Moving Average)
+   * Enhanced per Agent 1 code review: added input validation
    */
   calculateEMA(symbol: string, period: number): number[] {
+    // Input validation
+    if (!symbol) {
+      console.warn('[MarketData.calculateEMA] Symbol is required');
+      return [];
+    }
+    if (!Number.isFinite(period) || period < 1) {
+      console.warn(`[MarketData.calculateEMA] Invalid period: ${period} (must be >= 1)`);
+      return [];
+    }
+
     const candles = this.getCandles(symbol);
-    if (candles.length < period) return [];
+    if (candles.length < period) {
+      // This is expected for new symbols, so just return empty without warning
+      return [];
+    }
 
     const prices = candles.map((c) => c.close);
     const ema: number[] = [];
@@ -630,8 +717,19 @@ export class MarketDataAggregator {
 
   /**
    * Calculate RSI (Relative Strength Index)
+   * Enhanced per Agent 1 code review: added input validation
    */
   calculateRSI(symbol: string, period: number = 14): number | null {
+    // Input validation
+    if (!symbol) {
+      console.warn('[MarketData.calculateRSI] Symbol is required');
+      return null;
+    }
+    if (!Number.isFinite(period) || period < 2) {
+      console.warn(`[MarketData.calculateRSI] Invalid period: ${period} (must be >= 2)`);
+      return null;
+    }
+
     const candles = this.getCandles(symbol);
     if (candles.length < period + 1) return null;
 
@@ -674,8 +772,19 @@ export class MarketDataAggregator {
 
   /**
    * Calculate ATR (Average True Range)
+   * Enhanced per Agent 1 code review: added input validation
    */
   calculateATR(symbol: string, period: number = 14): number | null {
+    // Input validation
+    if (!symbol) {
+      console.warn('[MarketData.calculateATR] Symbol is required');
+      return null;
+    }
+    if (!Number.isFinite(period) || period < 1) {
+      console.warn(`[MarketData.calculateATR] Invalid period: ${period} (must be >= 1)`);
+      return null;
+    }
+
     const candles = this.getCandles(symbol);
     if (candles.length < period + 1) return null;
 
@@ -707,8 +816,15 @@ export class MarketDataAggregator {
 
   /**
    * Calculate VWAP (Volume Weighted Average Price)
+   * Enhanced per Agent 1 code review: added input validation
    */
   calculateVWAP(symbol: string): number | null {
+    // Input validation
+    if (!symbol) {
+      console.warn('[MarketData.calculateVWAP] Symbol is required');
+      return null;
+    }
+
     const candles = this.getCandles(symbol);
     if (candles.length === 0) return null;
 
