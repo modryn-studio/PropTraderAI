@@ -76,22 +76,39 @@ Live demonstration showing:
    git pull origin main
    
    # Write the code (either agent can implement in VS Code)
-   # Test locally
-   
-   # Commit and push
-   git add .
-   git commit -m "Implement feature from issue #X"
-   git push origin main
+   # Test locally (npm run build, tests, etc.)
    ```
 
-7. **Code review:**
+7. **🚨 CRITICAL: Commit and Push IMMEDIATELY after implementation:**
+   ```bash
+   # Stage all changes
+   git add .
+   
+   # Commit with issue reference and detailed description
+   git commit -m "Implement [feature] from issue #X
+   
+   - Bullet point summary of changes
+   - What was added/modified
+   - Build/test status"
+   
+   # Push to GitHub (REQUIRED for Agent 1 to review)
+   git push origin main
+   ```
+   
+   **⚠️ WHY THIS IS REQUIRED:**
+   - Agent 1 (Claude Desktop) reviews code via GitHub MCP server
+   - Cannot see local changes that aren't pushed
+   - No review possible until code is on GitHub
+   - DO NOT request review before pushing
+
+8. **Code review:**
    - **Claude Desktop**: Reads commits from GitHub via MCP (no local pull needed)
    - **VS Code Copilot**: Reviews via GitHub extension or git commands
    - Comments on the issue with code review feedback
    - Checks if implementation matches the spec
    - Verifies security, performance, edge cases
 
-8. **Iterate on code** if needed:
+9. **Iterate on code** if needed:
    - Make changes locally
    - Push again
    - Review
@@ -113,7 +130,8 @@ gh issue create --title "Task description" --body "Details..."
 
 **Via Web UI:**
 - https://github.com/modryn-studio/PropTraderAI/issues/new/choose
-First Agent - Initial Spec**
+
+**Step 2: First Agent - Initial Spec**
 
 **Via VS Code Copilot (Agent 2):**
 ```
@@ -138,11 +156,12 @@ with top 0.1% developer thinking. Add your critical review as a comment."
 - Reviewing agent reviews response
 - Repeat 2-4 times until consensus
 
-**Step 5: Implement & Review**
+**Step 5: Implement, Commit/Push, Then Review**
 - Either agent codes (in VS Code)
-- Push to GitHub
-- Other agent reviews commits
-- Agent 2 reviews commits via MCP
+- 🚨 **MUST commit and push to GitHub** 🚨
+- Post implementation comment to issue
+- Other agent reviews commits via GitHub
+- Iterate if needed
 
 ---
 
@@ -240,8 +259,10 @@ Update iteration number.
 **During Implementation Phase:**
 - Only pull code when spec is finalized
 - Test locally before pushing
+- 🚨 **ALWAYS commit and push before requesting review**
 - Reference issue number in commits: `"Implement feature from issue #X"`
 - Push frequently so other agent can review incrementally
+- Agent 1 CANNOT review local-only changes (needs GitHub)
 
 **GitHub CLI Tips:**
 - **Short comments** (1-2 lines): `gh issue comment X --body "Quick note"`
