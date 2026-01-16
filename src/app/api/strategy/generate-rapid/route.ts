@@ -365,7 +365,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<RapidGene
     
     if (criticalAnswer && criticalAnswer.questionType === 'stopLoss') {
       // Add stop loss rule from user's answer
-      const stopLossRule = stopLossAnswerToRule(criticalAnswer.value, pattern);
+      const stopLossRule = stopLossAnswerToRule(criticalAnswer.value);
       rulesWithDefaults = [...rulesWithDefaults, stopLossRule];
     }
     
