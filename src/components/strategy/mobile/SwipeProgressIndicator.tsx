@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { Check, AlertCircle } from 'lucide-react';
@@ -36,7 +37,10 @@ export function SwipeProgressIndicator({
   unconfirmedCriticalIndices,
   onDotClick,
 }: SwipeProgressIndicatorProps) {
-  // Handle dot click with forward-skip guard
+  // Track which dots should pulse (blocked skip feedback)
+  const [pulseDots, setPulseDots] = useState<number[]>([]);
+  
+  // Handle dot click with forward-skip guard and visual feedback
   const handleDotClick = (targetIndex: number) => {
     // Always allow going back
     if (targetIndex <= current) {
@@ -44,13 +48,15 @@ export function SwipeProgressIndicator({
       return;
     }
     
-    // Check if skipping ahead would skip unconfirmed critical params
-    const skippingCritical = unconfirmedCriticalIndices.some(
+    // Find any unconfirmed critical params between current and target
+    const blockingIndices = unconfirmedCriticalIndices.filter(
       criticalIndex => criticalIndex > current && criticalIndex < targetIndex
     );
     
-    if (skippingCritical) {
-      // Could show toast here, but for now just don't allow
+    if (blockingIndices.length > 0) {
+      // Visual feedback: pulse the blocking dots
+      setPulseDots(blockingIndices);
+      setTimeout(() => setPulseDots([]), 1000);
       return;
     }
     
@@ -65,6 +71,7 @@ export function SwipeProgressIndicator({
           const isActive = index === current;
           const isCompleted = index < current;
           const isCriticalUnconfirmed = unconfirmedCriticalIndices.includes(index);
+          const isPulsing = pulseDots.includes(index);
           const canClick = index <= current || !unconfirmedCriticalIndices.some(
             ci => ci > current && ci < index
           );
@@ -80,6 +87,7 @@ export function SwipeProgressIndicator({
                 canClick ? 'cursor-pointer' : 'cursor-not-allowed opacity-50',
                 isActive && 'ring-2 ring-offset-2 ring-offset-zinc-900',
                 isActive && (isCriticalUnconfirmed ? 'ring-amber-500' : 'ring-indigo-500'),
+                isPulsing && 'ring-2 ring-red-500 ring-offset-2 ring-offset-zinc-900 animate-pulse',
               )}
               whileHover={canClick ? { scale: 1.1 } : {}}
               whileTap={canClick ? { scale: 0.95 } : {}}

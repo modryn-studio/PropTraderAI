@@ -97,6 +97,18 @@ export function orderByImportance(rules: StrategyRule[]): { rule: StrategyRule; 
     rule.isDefaulted && !needsConfirmation(rule)
   );
   
+  // Edge case: If ALL params are defaulted (rare), fall back to category order
+  // This ensures logical flow: setup → entry → exit → risk → timeframe → filters
+  if (critical.length === 0 && userSpecified.length === 0 && defaulted.length > 0) {
+    const categoryOrder = ['setup', 'entry', 'exit', 'risk', 'timeframe', 'filters'];
+    return defaulted.sort((a, b) => {
+      const aIndex = categoryOrder.indexOf(a.rule.category);
+      const bIndex = categoryOrder.indexOf(b.rule.category);
+      // Handle unknown categories (put at end)
+      return (aIndex === -1 ? 99 : aIndex) - (bIndex === -1 ? 99 : bIndex);
+    });
+  }
+  
   return [...critical, ...userSpecified, ...defaulted];
 }
 

@@ -289,6 +289,15 @@ export function StrategySwipeableCards({
               onConfirm={() => {
                 onParameterConfirm(currentParam.originalIndex);
                 triggerHaptic([10, 50, 10]); // Success pattern
+                
+                // Auto-advance to next card after 300ms delay
+                // Gives user time to see "Confirmed" state before transitioning
+                setTimeout(() => {
+                  if (currentCardIndex < orderedParams.length - 1) {
+                    setSwipeDirection('left');
+                    setCardIndex(currentCardIndex + 1);
+                  }
+                }, 300);
               }}
               onEdit={() => onParameterEdit(currentParam.originalIndex)}
             />
