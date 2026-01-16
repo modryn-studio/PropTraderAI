@@ -20,9 +20,17 @@ import {
   WebSocketState,
   Quote,
   ParsedRules,
+  OpeningRange,
 } from './types';
 import { MarketDataAggregator, getMarketDataAggregator } from './marketData';
 import { generateSetupId } from './tradovate';
+import { 
+  compileStrategy, 
+  validateRulesForCompilation,
+  type CompiledStrategy,
+  type EvaluationContext,
+  type IndicatorValues,
+} from './ruleInterpreter';
 
 // ============================================================================
 // CONSTANTS
@@ -73,6 +81,7 @@ export class ExecutionEngine {
   private config: EngineConfig;
   private state: EngineState = 'stopped';
   private strategies: Map<string, ExecutableStrategyConfig> = new Map();
+  private compiledStrategies: Map<string, CompiledStrategy> = new Map();
   private setupQueue: SetupQueueItem[] = [];
   private processingSetup: boolean = false;
   
@@ -219,9 +228,36 @@ export class ExecutionEngine {
       };
 
       this.strategies.set(strategy.id, executableStrategy);
+      
+      // Compile strategy using Rule Interpreter
+      this.compileStrategyRules(executableStrategy);
     }
 
-    console.log(`[Engine] Loaded ${this.strategies.size} active strategies`);
+    console.log(`[Engine] Loaded ${this.strategies.size} active strategies, ${this.compiledStrategies.size} compiled`);
+  }
+
+  /**
+   * Compile strategy rules into executable functions
+   */
+  private compileStrategyRules(strategy: ExecutableStrategyConfig): void {
+    try {
+      const validation = validateRulesForCompilation(strategy.parsedRules);
+      
+      if (validation.warnings.length > 0) {
+        console.warn(`[Engine] Strategy ${strategy.id} compilation warnings:`, validation.warnings);
+      }
+      
+      const compiled = compileStrategy(
+        strategy.parsedRules,
+        strategy.instrument
+      );
+      
+      this.compiledStrategies.set(strategy.id, compiled);
+      console.log(`[Engine] Compiled strategy ${strategy.id}: pattern=${compiled.pattern}, direction=${compiled.direction}`);
+    } catch (err) {
+      console.error(`[Engine] Failed to compile strategy ${strategy.id}:`, err);
+      // Don't store failed compilations - strategy will use fallback text matching
+    }
   }
 
   // ============================================================================
@@ -316,6 +352,7 @@ export class ExecutionEngine {
 
   /**
    * Check a strategy for entry/exit conditions
+   * Uses compiled strategy if available, falls back to text-based matching
    */
   private async checkStrategy(strategy: ExecutableStrategyConfig): Promise<void> {
     const symbol = strategy.instrument;
@@ -328,6 +365,121 @@ export class ExecutionEngine {
     if (!quote || candles.length < 50) {
       return; // Not enough data
     }
+
+    // Try to use compiled strategy first (Rule Interpreter)
+    const compiled = this.compiledStrategies.get(strategy.id);
+    
+    if (compiled) {
+      await this.checkCompiledStrategy(strategy, compiled, candles, quote);
+      return;
+    }
+
+    // Fallback to text-based matching for non-compiled strategies
+    await this.checkTextBasedStrategy(strategy, candles, quote);
+  }
+
+  /**
+   * Check strategy using compiled executable functions
+   */
+  private async checkCompiledStrategy(
+    strategy: ExecutableStrategyConfig,
+    compiled: CompiledStrategy,
+    candles: OHLCV[],
+    quote: Quote
+  ): Promise<void> {
+    const now = new Date();
+    
+    // Check time validity using compiled filter
+    if (!compiled.isTimeValid(now)) {
+      return; // Outside trading window
+    }
+
+    // Get opening range if pattern requires it
+    const openingRange = compiled.pattern.includes('opening_range') 
+      ? this.marketData.calculateOpeningRange(strategy.instrument) 
+      : null;
+
+    // Build evaluation context
+    const indicators = this.buildIndicatorValues(strategy.instrument);
+    const context: EvaluationContext = {
+      candles,
+      quote,
+      indicators,
+      openingRange,
+      currentTime: now,
+    };
+
+    // Check entry conditions using compiled function
+    const entrySignal = compiled.shouldEnter(context);
+    
+    if (entrySignal) {
+      // Calculate full trade parameters
+      const entryPrice = compiled.getEntryPrice(context);
+      const stopPrice = compiled.getStopPrice(entryPrice, context);
+      const targetPrice = compiled.getTargetPrice(entryPrice, stopPrice, context);
+      
+      // Calculate position size (assuming $50k account for now - will integrate with real balance)
+      const accountBalance = 50000; // TODO: Get from Tradovate account
+      const contractQuantity = compiled.getContractQuantity(accountBalance, entryPrice, stopPrice);
+      
+      const setup: Partial<SetupDetection> = {
+        direction: entrySignal.direction,
+        price: entrySignal.triggerPrice,
+        timestamp: now,
+        conditions_met: [entrySignal.reason],
+        entryPrice,
+        stopPrice,
+        targetPrice,
+        contractQuantity,
+        confidence: entrySignal.confidence,
+        reason: entrySignal.reason,
+      };
+
+      await this.handleSetupDetected(
+        strategy, 
+        setup, 
+        'entry', 
+        indicators as Record<string, number | null>
+      );
+    }
+  }
+
+  /**
+   * Build indicator values for evaluation context
+   */
+  private buildIndicatorValues(symbol: string): IndicatorValues {
+    const indicators: IndicatorValues = {};
+    
+    // Common EMA periods
+    for (const period of [20, 50, 200]) {
+      const ema = this.marketData.calculateEMA(symbol, period);
+      if (ema.length > 0) {
+        indicators[`ema${period}`] = ema[ema.length - 1];
+      }
+    }
+    
+    // RSI 14
+    indicators.rsi14 = this.marketData.calculateRSI(symbol, 14) ?? undefined;
+    
+    // ATR 14
+    indicators.atr14 = this.marketData.calculateATR(symbol, 14) ?? undefined;
+    
+    // VWAP
+    indicators.vwap = this.marketData.calculateVWAP(symbol) ?? undefined;
+    
+    return indicators;
+  }
+
+  /**
+   * Fallback: Check strategy using text-based condition matching
+   * Used when strategy hasn't been compiled by Rule Interpreter
+   */
+  private async checkTextBasedStrategy(
+    strategy: ExecutableStrategyConfig,
+    candles: OHLCV[],
+    quote: Quote
+  ): Promise<void> {
+    const rules = strategy.parsedRules;
 
     // Check time filters
     if (rules.filters) {
@@ -347,7 +499,7 @@ export class ExecutionEngine {
     }
 
     // Calculate indicators
-    const indicators = this.calculateIndicators(symbol, rules);
+    const indicators = this.calculateIndicators(strategy.instrument, rules);
 
     // Check entry conditions
     const entrySignal = this.checkEntryConditions(rules, indicators, quote, candles);
