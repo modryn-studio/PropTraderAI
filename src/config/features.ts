@@ -52,10 +52,24 @@ export const FEATURES = {
   chart_animations_visible: false,     // Strategy visualizations during chat
   smart_tools_visible: false,          // Position calc, timeframe helper during chat
   
-  // Phase 1B (Weeks 5-8)
+  // Phase 1B (Weeks 5-8) - Execution Layer
   autopilot_mode: false,
   websocket_monitoring: false,
   push_notifications: false,
+  
+  // EXECUTION LAYER (Release 1: Strategy Validator - Weeks 1-4)
+  // Controls the execution engine and Tradovate integration
+  execution_engine: false,           // Master switch for execution layer
+  execution_copilot_alerts: false,   // Send alerts when setups detected
+  execution_copilot_orders: false,   // Execute user-approved orders
+  execution_autopilot: false,        // Fully autonomous execution
+  
+  // Execution mode progression (enforce via EXECUTION_MODE_REQUIREMENTS)
+  // paper -> demo -> live_micro -> live
+  execution_paper_trading: true,     // Paper trading always available for testing
+  execution_demo_trading: false,     // Demo account trading (35+ paper trades required)
+  execution_live_micro: false,       // Micro contracts only (20+ demo trades required)
+  execution_live_full: false,        // Full contracts (10+ micro trades required)
   
   // Phase 2 (Weeks 9-16)
   advanced_mode: false,
@@ -85,6 +99,26 @@ export const TILT_THRESHOLDS = {
   WARNING: 50, // Show warning
   CRITICAL: 70, // Critical alert
   AUTO_PAUSE: 85, // Automatic pause (Autopilot only)
+} as const;
+
+// Execution mode requirements (staged testing progression)
+// Users must complete N trades at each level before advancing
+export const EXECUTION_MODE_REQUIREMENTS = {
+  paper: { required_trades: 0, description: 'Paper trading - no real money' },
+  demo: { required_trades: 35, description: 'Demo account with simulated funds' },
+  live_micro: { required_trades: 20, description: 'Live trading with micro contracts only' },
+  live: { required_trades: 10, description: 'Full live trading - all contract sizes' },
+} as const;
+
+// Execution safety limits (account-level defaults)
+export const EXECUTION_SAFETY_LIMITS = {
+  MAX_ACCOUNT_RISK_PERCENT: 3,       // Max 3% risk across all open positions
+  MAX_STRATEGY_RISK_PERCENT: 1,       // Max 1% risk per strategy
+  MAX_POSITION_SIZE: 10,              // Max contracts per position
+  MAX_DAILY_TRADES: 50,               // Max trades per day
+  COOLDOWN_AFTER_LOSS_SECONDS: 300,   // 5 minute cooldown after loss (Copilot alert)
+  CIRCUIT_BREAKER_FAILURES: 5,        // Open circuit after 5 consecutive failures
+  CIRCUIT_BREAKER_TIMEOUT_MS: 60000,  // 1 minute timeout before half-open
 } as const;
 
 export type FeatureKey = keyof typeof FEATURES;
