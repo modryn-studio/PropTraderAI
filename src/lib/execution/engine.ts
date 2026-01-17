@@ -156,7 +156,7 @@ export class ExecutionEngine {
     });
 
     // On candle close, check strategies (hybrid monitoring)
-    this.marketData.onCandleClose((symbol, _candle) => {
+    this.marketData.onCandleClose((symbol) => {
       const strategiesUsingSymbol = Array.from(this.strategies.values())
         .filter(s => s.instrument === symbol && s.isActive);
       
@@ -500,7 +500,7 @@ export class ExecutionEngine {
     const indicators = this.calculateIndicators(strategy.instrument, rules);
 
     // Check entry conditions
-    const entrySignal = this.checkEntryConditions(rules, indicators, quote, candles);
+    const entrySignal = this.checkEntryConditions(rules, indicators, quote);
     
     if (entrySignal) {
       await this.handleSetupDetected(strategy, entrySignal, 'entry', indicators);
@@ -562,8 +562,7 @@ export class ExecutionEngine {
   private checkEntryConditions(
     rules: ParsedRules,
     indicators: Record<string, number | null>,
-    quote: Quote,
-    _candles: OHLCV[]
+    quote: Quote
   ): Partial<SetupDetection> | null {
     if (!rules.entry_conditions || rules.entry_conditions.length === 0) {
       return null;

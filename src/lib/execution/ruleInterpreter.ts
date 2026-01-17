@@ -115,7 +115,7 @@ function compileORBPattern(
   const stopConfig = parseStopLoss(rules.exit_conditions || [], instrument);
   
   // Parse target rule
-  const targetConfig = parseTarget(rules.exit_conditions || [], instrument);
+  const targetConfig = parseTarget(rules.exit_conditions || []);
   
   // Parse time filters
   const timeFilters = parseTimeFilters(rules.filters || []);
@@ -304,7 +304,7 @@ function compileEMAPullbackPattern(
   const emaKey = `ema${emaPeriod}`;
   
   const stopConfig = parseStopLoss(rules.exit_conditions || [], instrument);
-  const targetConfig = parseTarget(rules.exit_conditions || [], instrument);
+  const targetConfig = parseTarget(rules.exit_conditions || []);
   const timeFilters = parseTimeFilters(rules.filters || []);
   const riskPercent = parsePositionSizing(rules.position_sizing);
   
@@ -399,6 +399,7 @@ function compileEMAPullbackPattern(
       return entryPrice - (2 * atr);
     },
     
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     getTargetPrice: (entryPrice: number, stopPrice: number, _context: EvaluationContext): number => {
       const stopDistance = Math.abs(entryPrice - stopPrice);
       const isLong = entryPrice > stopPrice;
@@ -455,7 +456,7 @@ function compileBreakoutPattern(
   const pointValue = INSTRUMENT_SPECS[instrument]?.pointValue || 20;
   
   const stopConfig = parseStopLoss(rules.exit_conditions || [], instrument);
-  const targetConfig = parseTarget(rules.exit_conditions || [], instrument);
+  const targetConfig = parseTarget(rules.exit_conditions || []);
   const timeFilters = parseTimeFilters(rules.filters || []);
   const riskPercent = parsePositionSizing(rules.position_sizing);
   
@@ -527,6 +528,7 @@ function compileBreakoutPattern(
       return swingLow - tickSize;
     },
     
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     getTargetPrice: (entryPrice: number, stopPrice: number, _context: EvaluationContext): number => {
       const stopDistance = Math.abs(entryPrice - stopPrice);
       const isLong = entryPrice > stopPrice;
@@ -594,8 +596,6 @@ interface TimeFilter {
  * Parse stop loss from exit conditions
  */
 function parseStopLoss(exitConditions: ExitCondition[], instrument: string): StopConfig {
-  const _tickSize = INSTRUMENT_SPECS[instrument]?.tickSize || 0.25;
-  
   for (const condition of exitConditions) {
     const type = condition.type?.toLowerCase() || '';
     const value = String(condition.value || '').toLowerCase();
@@ -648,7 +648,7 @@ function parseStopLoss(exitConditions: ExitCondition[], instrument: string): Sto
 /**
  * Parse target from exit conditions
  */
-function parseTarget(exitConditions: ExitCondition[], _instrument: string): TargetConfig {
+function parseTarget(exitConditions: ExitCondition[]): TargetConfig {
   for (const condition of exitConditions) {
     const type = condition.type?.toLowerCase() || '';
     const value = String(condition.value || '').toLowerCase();
