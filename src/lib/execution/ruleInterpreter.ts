@@ -602,6 +602,7 @@ interface TimeFilter {
 /**
  * Parse stop loss from exit conditions
  */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function parseStopLoss(exitConditions: ExitCondition[], instrument: string): StopConfig {
   for (const condition of exitConditions) {
     const type = condition.type?.toLowerCase() || '';
