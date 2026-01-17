@@ -20,7 +20,6 @@ import {
   WebSocketState,
   Quote,
   ParsedRules,
-  OpeningRange,
 } from './types';
 import { MarketDataAggregator, getMarketDataAggregator } from './marketData';
 import { generateSetupId } from './tradovate';
@@ -157,7 +156,7 @@ export class ExecutionEngine {
     });
 
     // On candle close, check strategies (hybrid monitoring)
-    this.marketData.onCandleClose((symbol, candle) => {
+    this.marketData.onCandleClose((symbol, _candle) => {
       const strategiesUsingSymbol = Array.from(this.strategies.values())
         .filter(s => s.instrument === symbol && s.isActive);
       
@@ -356,7 +355,6 @@ export class ExecutionEngine {
    */
   private async checkStrategy(strategy: ExecutableStrategyConfig): Promise<void> {
     const symbol = strategy.instrument;
-    const rules = strategy.parsedRules;
 
     // Get current market data
     const candles = this.marketData.getCandles(symbol);
@@ -565,7 +563,7 @@ export class ExecutionEngine {
     rules: ParsedRules,
     indicators: Record<string, number | null>,
     quote: Quote,
-    candles: OHLCV[]
+    _candles: OHLCV[]
   ): Partial<SetupDetection> | null {
     if (!rules.entry_conditions || rules.entry_conditions.length === 0) {
       return null;

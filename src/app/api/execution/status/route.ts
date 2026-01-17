@@ -11,7 +11,7 @@
  * @route GET /api/execution/status
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { isFeatureEnabled, EXECUTION_MODE_REQUIREMENTS, EXECUTION_SAFETY_LIMITS } from '@/config/features';
 

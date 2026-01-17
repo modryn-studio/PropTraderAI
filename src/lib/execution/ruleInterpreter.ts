@@ -399,7 +399,7 @@ function compileEMAPullbackPattern(
       return entryPrice - (2 * atr);
     },
     
-    getTargetPrice: (entryPrice: number, stopPrice: number, context: EvaluationContext): number => {
+    getTargetPrice: (entryPrice: number, stopPrice: number, _context: EvaluationContext): number => {
       const stopDistance = Math.abs(entryPrice - stopPrice);
       const isLong = entryPrice > stopPrice;
       
@@ -527,7 +527,7 @@ function compileBreakoutPattern(
       return swingLow - tickSize;
     },
     
-    getTargetPrice: (entryPrice: number, stopPrice: number, context: EvaluationContext): number => {
+    getTargetPrice: (entryPrice: number, stopPrice: number, _context: EvaluationContext): number => {
       const stopDistance = Math.abs(entryPrice - stopPrice);
       const isLong = entryPrice > stopPrice;
       
@@ -594,7 +594,7 @@ interface TimeFilter {
  * Parse stop loss from exit conditions
  */
 function parseStopLoss(exitConditions: ExitCondition[], instrument: string): StopConfig {
-  const tickSize = INSTRUMENT_SPECS[instrument]?.tickSize || 0.25;
+  const _tickSize = INSTRUMENT_SPECS[instrument]?.tickSize || 0.25;
   
   for (const condition of exitConditions) {
     const type = condition.type?.toLowerCase() || '';
@@ -648,7 +648,7 @@ function parseStopLoss(exitConditions: ExitCondition[], instrument: string): Sto
 /**
  * Parse target from exit conditions
  */
-function parseTarget(exitConditions: ExitCondition[], instrument: string): TargetConfig {
+function parseTarget(exitConditions: ExitCondition[], _instrument: string): TargetConfig {
   for (const condition of exitConditions) {
     const type = condition.type?.toLowerCase() || '';
     const value = String(condition.value || '').toLowerCase();
