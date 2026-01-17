@@ -76,3 +76,15 @@ export {
   type IndicatorValues,
   type EntrySignal,
 } from './ruleInterpreter';
+
+// Strategy State Persistence (Agent 1 Issue #6)
+export {
+  StrategyStateManager,
+  createStrategyStateManager,
+  type StrategyStateType,
+  type OpeningRangeState,
+  type SessionStatsState,
+  type LastEntryState,
+  type CooldownState,
+  type StrategyStateRecord,
+} from './strategyState';

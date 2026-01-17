@@ -728,6 +728,23 @@ export class MarketDataAggregator {
   }
 
   /**
+   * Set/restore opening range from persisted state
+   * Used on engine restart to preserve opening range calculated earlier in the session
+   * 
+   * Per Agent 1 Issue #6: Opening range must survive Railway restarts
+   */
+  setOpeningRange(
+    symbol: string,
+    openingRange: OpeningRange,
+    startTime: string = '09:30',
+    endTime: string = '09:45'
+  ): void {
+    const cacheKey = `${symbol}-${startTime}-${endTime}`;
+    this.openingRanges.set(cacheKey, openingRange);
+    console.log(`[MarketData] Set opening range for ${symbol}: H=${openingRange.high} L=${openingRange.low} complete=${openingRange.isComplete}`);
+  }
+
+  /**
    * Calculate EMA (Exponential Moving Average)
    * Enhanced per Agent 1 code review: added input validation
    */

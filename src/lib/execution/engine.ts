@@ -30,6 +30,11 @@ import {
   type EvaluationContext,
   type IndicatorValues,
 } from './ruleInterpreter';
+import { 
+  StrategyStateManager, 
+  createStrategyStateManager,
+  type OpeningRangeState,
+} from './strategyState';
 
 // ============================================================================
 // CONSTANTS
@@ -89,6 +94,7 @@ export class ExecutionEngine {
   private errorMessage?: string;
 
   private marketData: MarketDataAggregator;
+  private stateManager: StrategyStateManager;
 
   // Event callbacks
   private onSetupDetectedCallback?: (setup: SetupDetection, strategy: ExecutableStrategyConfig) => void;
@@ -99,6 +105,7 @@ export class ExecutionEngine {
   constructor(config: EngineConfig) {
     this.config = config;
     this.marketData = getMarketDataAggregator();
+    this.stateManager = createStrategyStateManager(config.userId);
   }
 
   // ============================================================================
@@ -232,6 +239,9 @@ export class ExecutionEngine {
       this.compileStrategyRules(executableStrategy);
     }
 
+    // Restore persisted states for all strategies (opening range, session stats, etc.)
+    await this.restoreStrategyStates();
+
     console.log(`[Engine] Loaded ${this.strategies.size} active strategies, ${this.compiledStrategies.size} compiled`);
   }
 
@@ -256,6 +266,56 @@ export class ExecutionEngine {
     } catch (err) {
       console.error(`[Engine] Failed to compile strategy ${strategy.id}:`, err);
       // Don't store failed compilations - strategy will use fallback text matching
+    }
+  }
+
+  /**
+   * Restore persisted strategy states (opening range, session stats, etc.)
+   * Called on engine startup to survive restarts mid-session
+   * 
+   * Per Agent 1 Issue #6: Opening range must survive Railway restarts
+   */
+  private async restoreStrategyStates(): Promise<void> {
+    try {
+      const strategyIds = Array.from(this.strategies.keys());
+      if (strategyIds.length === 0) return;
+
+      const allStates = await this.stateManager.restoreAllStatesForStrategies(strategyIds);
+      
+      // Convert Map to array for iteration (avoids downlevelIteration requirement)
+      const stateEntries = Array.from(allStates.entries());
+      for (const [strategyId, states] of stateEntries) {
+        // Restore opening range if present
+        const openingRangeState = states.get('opening_range') as OpeningRangeState | undefined;
+        if (openingRangeState) {
+          // The opening range is stored per-strategy; inject into marketData
+          const strategy = this.strategies.get(strategyId);
+          if (strategy) {
+            const openingRange = {
+              high: openingRangeState.high,
+              low: openingRangeState.low,
+              startTime: new Date(openingRangeState.startTime),
+              endTime: openingRangeState.endTime,
+              isComplete: openingRangeState.isComplete,
+            };
+            this.marketData.setOpeningRange(strategy.instrument, openingRange);
+            console.log(`[Engine] Restored opening range for ${strategy.instrument}: ${openingRange.high}/${openingRange.low}`);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('[Engine] Failed to restore strategy states:', error);
+      // Non-fatal: strategies will recalculate states if needed
+    }
+  }
+
+  /**
+   * Persist opening range when it's calculated/finalized
+   */
+  async saveOpeningRange(strategyId: string, instrument: string): Promise<void> {
+    const openingRange = this.marketData.calculateOpeningRange(instrument);
+    if (openingRange && openingRange.isComplete) {
+      await this.stateManager.saveOpeningRange(strategyId, openingRange);
     }
   }
 

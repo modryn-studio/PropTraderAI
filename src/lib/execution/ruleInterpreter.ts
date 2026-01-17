@@ -370,8 +370,11 @@ function compileEMAPullbackPattern(
     },
     
     getStopPrice: (entryPrice: number, context: EvaluationContext): number => {
-      const { candles } = context;
-      const isLong = true; // Will be determined by entry
+      const { candles, indicators } = context;
+      const emaValue = indicators[emaKey];
+      // Determine direction by comparing entry price to EMA
+      // If entry is above EMA, it's a long (bullish trend); if below, it's a short
+      const isLong = emaValue ? entryPrice > emaValue : true;
       
       if (stopConfig.type === 'structure') {
         // Find recent swing low (for long) or swing high (for short)
@@ -386,17 +389,21 @@ function compileEMAPullbackPattern(
       }
       
       if (stopConfig.type === 'fixed_ticks') {
-        return entryPrice - (stopConfig.value * tickSize);
+        return isLong
+          ? entryPrice - (stopConfig.value * tickSize)
+          : entryPrice + (stopConfig.value * tickSize);
       }
       
       if (stopConfig.type === 'atr_multiple') {
         const atr = context.indicators.atr14 || (10 * tickSize);
-        return entryPrice - (stopConfig.value * atr);
+        return isLong
+          ? entryPrice - (stopConfig.value * atr)
+          : entryPrice + (stopConfig.value * atr);
       }
       
       // Default: 2 ATR stop
       const atr = context.indicators.atr14 || (10 * tickSize);
-      return entryPrice - (2 * atr);
+      return isLong ? entryPrice - (2 * atr) : entryPrice + (2 * atr);
     },
     
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
