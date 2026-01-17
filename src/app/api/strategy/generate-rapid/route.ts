@@ -619,6 +619,13 @@ export async function POST(request: NextRequest): Promise<NextResponse<RapidGene
     
     if (saveError) {
       console.error('[RapidGenerate] Failed to save strategy:', saveError);
+      
+      // Bug #7: Mark conversation as failed to avoid orphaned records
+      await supabase
+        .from('strategy_conversations')
+        .update({ status: 'failed' })
+        .eq('id', currentConversationId);
+      
       return NextResponse.json({ type: 'error', error: 'Failed to save strategy' }, { status: 500 });
     }
     

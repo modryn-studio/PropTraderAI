@@ -143,9 +143,11 @@ export default function ChatInterface({
   } | null>(null);
   
   // Log strategy status for debugging (prevents unused warning)
-  console.debug('[StrategyStatus]', strategyStatus);
+  if (process.env.NODE_ENV === 'development') {
+    // eslint-disable-next-line no-console
+    console.debug('[StrategyStatus]', strategyStatus);
+  }
   const { isMobile, defaultAnimationExpanded, animationAutoExpandable } = useResponsiveBreakpoints();
-  const prevRuleCountRef = useRef(0);
   
   // Smart Tools state
   const [activeTool, setActiveTool] = useState<ActiveTool | null>(null);
@@ -155,7 +157,8 @@ export default function ChatInterface({
   const { flags } = useFeatureFlags();
   const [devOverrideRapidFlow, setDevOverrideRapidFlow] = useState(false);
   const isDev = process.env.NODE_ENV === 'development';
-  const useRapidFlow = isDev ? devOverrideRapidFlow : (flags.generate_first_flow ?? false);
+  // Fallback to false if flag is undefined (Bug #12 fix)
+  const useRapidFlow = isDev ? devOverrideRapidFlow : (flags?.generate_first_flow ?? false);
   
   // Critical question state (for rapid flow)
   const [criticalQuestion, setCriticalQuestion] = useState<{
@@ -202,8 +205,13 @@ export default function ChatInterface({
     };
     window.addEventListener('keydown', handleEscape);
     
-    // Cleanup animation state on unmount
+    // Cleanup on unmount
     return () => {
+      // Abort any in-flight streaming request to prevent memory leak
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+        abortControllerRef.current = null;
+      }
       window.removeEventListener('keydown', handleEscape);
       setAnimationConfig(null);
     };
@@ -264,10 +272,12 @@ export default function ChatInterface({
   const handleCriticalAnswer = useCallback(async (value: string) => {
     if (!criticalQuestion) return;
 
-    // If they clicked "Other (specify)" button, ignore it - they'll type custom answer
+    // If they clicked "Other (specify)" button, guide them to type instead
     const matchingOption = criticalQuestion.options.find(o => o.value === value);
     if (matchingOption && (matchingOption.label.toLowerCase().includes('other') || matchingOption.label.toLowerCase().includes('specify'))) {
-      // They clicked the "Other (specify)" button - do nothing, they should type instead
+      // Show guidance toast and clear question UI so they can type
+      toast.info('Type your custom answer in the chat below');
+      setCriticalQuestion(null);
       return;
     }
 
@@ -485,8 +495,8 @@ export default function ChatInterface({
     };
     setMessages(prev => [...prev, userMsg]);
     
-    // V2: Extract rules from user message IMMEDIATELY (they're stating facts)
-    setAccumulatedRules(prev => extractFromMessage(message, 'user', prev));
+    // NOTE: Rule extraction is now handled solely by server-driven rule_update events
+    // to avoid race conditions (previously extracted here AND from server events)
     
     setIsLoading(true);
     setError(null);
@@ -615,12 +625,16 @@ export default function ChatInterface({
                 }
               } else if (data.type === 'rule_update') {
                 // Claude called update_rule tool - add to summary panel
-                // Defensive validation
+                // Bug #8: Validate required fields AND category enum value
+                const validCategories = ['setup', 'entry', 'exit', 'risk', 'timeframe', 'filters'];
+                
                 if (!data.rule?.category || !data.rule?.label || !data.rule?.value) {
-                  console.warn('Invalid rule_update received:', data);
+                  console.warn('Invalid rule_update received (missing fields):', data);
+                } else if (!validCategories.includes(data.rule.category)) {
+                  console.warn('Invalid rule_update received (invalid category):', data.rule.category);
                 } else {
                   const newRule: StrategyRule = {
-                    category: data.rule.category,
+                    category: data.rule.category as StrategyRule['category'],
                     label: data.rule.label,
                     value: data.rule.value,
                     // Include smart defaults metadata
@@ -821,6 +835,12 @@ export default function ChatInterface({
     // Clear active tool when editing
     setActiveTool(null);
     
+    // Bug #10: Reset mobile state to avoid stale confirmations after edit
+    setMobileConfirmedParams(new Set());
+    setMobileCardIndex(0);
+    setGeneratedStrategy(null);
+    setCriticalQuestion(null);
+    
     // CRITICAL: Reset accumulated rules to only include rules from messages BEFORE the edit
     // We need to re-extract rules from the remaining messages
     const remainingUserMessages = updatedMessages
@@ -1016,7 +1036,7 @@ export default function ChatInterface({
     setCurrentCompleteness(0); // Reset completeness tracking
     setShowPreviewCard(false); // Hide preview card
     sessionStartRef.current = Date.now();
-    prevRuleCountRef.current = 0;
+    // NOTE: prevRuleCountRef was removed - was dead code (Bug #6)
     setError(null);
   }, [conversationId]);
 
@@ -1081,7 +1101,7 @@ export default function ChatInterface({
     setCurrentCompleteness(0); // Reset completeness tracking
     setShowPreviewCard(false); // Hide preview card
     sessionStartRef.current = Date.now();
-    prevRuleCountRef.current = 0;
+    // NOTE: prevRuleCountRef was removed - was dead code (Bug #6)
     setError(null);
   }, [conversationId]);
 
