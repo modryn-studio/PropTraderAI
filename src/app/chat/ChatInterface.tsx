@@ -443,13 +443,30 @@ export default function ChatInterface({
       }
     } catch (err) {
       console.error('[RapidFlow] Error:', err);
-      setError(err instanceof Error ? err.message : 'Failed to send message');
+      const errorMessage = err instanceof Error ? err.message : 'Failed to send message';
+      setError(errorMessage);
       
-      // Add error message to chat
+      // Add context-aware error message to chat
+      let userFriendlyError = 'Sorry, something went wrong. Please try again.';
+      
+      // Provide specific guidance based on error context
+      if (criticalQuestion) {
+        const questionType = criticalQuestion.questionType;
+        if (questionType === 'instrument') {
+          userFriendlyError = 'I had trouble understanding that instrument. Could you provide more details? (e.g., "NQ" or "E-mini Nasdaq")';
+        } else if (questionType === 'stopLoss' || questionType === 'profitTarget') {
+          userFriendlyError = 'I couldn\'t process that answer. Try selecting one of the options or describing your exit strategy in more detail.';
+        } else if (questionType === 'entryTrigger') {
+          userFriendlyError = 'I need more clarity on your entry setup. Could you describe what signals you look for before entering a trade?';
+        } else {
+          userFriendlyError = 'That answer seems unclear. Could you provide more details or try selecting one of the suggested options?';
+        }
+      }
+      
       const errorMsg: ChatMessage = {
         id: `assistant-${Date.now()}`,
         role: 'assistant',
-        content: 'Sorry, something went wrong. Please try again.',
+        content: userFriendlyError,
         timestamp: new Date().toISOString(),
       };
       setMessages(prev => [...prev, errorMsg]);
@@ -547,13 +564,23 @@ export default function ChatInterface({
       }
     } catch (err) {
       console.error('[RapidFlow] Error:', err);
-      setError(err instanceof Error ? err.message : 'Failed to send message');
+      const errorMessage = err instanceof Error ? err.message : 'Failed to send message';
+      setError(errorMessage);
       
-      // Add error message to chat
+      // Add context-aware error message to chat
+      let userFriendlyError = 'Sorry, something went wrong. Please try again.';
+      
+      // Check if error is about incomplete strategy
+      if (errorMessage.includes('describe your trading strategy') || errorMessage.includes('not enough information')) {
+        userFriendlyError = 'That seems too brief. Could you describe your trading setup in more detail? Include what you trade and when you enter trades.';
+      } else if (errorMessage.includes('validation') || errorMessage.includes('invalid')) {
+        userFriendlyError = 'I couldn\'t validate that strategy. Please make sure to include your entry setup, stop loss, and what instrument you trade.';
+      }
+      
       const errorMsg: ChatMessage = {
         id: `assistant-${Date.now()}`,
         role: 'assistant',
-        content: 'Sorry, something went wrong. Please try again.',
+        content: userFriendlyError,
         timestamp: new Date().toISOString(),
       };
       setMessages(prev => [...prev, errorMsg]);
