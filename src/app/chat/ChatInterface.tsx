@@ -1152,6 +1152,53 @@ export default function ChatInterface({
     setStrategyData(null);
   }, []);
 
+  // Shared reset function for Start Over and Add Another Strategy
+  const resetConversationState = useCallback(() => {
+    // Traditional flow state
+    setConversationId(null);
+    setMessages([]);
+    setStrategyComplete(false);
+    setStrategyData(null);
+    setFullConversationText('');
+    setTimezoneConversionSummary('');
+    setAnimationConfig(null);
+    setAccumulatedRules([]);
+    setCurrentValidation(null);
+    setIsAnimationExpanded(false);
+    setWasAnimationManuallySet(false);
+    
+    // Rapid flow state
+    setCriticalQuestion(null);
+    setConversationState({
+      mode: 'initial',
+      currentQuestion: null,
+    });
+    setGeneratedStrategy(null);
+    setIsPanelVisible(true);
+    
+    // Mobile state
+    setMobileConfirmedParams(new Set());
+    setMobileCardIndex(0);
+    setShowReviewAllModal(false);
+    setEditingParamIndex(null);
+    
+    // Tool state
+    setActiveTool(null);
+    setToolsShown([]);
+    
+    // Rapid flow tracking
+    setExpertiseData(null);
+    setStrategyStatus('building');
+    setCurrentCompleteness(0);
+    setShowPreviewCard(false);
+    
+    // Session timer
+    sessionStartRef.current = Date.now();
+    
+    // Error state
+    setError(null);
+  }, []);
+
   const handleAddAnother = useCallback(async () => {
     // Archive current conversation before starting new one (PATH 2: behavioral data)
     if (conversationId) {
@@ -1170,24 +1217,9 @@ export default function ChatInterface({
       }
     }
     
-    // Reset everything for a new conversation
-    setConversationId(null);
-    setMessages([]);
-    setStrategyComplete(false);
-    setStrategyData(null);
-    setFullConversationText('');
-    setTimezoneConversionSummary('');
-    setAnimationConfig(null);
-    setAccumulatedRules([]);
-    setIsAnimationExpanded(false);
-    setWasAnimationManuallySet(false);
-    setStrategyStatus('building'); // Reset to building mode
-    setCurrentCompleteness(0); // Reset completeness tracking
-    setShowPreviewCard(false); // Hide preview card
-    sessionStartRef.current = Date.now();
-    // NOTE: prevRuleCountRef was removed - was dead code (Bug #6)
-    setError(null);
-  }, [conversationId]);
+    // Reset all state for new conversation
+    resetConversationState();
+  }, [conversationId, resetConversationState]);
 
   const handleStartOver = useCallback(() => {
     setShowStartOverModal(true);
@@ -1234,25 +1266,9 @@ export default function ChatInterface({
       }
     }
     
-    // Reset UI for new conversation
-    setConversationId(null);
-    setMessages([]);
-    setStrategyComplete(false);
-    setStrategyData(null);
-    setFullConversationText('');
-    setTimezoneConversionSummary('');
-    setAnimationConfig(null);
-    setAccumulatedRules([]);
-    setCurrentValidation(null);
-    setIsAnimationExpanded(false);
-    setWasAnimationManuallySet(false);
-    setStrategyStatus('building'); // Reset to building mode
-    setCurrentCompleteness(0); // Reset completeness tracking
-    setShowPreviewCard(false); // Hide preview card
-    sessionStartRef.current = Date.now();
-    // NOTE: prevRuleCountRef was removed - was dead code (Bug #6)
-    setError(null);
-  }, [conversationId]);
+    // Reset all state for new conversation
+    resetConversationState();
+  }, [conversationId, resetConversationState]);
 
   // Validation modal handlers
   const handleValidationSaveAnyway = useCallback(async () => {
@@ -1351,8 +1367,8 @@ export default function ChatInterface({
         <ChatMessageList
           messages={messages}
           pendingMessage={pendingMessage || undefined}
-          isLoading={isLoading || useRapidFlow}
-          onEditMessage={handleEditMessage}
+          isLoading={isLoading}
+          onEditMessage={useRapidFlow ? undefined : handleEditMessage}
           keyboardPadding={isMobile ? keyboardHeight : 0}
         />
 
