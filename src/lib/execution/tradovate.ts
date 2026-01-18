@@ -249,6 +249,21 @@ export class TradovateClient {
     console.log(`[TradovateClient] Token refresh scheduled in ${Math.round(delay / 1000)}s`);
   }
 
+  /**
+   * Cleanup method - call when disconnecting or destroying client
+   */
+  cleanup(): void {
+    console.log('[TradovateClient] Cleaning up...');
+    
+    // Clear token refresh timeout
+    if (this.tokenRefreshTimeout) {
+      clearTimeout(this.tokenRefreshTimeout);
+      this.tokenRefreshTimeout = null;
+    }
+    
+    console.log('[TradovateClient] Cleanup complete');
+  }
+
   // ============================================================================
   // ACCOUNT INFO
   // ============================================================================

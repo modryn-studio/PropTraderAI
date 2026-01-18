@@ -709,13 +709,17 @@ export class PositionManager {
   ): Promise<void> {
     const supabase = await createClient();
 
-    const { data: position } = await supabase
+    const { data: position, error } = await supabase
       .from('positions')
       .select('*')
       .eq('id', positionId)
       .single();
 
-    if (!position) return;
+    // Check if position exists
+    if (error || !position) {
+      console.warn(`[OrderManager] Position ${positionId} not found, skipping P&L update`);
+      return;
+    }
 
     const direction = position.direction as 'long' | 'short';
     const entryPrice = position.avg_entry_price as number;

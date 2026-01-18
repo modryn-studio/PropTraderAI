@@ -941,10 +941,31 @@ export class ExecutionEngine {
    * Add a new strategy
    */
   async addStrategy(strategy: ExecutableStrategyConfig): Promise<void> {
-    this.strategies.set(strategy.id, strategy);
-    
-    // Subscribe to instrument if not already
-    await this.marketData.subscribe(strategy.instrument);
+    try {
+      // Validate strategy before adding
+      if (!strategy.id || !strategy.instrument) {
+        throw new Error('Strategy must have id and instrument');
+      }
+      
+      this.strategies.set(strategy.id, strategy);
+      
+      // Subscribe to instrument if not already
+      await this.marketData.subscribe(strategy.instrument);
+      
+      console.log(`[Engine] Strategy ${strategy.id} added successfully`);
+      
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+      console.error(`[Engine] Failed to add strategy ${strategy.id}:`, errorMsg);
+      
+      // Log compilation/validation failure
+      if (this.onErrorCallback) {
+        this.onErrorCallback(new Error(`Failed to add strategy: ${errorMsg}`));
+      }
+      
+      // Don't crash engine, just reject this strategy
+      throw error;
+    }
   }
 
   /**

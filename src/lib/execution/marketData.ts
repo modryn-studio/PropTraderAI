@@ -62,7 +62,10 @@ export class MarketDataAggregator {
   private accessToken: string = '';
   private state: WebSocketState = 'disconnected';
   private reconnectAttempts: number = 0;
+  private intentionalDisconnect: boolean = false;
   private reconnectTimeout: NodeJS.Timeout | null = null;
+  private connectionTimeout: NodeJS.Timeout | null = null;
+  private restoringSymbols: Set<string> = new Set();
   private pingInterval: NodeJS.Timeout | null = null;
   
   // Historical data fetcher (injected from TradovateClient)
@@ -99,6 +102,12 @@ export class MarketDataAggregator {
     this.accessToken = accessToken;
     this.setState('connecting');
 
+    // Clear any existing timeout
+    if (this.connectionTimeout) {
+      clearTimeout(this.connectionTimeout);
+      this.connectionTimeout = null;
+    }
+
     return new Promise((resolve, reject) => {
       try {
         // Check circuit breaker
@@ -111,6 +120,11 @@ export class MarketDataAggregator {
 
         this.wsConnection.onopen = () => {
           console.log('[MarketData] WebSocket connected');
+          // Clear timeout on successful connection
+          if (this.connectionTimeout) {
+            clearTimeout(this.connectionTimeout);
+            this.connectionTimeout = null;
+          }
           this.authenticate();
         };
 
@@ -125,6 +139,11 @@ export class MarketDataAggregator {
 
         this.wsConnection.onerror = (error) => {
           console.error('[MarketData] WebSocket error:', error);
+          // Clear timeout on error
+          if (this.connectionTimeout) {
+            clearTimeout(this.connectionTimeout);
+            this.connectionTimeout = null;
+          }
           this.stopPing(); // Stop ping on error
           this.handleError(error);
           reject(error);
@@ -136,8 +155,8 @@ export class MarketDataAggregator {
           this.handleClose();
         };
 
-        // Set connection timeout
-        setTimeout(() => {
+        // Store timeout so it can be cleared
+        this.connectionTimeout = setTimeout(() => {
           if (this.state !== 'connected') {
             reject(new Error('Connection timeout'));
             this.disconnect();
@@ -145,6 +164,11 @@ export class MarketDataAggregator {
         }, 10000);
 
       } catch (error) {
+        // Clear timeout on exception
+        if (this.connectionTimeout) {
+          clearTimeout(this.connectionTimeout);
+          this.connectionTimeout = null;
+        }
         this.handleError(error);
         reject(error);
       }
@@ -291,9 +315,12 @@ export class MarketDataAggregator {
   private handleClose(): void {
     this.stopPing();
     
-    if (this.state !== 'disconnected') {
+    // Don't reconnect if disconnect was intentional
+    if (!this.intentionalDisconnect && this.state !== 'disconnected') {
       this.setState('disconnected');
       this.handleReconnect();
+    } else {
+      console.log('[MarketData] Skipping reconnect (intentional disconnect)');
     }
   }
 
@@ -319,6 +346,9 @@ export class MarketDataAggregator {
       return;
     }
 
+    // Reset intentional disconnect flag - this is an automatic reconnect
+    this.intentionalDisconnect = false;
+    
     this.reconnectAttempts++;
     this.setState('reconnecting');
 
@@ -365,6 +395,8 @@ export class MarketDataAggregator {
    * Disconnect from WebSocket
    */
   async disconnect(): Promise<void> {
+    console.log('[MarketData] Manual disconnect requested');
+    this.intentionalDisconnect = true; // Flag intentional disconnect
     this.setState('disconnected');
     this.stopPing();
 
@@ -373,10 +405,18 @@ export class MarketDataAggregator {
       this.reconnectTimeout = null;
     }
 
+    if (this.connectionTimeout) {
+      clearTimeout(this.connectionTimeout);
+      this.connectionTimeout = null;
+    }
+
     if (this.wsConnection) {
       this.wsConnection.close();
       this.wsConnection = null;
     }
+    
+    // Reset reconnect attempts
+    this.reconnectAttempts = 0;
   }
 
   /**
@@ -433,6 +473,12 @@ export class MarketDataAggregator {
       this.candles.set(symbol, []);
     }
 
+    // Wait if buffer restoration already in progress (prevent race condition)
+    if (this.restoringSymbols.has(symbol)) {
+      console.log(`[MarketData] Buffer restoration already in progress for ${symbol}`);
+      return;
+    }
+
     // CRITICAL FIX per Agent 1 Fresh Review Issue #4:
     // Fetch historical bars on INITIAL subscription (not just reconnection)
     // Without this, indicators won't have enough data for 16+ hours
@@ -441,8 +487,13 @@ export class MarketDataAggregator {
     // Fetch ASYNC to avoid blocking - don't await, fire and forget
     // This prevents 15-second freeze when activating multiple strategies
     if (isNewSubscription && this.historicalBarsFetcher) {
+      // Mark as restoring
+      this.restoringSymbols.add(symbol);
+      
       this.fetchHistoricalBarsAsync(symbol).catch(err => {
         console.error(`[MarketData] Background historical fetch failed for ${symbol}:`, err);
+      }).finally(() => {
+        this.restoringSymbols.delete(symbol);
       });
     }
 
