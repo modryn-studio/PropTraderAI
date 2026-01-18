@@ -736,10 +736,10 @@ export function getConstrainedInput(label: string): typeof StopLossInput {
   console.error('Available inputs: Instrument, Pattern, RangePeriod, EntryTrigger, Direction, MaxContracts, StopLoss, ProfitTarget, PositionSizing, Session');
   
   // Return a placeholder that shows the error to the user
-  return ({ currentValue, onCancel }: BaseInputProps) => (
+  const MissingInput = ({ currentValue, onCancel }: BaseInputProps) => (
     <div className="p-4 border border-red-500/50 bg-red-500/10">
       <p className="text-red-400 font-mono text-sm mb-2">
-        ❌ No constrained input for: "{label}"
+        ❌ No constrained input for: &quot;{label}&quot;
       </p>
       <p className="text-white/50 text-xs mb-3">
         Current value: {currentValue}
@@ -752,4 +752,6 @@ export function getConstrainedInput(label: string): typeof StopLossInput {
       </button>
     </div>
   );
+  MissingInput.displayName = 'MissingConstrainedInput';
+  return MissingInput;
 }

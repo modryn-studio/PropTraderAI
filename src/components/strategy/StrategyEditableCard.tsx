@@ -4,7 +4,6 @@ import { useState, useMemo, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Check, Pencil, Save, Loader2, Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Badge } from '@/components/ui/badge';
 import { getConstrainedInput } from '@/components/strategy/ConstrainedInputs';
 import type { StrategyRule } from '@/lib/utils/ruleExtractor';
 
@@ -200,7 +199,7 @@ export default function StrategyEditableCard({
       
       {/* Content - Always Visible */}
       <div className="px-4 pb-4 space-y-4">
-              {/* Rules by Category */}
+        {/* Rules by Category */}
               {groupedRules.map(([category, { rules: categoryRules, indices }]) => {
                 const config = CATEGORY_CONFIG[category] || { label: category, color: 'text-zinc-400' };
                 
@@ -350,7 +349,7 @@ export default function StrategyEditableCard({
                   )}
                 </div>
               )}
-            </div>
-          </div>
+      </div>
     </motion.div>
-  );\n}
+  );
+}
