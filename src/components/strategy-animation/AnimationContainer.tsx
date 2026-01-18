@@ -103,13 +103,13 @@ export default function AnimationContainer({
     };
   }, [isMobile]);
 
-  // Log desktop view (sidebar visible)
+  // Log ALL views (desktop AND mobile)
   useEffect(() => {
-    if (config && !isMobile && !isMinimized && userId && !hasLogged) {
+    if (config && !isMinimized && userId && !hasLogged) {
       const startTime = Date.now();
       setViewStartTime(startTime);
       logAnimationEvent(userId, 'animation_viewed', {
-        device: 'desktop',
+        device: isMobile ? 'mobile' : 'desktop',
         type: config.type,
         direction: config.direction,
         time_to_view_ms: 0,

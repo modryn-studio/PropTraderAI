@@ -125,12 +125,14 @@ export class MarketDataAggregator {
 
         this.wsConnection.onerror = (error) => {
           console.error('[MarketData] WebSocket error:', error);
+          this.stopPing(); // Stop ping on error
           this.handleError(error);
           reject(error);
         };
 
         this.wsConnection.onclose = (event) => {
           console.log(`[MarketData] WebSocket closed: ${event.code} ${event.reason}`);
+          this.stopPing(); // Stop ping on close
           this.handleClose();
         };
 
@@ -300,7 +302,7 @@ export class MarketDataAggregator {
    */
   private handleError(error: unknown): void {
     console.error('[MarketData] Error:', error);
-    this.stopPing();
+    this.handleReconnect();
   }
 
   /**

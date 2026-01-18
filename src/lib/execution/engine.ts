@@ -360,6 +360,15 @@ export class ExecutionEngine {
       // Sequential checking caused race conditions where queue couldn't drain fast enough
       const strategyArray = Array.from(this.strategies.values()).filter(s => s.isActive);
       
+      // Skip checks if no active strategies (optimization)
+      if (strategyArray.length === 0) {
+        await this.processSetupQueue().catch(err => {
+          console.error('[Engine] Error processing setup queue:', err);
+        });
+        await this.checkSafetyLimits();
+        return;
+      }
+      
       // Run all strategy checks concurrently with error tracking
       const strategyChecks = strategyArray.map(async (strategy) => {
         try {

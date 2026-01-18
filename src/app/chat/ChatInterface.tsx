@@ -507,6 +507,11 @@ export default function ChatInterface({
     setIsLoading(true);
     setError(null);
 
+    // Abort previous request if still running (prevent memory leak)
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+
     // Create new AbortController for this request
     const controller = new AbortController();
     abortControllerRef.current = controller;

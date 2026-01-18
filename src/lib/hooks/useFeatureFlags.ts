@@ -45,12 +45,14 @@ export function useFeatureFlags(): UseFeatureFlagsReturn {
   const [error, setError] = useState<Error | null>(null);
 
   useEffect(() => {
+    const supabase = createClient();
+    
     async function loadFeatureFlags() {
       try {
-        const supabase = createClient();
         const { data: { user } } = await supabase.auth.getUser();
 
         if (!user) {
+          setFlags({}); // Clear flags on signout
           setIsLoading(false);
           return;
         }
@@ -83,6 +85,15 @@ export function useFeatureFlags(): UseFeatureFlagsReturn {
     }
 
     loadFeatureFlags();
+    
+    // Listen for auth state changes (user login/logout)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
+      loadFeatureFlags();
+    });
+    
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
   const hasFlag = (flag: string): boolean => {

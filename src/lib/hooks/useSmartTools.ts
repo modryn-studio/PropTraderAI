@@ -140,7 +140,7 @@ export function useSmartTools({
     setActiveTool(null);
   }, []);
 
-  // Reset all tool state
+  // Reset all tool state (e.g., when starting new conversation)
   const resetToolState = useCallback(() => {
     setActiveTool(null);
     setToolsShown([]);
