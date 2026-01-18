@@ -101,6 +101,7 @@ export type BehavioralEventType =
   | 'critical_question_shown'
   | 'critical_question_answered'
   | 'critical_question_ignored'
+  | 'critical_question_followup'
   | 'strategy_parameter_edited'
   
   // Edge Case Handling events
