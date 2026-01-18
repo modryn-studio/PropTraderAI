@@ -626,7 +626,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<RapidGene
         label: 'Entry Trigger',
         value: entryDescription,
         isDefaulted: true,
-        source: 'detected_pattern',
+        source: 'default',
         confidence: 85,
       });
     }
