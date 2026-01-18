@@ -1459,7 +1459,7 @@ export default function ChatInterface({
 
       {/* Input area - in flow at bottom (hide when preview, confirmation, or generated strategy shows) */}
       {!showPreviewCard && !strategyComplete && !generatedStrategy && (
-        <div className={!isMobile && accumulatedRules.length > 0 ? 'ml-80' : ''}>
+        <div className={FEATURES.summary_panel_visible && !isMobile && accumulatedRules.length > 0 ? 'ml-80' : ''}>
           <ChatInput
             onSubmit={handleSendMessage}
             onStop={handleStopGeneration}

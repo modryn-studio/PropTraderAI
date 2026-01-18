@@ -31,15 +31,7 @@ const QUICK_PROMPTS = [
   { label: "Order Flow", prompt: "I trade using order flow and tape reading - watch for bid/ask imbalances and large orders on the DOM" },
 ];
 
-// Shuffle array using Fisher-Yates algorithm
-function shuffleArray<T>(array: T[]): T[] {
-  const shuffled = [...array];
-  for (let i = shuffled.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-  }
-  return shuffled;
-}
+// Bug #6: Removed shuffleArray function - quick prompts now in curated order
 
 export default function ChatInput({ 
   onSubmit,
@@ -55,13 +47,8 @@ export default function ChatInput({
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   const animationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
-  // Randomize quick prompts on mount (client-side only to avoid hydration mismatch)
-  const [shuffledPrompts, setShuffledPrompts] = useState(QUICK_PROMPTS);
-  
-  useEffect(() => {
-    // Shuffle only after mount to prevent server/client mismatch
-    setShuffledPrompts(shuffleArray(QUICK_PROMPTS));
-  }, []);
+  // Bug #6 fix: Removed shuffle to prevent Cumulative Layout Shift (CLS)
+  // Quick prompts are now displayed in a curated, predictable order
 
   // Handle iOS keyboard pushing content up
   useEffect(() => {
@@ -194,7 +181,7 @@ export default function ChatInput({
         {/* Quick prompt buttons (only on welcome screen) */}
         {showAnimation && value.length === 0 && (
           <div className="mb-3 flex gap-2 overflow-x-auto scrollbar-hide pb-2">
-            {shuffledPrompts.map((item) => (
+            {QUICK_PROMPTS.map((item) => (
               <button
                 key={item.label}
                 onClick={() => handleQuickPrompt(item.prompt)}
@@ -215,8 +202,9 @@ export default function ChatInput({
             </div>
             
             {/* Animated placeholder overlay (only when showAnimation and no user input) */}
+            {/* Bug #10: Removed z-10 to prevent overlap with user input */}
             {showAnimation && value.length === 0 && animatedPlaceholder && (
-              <div className="absolute left-[48px] top-[13px] text-gray-400 font-mono text-sm pointer-events-none z-10">
+              <div className="absolute left-[48px] top-[13px] text-gray-400 font-mono text-sm pointer-events-none">
                 {animatedPlaceholder}
               </div>
             )}
@@ -229,8 +217,10 @@ export default function ChatInput({
               placeholder={showAnimation ? "" : placeholder}
               disabled={disabled}
               rows={1}
-              className="input-terminal w-full resize-none py-3 pl-[48px] pr-12 min-h-[88px] text-gray-900 font-mono"
+              className="input-terminal w-full resize-none py-3 pl-[48px] pr-12 text-gray-900 font-mono"
               style={{
+                minHeight: '88px',
+                height: '88px', // Bug #4: Start at min height to prevent jump on first keystroke
                 maxHeight: '200px',
               }}
             />
