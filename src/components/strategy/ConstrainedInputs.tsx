@@ -62,10 +62,10 @@ export function StopLossInput({ label, currentValue, onSave, onCancel, onChatExp
               key={opt.value}
               onClick={() => { setSelected(opt.value); setMode('options'); }}
               className={cn(
-                'px-3 py-1.5 text-xs rounded-md border transition-colors',
+                'px-3 py-1.5 text-xs border transition-colors font-mono',
                 selected === opt.value && mode === 'options'
-                  ? 'bg-emerald-600/20 border-emerald-500 text-emerald-400'
-                  : 'border-zinc-700 text-zinc-400 hover:border-zinc-600'
+                  ? 'bg-[#00FFD1]/10 border-[#00FFD1] text-[#00FFD1]'
+                  : 'border-white/10 text-white/50 hover:border-white/20 hover:text-white/70'
               )}
             >
               {opt.label}
@@ -74,12 +74,12 @@ export function StopLossInput({ label, currentValue, onSave, onCancel, onChatExp
         </div>
         
         {/* Custom Ticks Slider */}
-        <div className="pt-2 border-t border-zinc-800">
+        <div className="pt-2 border-t border-white/10">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs text-zinc-500">Custom ticks</span>
+            <span className="text-xs text-white/40">Custom ticks</span>
             <span className={cn(
               'text-xs font-mono',
-              mode === 'slider' ? 'text-emerald-400' : 'text-zinc-500'
+              mode === 'slider' ? 'text-[#00FFD1]' : 'text-white/40'
             )}>
               {customTicks} ticks
             </span>
@@ -95,9 +95,9 @@ export function StopLossInput({ label, currentValue, onSave, onCancel, onChatExp
               setMode('slider'); 
               setSelected(`${e.target.value} ticks`);
             }}
-            className="w-full accent-emerald-500"
+            className="w-full accent-[#00FFD1]"
           />
-          <div className="flex justify-between text-[10px] text-zinc-600 mt-1">
+          <div className="flex justify-between text-[10px] text-white/30 mt-1">
             <span>5</span>
             <span>25</span>
             <span>50</span>
@@ -108,7 +108,7 @@ export function StopLossInput({ label, currentValue, onSave, onCancel, onChatExp
         {onChatExplain && (
           <button
             onClick={onChatExplain}
-            className="flex items-center gap-2 text-xs text-zinc-500 hover:text-zinc-400 transition-colors"
+            className="flex items-center gap-2 text-xs text-white/30 hover:text-white/50 transition-colors"
           >
             <MessageSquare className="w-3 h-3" />
             Explain more in chat
@@ -148,17 +148,17 @@ export function ProfitTargetInput({ label, currentValue, onSave, onCancel, onCha
       <div className="space-y-3">
         {/* R:R Buttons */}
         <div>
-          <span className="text-xs text-zinc-500 block mb-2">Risk:Reward Ratio</span>
+          <span className="text-xs text-white/40 block mb-2">Risk:Reward Ratio</span>
           <div className="flex gap-2">
             {RR_OPTIONS.map(opt => (
               <button
                 key={opt.value}
                 onClick={() => { setSelected(opt.value); setMode('rr'); }}
                 className={cn(
-                  'px-4 py-2 text-sm rounded-md border transition-colors flex-1',
+                  'px-4 py-2 text-sm border transition-colors flex-1 font-mono',
                   selected === opt.value && mode === 'rr'
-                    ? 'bg-emerald-600/20 border-emerald-500 text-emerald-400'
-                    : 'border-zinc-700 text-zinc-400 hover:border-zinc-600'
+                    ? 'bg-[#00FFD1]/10 border-[#00FFD1] text-[#00FFD1]'
+                    : 'border-white/10 text-white/50 hover:border-white/20 hover:text-white/70'
                 )}
               >
                 {opt.label}
@@ -168,12 +168,12 @@ export function ProfitTargetInput({ label, currentValue, onSave, onCancel, onCha
         </div>
         
         {/* Fixed Ticks Slider */}
-        <div className="pt-2 border-t border-zinc-800">
+        <div className="pt-2 border-t border-white/10">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs text-zinc-500">Or fixed ticks</span>
+            <span className="text-xs text-white/40">Or fixed ticks</span>
             <span className={cn(
               'text-xs font-mono',
-              mode === 'ticks' ? 'text-emerald-400' : 'text-zinc-500'
+              mode === 'ticks' ? 'text-[#00FFD1]' : 'text-white/40'
             )}>
               {customTicks} ticks
             </span>
@@ -188,14 +188,14 @@ export function ProfitTargetInput({ label, currentValue, onSave, onCancel, onCha
               setCustomTicks(parseInt(e.target.value)); 
               setMode('ticks'); 
             }}
-            className="w-full accent-emerald-500"
+            className="w-full accent-[#00FFD1]"
           />
         </div>
         
         {onChatExplain && (
           <button
             onClick={onChatExplain}
-            className="flex items-center gap-2 text-xs text-zinc-500 hover:text-zinc-400 transition-colors"
+            className="flex items-center gap-2 text-xs text-white/30 hover:text-white/50 transition-colors"
           >
             <MessageSquare className="w-3 h-3" />
             Explain more in chat
@@ -224,8 +224,8 @@ export function PositionSizingInput({ label, currentValue, onSave, onCancel, onC
       <div className="space-y-3">
         <div>
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs text-zinc-500">Risk per trade</span>
-            <span className="text-sm font-mono text-emerald-400">{riskPercent}%</span>
+            <span className="text-xs text-white/40">Risk per trade</span>
+            <span className="text-sm font-mono text-[#00FFD1]">{riskPercent}%</span>
           </div>
           <input
             type="range"
@@ -234,15 +234,15 @@ export function PositionSizingInput({ label, currentValue, onSave, onCancel, onC
             step={0.5}
             value={riskPercent}
             onChange={(e) => setRiskPercent(parseFloat(e.target.value))}
-            className="w-full accent-emerald-500"
+            className="w-full accent-[#00FFD1]"
           />
-          <div className="flex justify-between text-[10px] text-zinc-600 mt-1">
+          <div className="flex justify-between text-[10px] text-white/30 mt-1">
             <span>0.5% (Conservative)</span>
             <span>5% (Aggressive)</span>
           </div>
         </div>
         
-        <p className="text-[10px] text-zinc-600">
+        <p className="text-[10px] text-white/40">
           {riskPercent <= 1 ? '✓ Recommended for prop firm challenges' : 
            riskPercent <= 2 ? '⚠️ Moderate risk level' : 
            '⚠️ High risk - not recommended for challenges'}
@@ -251,7 +251,7 @@ export function PositionSizingInput({ label, currentValue, onSave, onCancel, onC
         {onChatExplain && (
           <button
             onClick={onChatExplain}
-            className="flex items-center gap-2 text-xs text-zinc-500 hover:text-zinc-400 transition-colors"
+            className="flex items-center gap-2 text-xs text-white/30 hover:text-white/50 transition-colors"
           >
             <MessageSquare className="w-3 h-3" />
             Explain more in chat
@@ -269,8 +269,9 @@ export function PositionSizingInput({ label, currentValue, onSave, onCancel, onC
 const SESSION_OPTIONS = [
   { value: 'NY Session (9:30 AM - 4:00 PM ET)', label: 'NY Session', time: '9:30 AM - 4:00 PM ET' },
   { value: 'NY Morning (9:30 AM - 12:00 PM ET)', label: 'NY Morning', time: '9:30 AM - 12:00 PM ET' },
-  { value: 'London/NY Overlap (8:00 AM - 11:00 AM ET)', label: 'LDN/NY Overlap', time: '8:00 AM - 11:00 AM ET' },
-  { value: 'Full RTH (9:30 AM - 4:00 PM ET)', label: 'Full RTH', time: '9:30 AM - 4:00 PM ET' },
+  { value: 'NY Afternoon (12:00 PM - 4:00 PM ET)', label: 'NY Afternoon', time: '12:00 PM - 4:00 PM ET' },
+  { value: 'Opening Hour (9:30 AM - 10:30 AM ET)', label: 'Opening Hour', time: '9:30 AM - 10:30 AM ET' },
+  { value: 'Power Hour (3:00 PM - 4:00 PM ET)', label: 'Power Hour', time: '3:00 PM - 4:00 PM ET' },
 ];
 
 export function SessionInput({ label, currentValue, onSave, onCancel, onChatExplain }: BaseInputProps) {
@@ -284,26 +285,26 @@ export function SessionInput({ label, currentValue, onSave, onCancel, onChatExpl
             key={opt.value}
             onClick={() => setSelected(opt.value)}
             className={cn(
-              'w-full flex items-center justify-between px-3 py-2 rounded-md border transition-colors text-left',
+              'w-full flex items-center justify-between px-3 py-2 border transition-colors text-left font-mono',
               selected === opt.value
-                ? 'bg-emerald-600/20 border-emerald-500'
-                : 'border-zinc-700 hover:border-zinc-600'
+                ? 'bg-[#00FFD1]/10 border-[#00FFD1]'
+                : 'border-white/10 hover:border-white/20'
             )}
           >
             <span className={cn(
               'text-sm',
-              selected === opt.value ? 'text-emerald-400' : 'text-zinc-400'
+              selected === opt.value ? 'text-[#00FFD1]' : 'text-white/50'
             )}>
               {opt.label}
             </span>
-            <span className="text-xs text-zinc-500">{opt.time}</span>
+            <span className="text-xs text-white/30">{opt.time}</span>
           </button>
         ))}
         
         {onChatExplain && (
           <button
             onClick={onChatExplain}
-            className="flex items-center gap-2 text-xs text-zinc-500 hover:text-zinc-400 transition-colors mt-2"
+            className="flex items-center gap-2 text-xs text-white/30 hover:text-white/50 transition-colors mt-2"
           >
             <MessageSquare className="w-3 h-3" />
             Custom session hours
@@ -315,7 +316,8 @@ export function SessionInput({ label, currentValue, onSave, onCancel, onChatExpl
 }
 
 // ============================================================================
-// GENERIC TEXT INPUT (Fallback)
+// GENERIC TEXT INPUT (Fallback) - TO BE REMOVED
+// TODO: Replace all usages with constrained inputs, then delete this component
 // ============================================================================
 
 export function GenericInput({ label, currentValue, onSave, onCancel }: BaseInputProps) {
@@ -338,10 +340,10 @@ export function GenericInput({ label, currentValue, onSave, onCancel }: BaseInpu
           if (e.key === 'Escape') onCancel();
         }}
         className={cn(
-          'w-full px-3 py-2 rounded-md text-sm',
-          'bg-zinc-900 border border-zinc-700',
-          'text-zinc-100 placeholder:text-zinc-500',
-          'focus:outline-none focus:ring-1 focus:ring-emerald-500'
+          'w-full px-3 py-2 text-sm font-mono',
+          'bg-[#000000] border border-white/10',
+          'text-white placeholder:text-white/30',
+          'focus:outline-none focus:border-[#00FFD1]'
         )}
       />
     </InputContainer>
@@ -377,20 +379,20 @@ function InputContainer({ label, children, onSave, onCancel }: InputContainerPro
       initial={{ opacity: 0, scale: 0.98 }}
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.98 }}
-      className="p-3 rounded-lg bg-zinc-800/80 border border-zinc-600 backdrop-blur-sm"
+      className="p-3 bg-[#0a0a0a] border border-[#00FFD1] font-mono"
     >
       <div className="flex items-center justify-between mb-3">
-        <span className="text-sm text-zinc-300">{label}</span>
+        <span className="text-sm text-white">{label}</span>
         <div className="flex items-center gap-1">
           <button
             onClick={onSave}
-            className="p-1.5 rounded-md bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 transition-colors"
+            className="p-1.5 bg-[#00FFD1]/10 hover:bg-[#00FFD1]/20 text-[#00FFD1] transition-colors"
           >
             <Check className="w-4 h-4" />
           </button>
           <button
             onClick={onCancel}
-            className="p-1.5 rounded-md hover:bg-zinc-700 text-zinc-500 transition-colors"
+            className="p-1.5 hover:bg-white/10 text-white/50 transition-colors"
           >
             <X className="w-4 h-4" />
           </button>

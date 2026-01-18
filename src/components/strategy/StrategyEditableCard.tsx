@@ -45,12 +45,12 @@ interface StrategyEditableCardProps {
 
 // Category display configuration
 const CATEGORY_CONFIG: Record<string, { label: string; order: number; color: string }> = {
-  setup: { label: 'Setup', order: 1, color: 'text-blue-400' },
-  entry: { label: 'Entry', order: 2, color: 'text-purple-400' },
-  exit: { label: 'Exit', order: 3, color: 'text-amber-400' },
-  risk: { label: 'Risk', order: 4, color: 'text-red-400' },
-  filters: { label: 'Filters', order: 5, color: 'text-cyan-400' },
-  timeframe: { label: 'Timeframe', order: 6, color: 'text-green-400' },
+  setup: { label: 'SETUP', order: 1, color: 'text-white/40' },
+  entry: { label: 'ENTRY', order: 2, color: 'text-white/40' },
+  exit: { label: 'EXIT', order: 3, color: 'text-white/40' },
+  risk: { label: 'RISK', order: 4, color: 'text-white/40' },
+  filters: { label: 'FILTERS', order: 5, color: 'text-white/40' },
+  timeframe: { label: 'TIMEFRAME', order: 6, color: 'text-white/40' },
 };
 
 interface EditingState {
@@ -156,33 +156,33 @@ export default function StrategyEditableCard({
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
       className={cn(
-        'rounded-lg border overflow-hidden',
+        'border overflow-hidden font-mono',
         isSaved 
-          ? 'border-emerald-500/30 bg-emerald-500/5' 
-          : 'border-zinc-700 bg-zinc-900'
+          ? 'border-[#00FFD1]/30 bg-[#00FFD1]/5' 
+          : 'border-white/10 bg-[#000000]'
       )}
     >
       {/* Header */}
       <div 
-        className="flex items-center justify-between p-4 cursor-pointer hover:bg-zinc-800/50 transition-colors"
+        className="flex items-center justify-between p-4 cursor-pointer hover:bg-white/5 transition-colors border-b border-white/10"
         onClick={() => setIsExpanded(!isExpanded)}
       >
         <div className="flex items-center gap-3">
           <div>
-            <h3 className="text-lg font-semibold text-zinc-100">{name}</h3>
+            <h3 className="text-lg font-semibold text-white">{name}</h3>
             <div className="flex items-center gap-2 mt-1">
               {patternDisplay && pattern && !['custom', 'strategy'].includes(pattern.toLowerCase()) && (
-                <Badge variant="secondary" className="text-xs">
+                <span className="px-2 py-1 text-[10px] bg-white/5 border border-white/10 text-white/50">
                   {patternDisplay}
-                </Badge>
+                </span>
               )}
               {instrument && (
-                <Badge variant="outline" className="text-xs">
+                <span className="px-2 py-1 text-[10px] bg-white/5 border border-white/10 text-white/50">
                   {instrument}
-                </Badge>
+                </span>
               )}
               {defaultsCount > 0 && (
-                <span className="text-xs text-zinc-500">
+                <span className="px-2 py-1 text-[10px] bg-[rgba(255,184,0,0.1)] border border-[rgba(255,184,0,0.2)] text-[#FFB800]">
                   {defaultsCount} default{defaultsCount !== 1 ? 's' : ''} applied
                 </span>
               )}
@@ -195,16 +195,16 @@ export default function StrategyEditableCard({
             <motion.div
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
-              className="flex items-center gap-1 text-emerald-400 text-sm"
+              className="flex items-center gap-1 text-[#00FFD1] text-sm"
             >
               <Check className="w-4 h-4" />
               <span>Saved</span>
             </motion.div>
           )}
           {isExpanded ? (
-            <ChevronUp className="w-5 h-5 text-zinc-500" />
+            <ChevronUp className="w-5 h-5 text-white/30" />
           ) : (
-            <ChevronDown className="w-5 h-5 text-zinc-500" />
+            <ChevronDown className="w-5 h-5 text-white/30" />
           )}
         </div>
       </div>
@@ -226,7 +226,7 @@ export default function StrategyEditableCard({
                 return (
                   <div key={category} className="space-y-2">
                     {/* Category Label */}
-                    <p className={cn('text-xs uppercase tracking-wide font-medium', config.color)}>
+                    <p className={cn('text-[10px] uppercase tracking-wider font-medium', config.color)}>
                       {config.label}
                     </p>
                     
@@ -264,16 +264,16 @@ export default function StrategyEditableCard({
                               <div
                                 onClick={() => !isSaved && handleEditStart(globalIndex, rule.value)}
                                 className={cn(
-                                  'flex items-center justify-between p-2 rounded-md transition-colors',
-                                  !isSaved && 'cursor-pointer hover:bg-zinc-800',
-                                  rule.isDefaulted && 'bg-zinc-800/50'
+                                  'group flex items-center justify-between p-2 transition-colors',
+                                  !isSaved && 'cursor-pointer hover:bg-white/5',
+                                  rule.isDefaulted && 'bg-white/[0.02]'
                                 )}
                               >
                                 <div className="flex items-center gap-2 flex-1 min-w-0">
-                                  <span className="text-sm text-zinc-400 flex-shrink-0">
+                                  <span className="text-[13px] text-white/50 flex-shrink-0">
                                     {rule.label}:
                                   </span>
-                                  <span className="text-sm text-zinc-100 truncate">
+                                  <span className="text-[14px] text-white font-medium truncate">
                                     {rule.value}
                                   </span>
                                 </div>
@@ -281,19 +281,16 @@ export default function StrategyEditableCard({
                                 <div className="flex items-center gap-2 flex-shrink-0">
                                   {rule.isDefaulted && (
                                     <>
-                                      <Badge 
-                                        variant="outline" 
-                                        className="text-xs text-zinc-500 border-zinc-700"
-                                      >
+                                      <span className="px-2 py-0.5 text-[10px] bg-[rgba(255,184,0,0.1)] border border-[rgba(255,184,0,0.2)] text-[#FFB800]">
                                         default
-                                      </Badge>
+                                      </span>
                                       {rule.explanation && (
                                         <button
                                           onClick={(e) => {
                                             e.stopPropagation();
                                             setShowTooltip(showTooltip === globalIndex ? null : globalIndex);
                                           }}
-                                          className="p-1 rounded hover:bg-zinc-700 text-zinc-500"
+                                          className="p-1 hover:bg-white/10 text-white/30"
                                         >
                                           <Info className="w-3 h-3" />
                                         </button>
@@ -301,7 +298,7 @@ export default function StrategyEditableCard({
                                     </>
                                   )}
                                   {!isSaved && (
-                                    <Pencil className="w-3 h-3 text-zinc-600" />
+                                    <Pencil className="w-4 h-4 text-white/30 group-hover:text-[#00FFD1] transition-colors" />
                                   )}
                                 </div>
                               </div>
@@ -315,7 +312,7 @@ export default function StrategyEditableCard({
                                   initial={{ opacity: 0, y: -5 }}
                                   animate={{ opacity: 1, y: 0 }}
                                   exit={{ opacity: 0, y: -5 }}
-                                  className="absolute right-0 top-full mt-1 z-10 p-2 rounded-md bg-zinc-800 border border-zinc-700 shadow-lg max-w-xs"
+                                  className="absolute right-0 top-full mt-1 z-10 p-2 bg-[#0a0a0a] border border-white/10 shadow-lg max-w-xs"
                                 >
                                   <p className="text-xs text-zinc-300">{rule.explanation}</p>
                                   <p className="text-xs text-zinc-500 mt-1">Click to change</p>
@@ -332,14 +329,14 @@ export default function StrategyEditableCard({
               
               {/* Action Buttons */}
               {!isSaved && (
-                <div className="flex gap-2 pt-2 border-t border-zinc-800">
+                <div className="flex gap-2 pt-4 border-t border-white/10">
                   <button
                     onClick={handleStrategySave}
                     disabled={isSaving}
                     className={cn(
-                      'flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-md',
-                      'bg-emerald-600 hover:bg-emerald-500 text-white font-medium',
-                      'transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 focus:ring-offset-zinc-900',
+                      'flex-1 flex items-center justify-center gap-2 px-4 py-3',
+                      'bg-[#00FFD1] hover:bg-transparent text-black hover:text-[#00FFD1] font-semibold',
+                      'transition-all hover:shadow-[inset_0_0_0_2px_#00FFD1]',
                       isSaving && 'opacity-50 cursor-not-allowed'
                     )}
                   >
@@ -361,9 +358,9 @@ export default function StrategyEditableCard({
                       onClick={onDiscard}
                       disabled={isSaving}
                       className={cn(
-                        'px-4 py-2.5 rounded-md',
-                        'bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-medium',
-                        'transition-colors focus:outline-none focus:ring-2 focus:ring-zinc-500 focus:ring-offset-2 focus:ring-offset-zinc-900',
+                        'px-4 py-3',
+                        'bg-white/5 hover:bg-white/10 text-white/50 hover:text-white font-medium',
+                        'transition-colors border border-white/10',
                         isSaving && 'opacity-50 cursor-not-allowed'
                       )}
                     >
