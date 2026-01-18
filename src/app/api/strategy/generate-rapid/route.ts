@@ -627,7 +627,6 @@ export async function POST(request: NextRequest): Promise<NextResponse<RapidGene
         value: entryDescription,
         isDefaulted: true,
         source: 'default',
-        confidence: 85,
       });
     }
     
