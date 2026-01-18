@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { ArrowLeft, RotateCcw } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { toast } from '@/components/ui/sonner';
@@ -156,10 +156,13 @@ export default function ChatInterface({
   
   // Rapid Flow state (Week 2 implementation)
   const { flags } = useFeatureFlags();
-  const [devOverrideRapidFlow, setDevOverrideRapidFlow] = useState(false);
-  const isDev = process.env.NODE_ENV === 'development';
-  // Fallback to false if flag is undefined (Bug #12 fix)
-  const useRapidFlow = isDev ? devOverrideRapidFlow : (flags?.generate_first_flow ?? false);
+  
+  // Check URL for legacy mode override (dev testing only: ?legacy=true)
+  const searchParams = useSearchParams();
+  const forceLegacy = searchParams.get('legacy') === 'true';
+  
+  // Use feature flag, with URL override for dev testing
+  const useRapidFlow = forceLegacy ? false : (flags?.generate_first_flow ?? false);
   
   // PHASE 1 FIX: Explicit conversation state for rapid flow
   type ConversationMode = 'initial' | 'answering_question';
@@ -601,8 +604,7 @@ export default function ChatInterface({
       generatedStrategy: !!generatedStrategy,
       criticalQuestion: !!criticalQuestion,
       conversationState,
-      isDev,
-      devOverrideRapidFlow,
+      forceLegacy,
       'flags.generate_first_flow': flags.generate_first_flow,
       'final useRapidFlow': useRapidFlow,
     });
@@ -921,7 +923,7 @@ export default function ChatInterface({
       setPendingMessage(null);
       setIsLoading(false);
     }
-  }, [conversationId, messages, userId, userProfile?.timezone, animationConfig, handleAnimationAutoExpand, toolsShown, expertiseData, useRapidFlow, generatedStrategy, handleRapidFlowMessage, criticalQuestion, handleCriticalAnswer, conversationState, isDev, devOverrideRapidFlow, flags.generate_first_flow]);
+  }, [conversationId, messages, userId, userProfile?.timezone, animationConfig, handleAnimationAutoExpand, toolsShown, expertiseData, useRapidFlow, generatedStrategy, handleRapidFlowMessage, criticalQuestion, handleCriticalAnswer, conversationState, forceLegacy, flags.generate_first_flow]);
 
   // ========================================================================
   // SMART TOOL HANDLERS
@@ -1314,19 +1316,6 @@ export default function ChatInterface({
           </div>
           
           <div className="flex items-center gap-2">
-            {/* Dev mode toggle for rapid flow testing */}
-            {isDev && (
-              <label className="flex items-center gap-2 text-xs text-[rgba(255,255,255,0.5)]">
-                <input
-                  type="checkbox"
-                  checked={devOverrideRapidFlow}
-                  onChange={(e) => setDevOverrideRapidFlow(e.target.checked)}
-                  className="rounded"
-                />
-                Rapid Flow
-              </label>
-            )}
-            
             {messages.length > 0 && !strategyComplete && (
               <button
                 onClick={handleStartOver}
