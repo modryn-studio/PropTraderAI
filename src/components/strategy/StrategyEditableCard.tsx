@@ -254,7 +254,7 @@ export default function StrategyEditableCard({
                                         onParameterEdit(rule, newValue);
                                         setEditing(null);
                                       }}
-                                      onCancel={handleEditCancel}
+                                      onCancel={() => setEditing(null)}
                                     />
                                   </div>
                                 );
