@@ -74,12 +74,8 @@ export default function StrategyVisualizer({
     const { centerY, rangeHeight, highY, lowY } = bounds;
     let path = `M 0 ${centerY}`;
     
-    // Reset seeded random for consistent paths
-    let localSeed = type.length + direction.length;
-    const localRandom = () => {
-      localSeed = (localSeed * 9301 + 49297) % 233280;
-      return localSeed / 233280;
-    };
+    // Use seeded random for consistent paths
+    const localRandom = seededRandom;
     
     // Phase 1: Setup/Consolidation (70% of animation)
     const setupPoints = 30;
@@ -202,31 +198,32 @@ export default function StrategyVisualizer({
     }
     
     return path;
-  }, [type, direction, width, bounds, priceAction]);
+  }, [type, direction, width, bounds, priceAction, seededRandom]);
 
-  // Animation lifecycle
+  // Animation lifecycle - properly clean up ALL timers
   useEffect(() => {
+    const timers: NodeJS.Timeout[] = [];
+    
     setCurrentPhase('setup');
     
-    const setupTimer = setTimeout(() => {
+    timers.push(setTimeout(() => {
       setCurrentPhase('action');
-    }, duration * 1000 * 0.7);
+    }, duration * 1000 * 0.7));
     
-    const completeTimer = setTimeout(() => {
+    timers.push(setTimeout(() => {
       setCurrentPhase('complete');
       onComplete?.();
       
       if (loop) {
-        setTimeout(() => {
+        timers.push(setTimeout(() => {
           setAnimationKey(k => k + 1);
           setCurrentPhase('setup');
-        }, 1000);
+        }, 1000));
       }
-    }, duration * 1000);
+    }, duration * 1000));
     
     return () => {
-      clearTimeout(setupTimer);
-      clearTimeout(completeTimer);
+      timers.forEach(timer => clearTimeout(timer));
     };
   }, [duration, loop, onComplete, animationKey]);
 
@@ -331,13 +328,17 @@ export default function StrategyVisualizer({
               animate={{ pathLength: 1, opacity: 0.6 }}
               transition={{ duration: 1, delay: 0.5 }}
             />
-            {/* Labels */}
-            <text x="10" y={bounds.highY - 8} fill="#00FFD1" fontSize="10" fontFamily="monospace">
-              High
-            </text>
-            <text x="10" y={bounds.lowY + 18} fill="#00FFD1" fontSize="10" fontFamily="monospace">
-              Low
-            </text>
+            {/* Labels - hide on small screens */}
+            {width > 300 && (
+              <>
+                <text x="10" y={bounds.highY - 8} fill="#00FFD1" fontSize="10" fontFamily="monospace">
+                  High
+                </text>
+                <text x="10" y={bounds.lowY + 18} fill="#00FFD1" fontSize="10" fontFamily="monospace">
+                  Low
+                </text>
+              </>
+            )}
           </>
         )}
 

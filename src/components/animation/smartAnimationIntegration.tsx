@@ -47,12 +47,21 @@ export default function SmartAnimationContainer({
   duration,
 }: SmartAnimationContainerProps) {
   
-  // Extract parameters from current rules
+  // Extract parameters from current rules with validation
   const parameters = useMemo(() => {
-    if (debug) {
-      debugParameters(rules);
+    if (!rules || rules.length === 0) {
+      return null;
     }
-    return extractStrategyParameters(rules);
+    
+    try {
+      if (debug) {
+        debugParameters(rules);
+      }
+      return extractStrategyParameters(rules);
+    } catch (error) {
+      console.error('Parameter extraction failed:', error);
+      return null;
+    }
   }, [rules, debug]);
   
   // If parameters incomplete, show helpful placeholder
@@ -94,8 +103,13 @@ export default function SmartAnimationContainer({
  * testParameterExtraction();
  * ```
  */
-export function testParameterExtraction(): void {
+export function testParameterExtraction(): {
+  passed: number;
+  failed: number;
+  results: Array<{test: string; passed: boolean}>;
+} {
   console.group('🧪 Parameter Extraction Tests');
+  const testResults: Array<{test: string; passed: boolean}> = [];
   
   // Test 1: ORB with 50% stop
   const test1: StrategyRule[] = [
@@ -111,6 +125,7 @@ export function testParameterExtraction(): void {
   console.log(`  Stop placement: ${params1?.stopLoss.placement} (expected: percentage)`);
   console.log(`  Stop value: ${params1?.stopLoss.value} (expected: 0.5)`);
   console.log(`  ${pass1 ? '✅ PASS' : '❌ FAIL'}`);
+  testResults.push({ test: 'ORB with 50% stop', passed: pass1 });
   
   // Test 2: ORB with bottom stop
   const test2: StrategyRule[] = [
@@ -126,6 +141,7 @@ export function testParameterExtraction(): void {
   console.log(`  Stop placement: ${params2?.stopLoss.placement} (expected: opposite_side)`);
   console.log(`  Stop value: ${params2?.stopLoss.value} (expected: 0)`);
   console.log(`  ${pass2 ? '✅ PASS' : '❌ FAIL'}`);
+  testResults.push({ test: 'ORB with bottom stop', passed: pass2 });
   
   // Test 3: ATR-based stop
   const test3: StrategyRule[] = [
@@ -140,6 +156,7 @@ export function testParameterExtraction(): void {
   console.log(`  Stop placement: ${params3?.stopLoss.placement} (expected: atr_multiple)`);
   console.log(`  Stop value: ${params3?.stopLoss.value} (expected: 2)`);
   console.log(`  ${pass3 ? '✅ PASS' : '❌ FAIL'}`);
+  testResults.push({ test: 'ATR-based stop', passed: pass3 });
   
   // Test 4: Tick-based stop
   const test4: StrategyRule[] = [
@@ -154,6 +171,7 @@ export function testParameterExtraction(): void {
   console.log(`  Stop placement: ${params4?.stopLoss.placement} (expected: fixed_distance)`);
   console.log(`  Stop value: ${params4?.stopLoss.value} (expected: 10)`);
   console.log(`  ${pass4 ? '✅ PASS' : '❌ FAIL'}`);
+  testResults.push({ test: 'Tick-based stop', passed: pass4 });
   
   // Test 5: Various target formats
   const test5a: StrategyRule[] = [
@@ -168,6 +186,7 @@ export function testParameterExtraction(): void {
   console.log(`  Target method: ${params5a?.profitTarget.method} (expected: r_multiple)`);
   console.log(`  Target value: ${params5a?.profitTarget.value} (expected: 2.5)`);
   console.log(`  ${pass5a ? '✅ PASS' : '❌ FAIL'}`);
+  testResults.push({ test: 'Target parsing (2.5R)', passed: pass5a });
   
   // Test 6: 25% of range stop
   const test6: StrategyRule[] = [
@@ -183,14 +202,19 @@ export function testParameterExtraction(): void {
   console.log(`  Stop placement: ${params6?.stopLoss.placement} (expected: percentage)`);
   console.log(`  Stop value: ${params6?.stopLoss.value} (expected: 0.25)`);
   console.log(`  ${pass6 ? '✅ PASS' : '❌ FAIL'}`);
+  testResults.push({ test: '25% of range stop', passed: pass6 });
   
   // Summary
-  const allPassed = [pass1, pass2, pass3, pass4, pass5a, pass6].every(Boolean);
+  const passed = testResults.filter(r => r.passed).length;
+  const failed = testResults.filter(r => !r.passed).length;
+  const allPassed = failed === 0;
   console.log('\n' + '='.repeat(50));
   console.log(allPassed ? '✅ ALL TESTS PASSED' : '❌ SOME TESTS FAILED');
   console.log('='.repeat(50));
   
   console.groupEnd();
+  
+  return { passed, failed, results: testResults };
 }
 
 // ============================================================================
@@ -215,7 +239,7 @@ export function validateAnimationAccuracy(rules: StrategyRule[]): {
     return { accurate: false, issues, suggestions };
   }
   
-  // Check if stop value is precise
+  // Check if stop value is precise (safe to access after null check)
   if (params.stopLoss.placement === 'structure' && params.stopLoss.value === 0) {
     issues.push('Stop placement is vague (structure-based without specific offset)');
     suggestions.push('Specify exact placement: "2 ticks below swing low" or "50% of range"');

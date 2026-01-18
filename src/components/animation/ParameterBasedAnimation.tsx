@@ -40,12 +40,20 @@ export default function ParameterBasedAnimation({
     [parameters]
   );
   
-  // Convert Y coordinates (0-100) to SVG Y pixels
-  const toY = (coord: number) => (coord / 100) * height;
+  // Convert Y coordinates (0-100) to SVG Y pixels with bounds checking
+  const toY = (coord: number) => {
+    const clamped = Math.max(0, Math.min(100, coord));
+    return (clamped / 100) * height;
+  };
   
   return (
     <div className="w-full bg-[#000000] rounded-sm border border-[rgba(255,255,255,0.1)] overflow-hidden">
-      <svg width="100%" height={height} viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="xMidYMid meet">
+      <svg 
+        width={width ? `${width}px` : '100%'} 
+        height={height} 
+        viewBox={`0 0 ${width} ${height}`} 
+        preserveAspectRatio="xMidYMid meet"
+      >
         {/* Background gradient */}
         <defs>
           <linearGradient id="priceGradient" x1="0%" y1="0%" x2="0%" y2="100%">

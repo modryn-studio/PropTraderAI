@@ -67,6 +67,13 @@ export default function AnimationContainer({
     }
   }, [defaultAnimationExpanded, externalIsExpanded]);
 
+  // Sync internal state when external control is provided
+  useEffect(() => {
+    if (externalIsExpanded !== undefined) {
+      setInternalIsExpanded(externalIsExpanded);
+    }
+  }, [externalIsExpanded]);
+
   // Handle state changes
   const handleToggleExpanded = useCallback(() => {
     const newValue = isMinimized;
@@ -99,6 +106,8 @@ export default function AnimationContainer({
   // Log desktop view (sidebar visible)
   useEffect(() => {
     if (config && !isMobile && !isMinimized && userId && !hasLogged) {
+      const startTime = Date.now();
+      setViewStartTime(startTime);
       logAnimationEvent(userId, 'animation_viewed', {
         device: 'desktop',
         type: config.type,
@@ -109,6 +118,22 @@ export default function AnimationContainer({
     }
   }, [config, isMobile, isMinimized, userId, hasLogged]);
 
+  // Log view duration on unmount
+  useEffect(() => {
+    if (!isMinimized && viewStartTime) {
+      return () => {
+        const duration = (Date.now() - viewStartTime) / 1000;
+        if (userId && config) {
+          logAnimationEvent(userId, 'animation_viewed', { 
+            duration_seconds: duration,
+            type: config.type,
+            direction: config.direction,
+          });
+        }
+      };
+    }
+  }, [isMinimized, viewStartTime, userId, config]);
+
   // Reset hasLogged when config changes significantly
   useEffect(() => {
     if (config) {
@@ -116,9 +141,9 @@ export default function AnimationContainer({
     }
   }, [config, config?.type, config?.direction]);
 
-  // Auto-hide logic (only if not manually set by user)
+  // Auto-hide logic with reset on interaction (only if not manually set by user)
   useEffect(() => {
-    if (!autoHideDuration || !config || wasManuallySet) return;
+    if (!autoHideDuration || !config || wasManuallySet || isMinimized) return;
 
     const timer = setTimeout(() => {
       if (!isMobile && animationAutoExpandable) {
@@ -131,7 +156,7 @@ export default function AnimationContainer({
     }, autoHideDuration * 1000);
 
     return () => clearTimeout(timer);
-  }, [config, autoHideDuration, isMobile, wasManuallySet, animationAutoExpandable, externalIsExpanded, onExpandedChange]);
+  }, [config, autoHideDuration, isMobile, wasManuallySet, animationAutoExpandable, externalIsExpanded, onExpandedChange, isMinimized]);
 
   // Handle mobile panel open
   const handleMobileOpen = useCallback(() => {
@@ -181,7 +206,7 @@ export default function AnimationContainer({
   // On mobile, animation is embedded in Summary Panel
   // This component only shows the FAB when Summary Panel is not handling it
   if (isMobile) {
-    // Don't show FAB when keyboard is visible
+    // Hide FAB when keyboard is visible
     const showFAB = !isKeyboardVisible && !externalIsExpanded;
     
     // If parent is controlling, return null (Summary Panel handles mobile UI)
@@ -199,7 +224,9 @@ export default function AnimationContainer({
               animate={{ scale: 1 }}
               exit={{ scale: 0 }}
               onClick={handleMobileOpen}
-              className="fixed bottom-20 right-4 z-30 w-14 h-14 rounded-full bg-[#00FFD1] shadow-lg flex items-center justify-center"
+              className={`fixed right-4 z-30 w-14 h-14 rounded-full bg-[#00FFD1] shadow-lg flex items-center justify-center ${
+                isKeyboardVisible ? 'bottom-[420px]' : 'bottom-20'
+              }`}
               whileTap={{ scale: 0.9 }}
             >
               <svg className="w-6 h-6 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
