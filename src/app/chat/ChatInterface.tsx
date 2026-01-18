@@ -187,6 +187,9 @@ export default function ChatInterface({
   const [mobileCardIndex, setMobileCardIndex] = useState(0);
   const [showReviewAllModal, setShowReviewAllModal] = useState(false);
   
+  // Bug #5: iOS keyboard height for proper message scrolling
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+  
   // Parameter edit modal state (Week 5-6, Issue #7)
   const [editingParamIndex, setEditingParamIndex] = useState<number | null>(null);
   const editingParam = editingParamIndex !== null && generatedStrategy 
@@ -1218,6 +1221,7 @@ export default function ChatInterface({
           pendingMessage={pendingMessage || undefined}
           isLoading={isLoading}
           onEditMessage={handleEditMessage}
+          keyboardPadding={isMobile ? keyboardHeight : 0}
         />
 
         {/* Smart Tool - appears ONLY after save for optional refinement (rapid flow philosophy) */}
@@ -1466,6 +1470,7 @@ export default function ChatInterface({
             disabled={isLoading}
             showAnimation={messages.length === 0}
             hasSidebar={!isMobile && accumulatedRules.length > 0}
+            onKeyboardHeightChange={setKeyboardHeight}
             placeholder={
               messages.length === 0
                 ? ""

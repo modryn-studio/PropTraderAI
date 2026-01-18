@@ -10,6 +10,8 @@ interface ChatInputProps {
   placeholder?: string;
   showAnimation?: boolean; // Show animated placeholder on welcome screen
   hasSidebar?: boolean; // Whether the summary sidebar is visible (desktop only)
+  /** Bug #5: Callback when keyboard height changes (for iOS) */
+  onKeyboardHeightChange?: (height: number) => void;
 }
 
 // Example prompts to cycle through
@@ -39,6 +41,7 @@ export default function ChatInput({
   disabled = false,
   placeholder = "Describe your trading strategy...",
   showAnimation = false,
+  onKeyboardHeightChange,
 }: ChatInputProps) {
   const [value, setValue] = useState('');
   const [animatedPlaceholder, setAnimatedPlaceholder] = useState('');
@@ -56,7 +59,10 @@ export default function ChatInput({
       if (window.visualViewport) {
         const viewportHeight = window.visualViewport.height;
         const windowHeight = window.innerHeight;
-        setKeyboardHeight(Math.max(0, windowHeight - viewportHeight));
+        const newHeight = Math.max(0, windowHeight - viewportHeight);
+        setKeyboardHeight(newHeight);
+        // Bug #5: Notify parent of keyboard height change
+        onKeyboardHeightChange?.(newHeight);
       }
     };
 
@@ -68,7 +74,7 @@ export default function ChatInput({
       window.visualViewport?.removeEventListener('resize', handleResize);
       window.visualViewport?.removeEventListener('scroll', handleResize);
     };
-  }, []);
+  }, [onKeyboardHeightChange]);
 
   // Auto-resize textarea based on content
   const adjustTextareaHeight = useCallback(() => {

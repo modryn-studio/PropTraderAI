@@ -17,13 +17,16 @@ interface ChatMessageListProps {
   pendingMessage?: string;
   isLoading?: boolean;
   onEditMessage?: (messageIndex: number, newContent: string) => void;
+  /** Bug #5: Padding for iOS keyboard (passed from parent) */
+  keyboardPadding?: number;
 }
 
 export default function ChatMessageList({ 
   messages, 
   pendingMessage, 
   isLoading,
-  onEditMessage
+  onEditMessage,
+  keyboardPadding = 0,
 }: ChatMessageListProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -67,6 +70,7 @@ export default function ChatMessageList({
     <div 
       ref={containerRef}
       className="flex-1 overflow-y-auto bg-[#000000]"
+      style={{ paddingBottom: keyboardPadding > 0 ? `${keyboardPadding}px` : undefined }}
     >
       <div className="max-w-3xl mx-auto px-6 py-8">
         {/* Welcome message if no messages yet */}
