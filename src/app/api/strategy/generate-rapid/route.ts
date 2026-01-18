@@ -311,10 +311,20 @@ function answerToRule(
       };
     
     case 'entryTrigger':
+      // Map button values to full descriptions to avoid gap detection loops
+      const entryDescriptions: Record<string, string> = {
+        'orb': 'Opening range breakout',
+        'pullback': 'Pullback to support/MA',
+        'vwap': 'VWAP cross',
+        'breakout': 'Breakout of structure',
+        'momentum': 'Momentum / New highs',
+        'custom': value,  // For "Let me describe it" option
+      };
+
       return {
         category: 'entry',
         label: 'Entry Trigger',
-        value,
+        value: entryDescriptions[value] || value,  // Use full description or raw value
         isDefaulted: false,
         source: 'user',
       };
