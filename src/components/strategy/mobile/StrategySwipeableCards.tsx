@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence, PanInfo } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
@@ -97,6 +97,14 @@ export function StrategySwipeableCards({
   // Swipe hint for first-time users (dismisses after first swipe or 6 seconds)
   const [showSwipeHint, setShowSwipeHint] = useState(true);
 
+  // Auto-dismiss swipe hint after 6 seconds
+  useEffect(() => {
+    if (showSwipeHint) {
+      const timer = setTimeout(() => setShowSwipeHint(false), 6000);
+      return () => clearTimeout(timer);
+    }
+  }, [showSwipeHint]);
+
   // Change card index with optional callback
   const setCardIndex = useCallback((newIndex: number) => {
     setInternalIndex(newIndex);
@@ -123,6 +131,13 @@ export function StrategySwipeableCards({
 
   // Can save check
   const canSave = canSaveStrategy(rules, confirmedParams);
+
+  // Haptic feedback for mobile swipes
+  const triggerHaptic = useCallback(() => {
+    if ('vibrate' in navigator) {
+      navigator.vibrate(10); // 10ms light vibration
+    }
+  }, []);
 
   // Handle swipe end
   const handleDragEnd = useCallback((event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
@@ -241,7 +256,7 @@ export function StrategySwipeableCards({
           onClick={goToPrev}
           disabled={currentCardIndex === 0}
           className={cn(
-            'absolute left-2 bottom-1/2 transform translate-y-1/2 z-10',
+            'absolute left-2 bottom-1/2 transform translate-y-1/2 z-20',
             'w-10 h-10 rounded-full flex items-center justify-center',
             'bg-zinc-800/80 backdrop-blur-sm border border-zinc-700',
             'transition-opacity',
@@ -256,7 +271,7 @@ export function StrategySwipeableCards({
           onClick={goToNext}
           disabled={currentCardIndex === orderedParams.length - 1}
           className={cn(
-            'absolute right-2 bottom-1/2 transform translate-y-1/2 z-10',
+            'absolute right-2 bottom-1/2 transform translate-y-1/2 z-20',
             'w-10 h-10 rounded-full flex items-center justify-center',
             'bg-zinc-800/80 backdrop-blur-sm border border-zinc-700',
             'transition-opacity',
@@ -292,7 +307,7 @@ export function StrategySwipeableCards({
               isConfirmed={confirmedParams.has(currentParam.originalIndex)}
               onConfirm={() => {
                 onParameterConfirm(currentParam.originalIndex);
-                triggerHaptic([10, 50, 10]); // Success pattern
+                triggerHaptic(); // Success feedback
                 
                 // Auto-advance to next card after 300ms delay
                 // Gives user time to see "Confirmed" state before transitioning
@@ -346,13 +361,4 @@ export function StrategySwipeableCards({
       />
     </div>
   );
-}
-
-/**
- * Trigger haptic feedback on mobile devices
- */
-function triggerHaptic(pattern: number | number[] = 10) {
-  if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
-    navigator.vibrate(pattern);
-  }
 }

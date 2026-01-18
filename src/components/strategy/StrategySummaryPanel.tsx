@@ -46,8 +46,8 @@ export default function StrategySummaryPanel({
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [hasNewRules, setHasNewRules] = useState(false);
   const [isPreviewMinimized, setIsPreviewMinimized] = useState(true); // Start minimized
+  const [userMinimizedPreview, setUserMinimizedPreview] = useState(false); // Bug #11: Track user intent
   const prevRuleCount = useRef(rules.length);
-  const hasAutoExpandedPreview = useRef(false); // Track if we've auto-expanded
 
   // Real-time validation (memoized)
   const validation = useMemo(() => validateStrategy(rules), [rules]);
@@ -85,13 +85,12 @@ export default function StrategySummaryPanel({
     return hasStop && hasTarget;
   }, [rules]);
 
-  // Auto-expand preview when animation becomes available (once)
+  // Bug #11: Auto-expand preview when animation becomes available (session-only)
   useEffect(() => {
-    if (canRenderAnimation && !hasAutoExpandedPreview.current && isPreviewMinimized) {
+    if (!userMinimizedPreview && canRenderAnimation && isPreviewMinimized) {
       setIsPreviewMinimized(false);
-      hasAutoExpandedPreview.current = true;
     }
-  }, [canRenderAnimation, isPreviewMinimized]);
+  }, [canRenderAnimation, isPreviewMinimized, userMinimizedPreview]);
 
   // Don't render if no rules
   if (!isVisible || rules.length === 0) return null;
@@ -158,7 +157,11 @@ export default function StrategySummaryPanel({
               Visual Preview
             </div>
             <button
-              onClick={() => setIsPreviewMinimized(!isPreviewMinimized)}
+              onClick={() => {
+                const newValue = !isPreviewMinimized;
+                setIsPreviewMinimized(newValue);
+                if (newValue) setUserMinimizedPreview(true); // Bug #11: User explicitly minimized
+              }}
               className="p-1 text-[rgba(255,255,255,0.5)] hover:text-[#00FFD1] transition-colors rounded"
               title={isPreviewMinimized ? 'Expand preview' : 'Minimize preview'}
             >
@@ -213,7 +216,11 @@ export default function StrategySummaryPanel({
           {/* Animation toggle button (only show if animation exists) */}
           {canRenderAnimation && (
             <button
-              onClick={() => setIsPreviewMinimized(!isPreviewMinimized)}
+              onClick={() => {
+                const newValue = !isPreviewMinimized;
+                setIsPreviewMinimized(newValue);
+                if (newValue) setUserMinimizedPreview(true); // Bug #11: User explicitly minimized
+              }}
               className="flex items-center gap-1.5 text-xs font-mono text-[rgba(255,255,255,0.5)] hover:text-[#00FFD1] transition-colors group"
               title={isPreviewMinimized ? 'Show preview' : 'Hide preview'}
             >
@@ -491,6 +498,19 @@ function RulesCategoryList({ rules }: { rules: StrategyRule[] }) {
     const seen = new Map<string, StrategyRule>();
     
     rules.forEach(rule => {
+      // Bug #12: More aggressive normalization for better deduplication
+      const normalizeLabel = (label: string) => {
+        return label
+          .toLowerCase()
+          .replace(/[_\-\s]/g, '') // Remove separators
+          .replace(/loss$/i, '')   // "stoploss" → "stop"
+          .replace(/size$/i, '')   // "positionsize" → "position"
+          .trim();
+      };
+      
+      const normalized = normalizeLabel(rule.label);
+      const semanticKey = `${rule.category}:${normalized}`;
+      
       // Create a unique key based on EXACT label matching (not .includes())
       const normalizedLabel = rule.label.toLowerCase().trim();
       
@@ -516,13 +536,13 @@ function RulesCategoryList({ rules }: { rules: StrategyRule[] }) {
         'contracts': 'risk:sizing',
       };
       
-      // Get semantic key from exact match OR fall back to category:label
-      const semanticKey = exactMatches[normalizedLabel] || `${rule.category}:${normalizedLabel}`;
+      // Bug #12: Use normalized key as fallback (better fuzzy matching)
+      const finalKey = exactMatches[normalizedLabel] || semanticKey;
       
       // Keep the most specific/complete rule (prefer longer values, non-defaulted)
-      const existing = seen.get(semanticKey);
+      const existing = seen.get(finalKey);
       if (!existing) {
-        seen.set(semanticKey, rule);
+        seen.set(finalKey, rule);
       } else {
         // Prefer user-specified over defaults
         if (existing.isDefaulted && !rule.isDefaulted) {

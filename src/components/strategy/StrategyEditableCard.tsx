@@ -78,9 +78,12 @@ export default function StrategyEditableCard({
   // Close edit/tooltip when clicking outside their specific containers
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      // Close edit box if clicking outside it (but still inside card is fine)
+      // Bug #8: Close edit box only if clicking another rule or outside card
       if (editing && editBoxRef.current && !editBoxRef.current.contains(event.target as Node)) {
-        setEditing(null);
+        const clickedRule = (event.target as HTMLElement).closest('[data-rule-index]');
+        if (clickedRule || !cardRef.current?.contains(event.target as Node)) {
+          setEditing(null);
+        }
       }
       // Close tooltip if clicking outside it
       if (showTooltip !== null && tooltipRef.current && !tooltipRef.current.contains(event.target as Node)) {
@@ -129,6 +132,7 @@ export default function StrategyEditableCard({
   
   // Handle edit start
   const handleEditStart = (index: number, currentValue: string) => {
+    setShowTooltip(null); // Bug #10: Close tooltip when editing
     setEditing({ ruleIndex: index, value: currentValue });
   };
   
@@ -143,6 +147,18 @@ export default function StrategyEditableCard({
   // Handle edit cancel
   const handleEditCancel = () => {
     setEditing(null);
+  };
+  
+  // Bug #9: Auto-apply unsaved edit before saving strategy
+  const handleStrategySave = () => {
+    if (editing) {
+      // Auto-apply current edit before saving
+      if (editing.value !== rules[editing.ruleIndex].value) {
+        onParameterEdit(rules[editing.ruleIndex], editing.value);
+      }
+      setEditing(null);
+    }
+    onSave();
   };
   
   return (
@@ -352,7 +368,7 @@ export default function StrategyEditableCard({
               {!isSaved && (
                 <div className="flex gap-2 pt-2 border-t border-zinc-800">
                   <button
-                    onClick={onSave}
+                    onClick={handleStrategySave}
                     disabled={isSaving}
                     className={cn(
                       'flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-md',

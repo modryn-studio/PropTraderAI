@@ -76,8 +76,16 @@ export default function StrategyPreviewCard({
     rules.filter(r => r.isDefaulted).length
   , [rules]);
   
-  // Determine card state
-  const isComplete = completenessPercentage >= 0.7;
+  // Determine card state - requires 70%+ AND critical params
+  const isComplete = useMemo(() => {
+    if (completenessPercentage < 0.7) return false;
+    
+    const hasEntry = rules.some(r => r.category === 'entry');
+    const hasExit = rules.some(r => r.category === 'exit');
+    const hasRisk = rules.some(r => r.category === 'risk');
+    
+    return hasEntry && hasExit && hasRisk;
+  }, [completenessPercentage, rules]);
   
   if (!isVisible) return null;
 
@@ -124,13 +132,14 @@ export default function StrategyPreviewCard({
         </div>
         
         {/* Rules Preview (collapsible) */}
-        <motion.div
-          initial={false}
-          animate={{ height: isExpanded ? 'auto' : 0 }}
-          transition={{ duration: 0.2 }}
-          className="overflow-hidden"
-        >
-          <div className="px-4 py-3 space-y-3 max-h-64 overflow-y-auto custom-scrollbar">
+        <div className="overflow-hidden">
+          <motion.div
+            initial={false}
+            animate={{ height: isExpanded ? 'auto' : 0 }}
+            transition={{ duration: 0.2 }}
+            className="overflow-hidden"
+          >
+            <div className="px-4 py-3 space-y-3 max-h-64 overflow-y-auto custom-scrollbar">
             {groupedRules.map(([category, categoryRules]) => (
               <div key={category} className="space-y-1">
                 <div className="text-[rgba(255,255,255,0.4)] text-[10px] font-mono uppercase tracking-wider">
@@ -174,6 +183,7 @@ export default function StrategyPreviewCard({
             </div>
           )}
         </motion.div>
+        </div>
         
         {/* Action Buttons */}
         <div className="px-4 py-3 border-t border-[rgba(255,255,255,0.08)] flex gap-2">

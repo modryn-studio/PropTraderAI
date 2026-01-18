@@ -1,380 +1,123 @@
-# GitHub Issues Workflow
+# GitHub Issues Workflow (Two-Agent System)
 
-### 1. Issue Template
-**Location:** `.github/ISSUE_TEMPLATE/agent-dialectic-spec.md`
+## Overview
 
-When you create a new issue on GitHub, you'll see "Agent Dialectic Spec" as a template option. This template includes:
-- Status tracker (phase, current agent, iteration)
-- Problem statement
-- Proposed solution
-- Critical review section
-- Response section
-- Final decisions
-- Implementation plan
+**Agent 1 (Claude Desktop):** Creates specs via GitHub MCP after reading codebase from project knowledge base  
+**Agent 2 (VS Code Copilot):** Implements specs, uses CLI for GitHub interactions  
 
-### 2. Workflow Documentation
-**Location:** `docs/AGENT_WORKFLOW.md`
-
-Complete guide on how to use the workflow with both agents.
-
-### 3. Example Issue
-**Issue #2:** "[EXAMPLE] User Authentication System"
-
-Live demonstration showing:
-- Agent 1's initial spec
-- Agent 2's detailed critique (see the comment)
-- How the workflow operates in practice
+**Standard Flow:**
+1. Agent 1 → Creates issue with detailed spec (via MCP)
+2. Agent 2 → Reads spec, asks clarifying questions if needed until 95% confident
+3. Agent 2 → Implements, commits, pushes to GitHub
+4. Agent 2 → Comments "ready for review"
+5. Agent 1 → Reviews commits via MCP, provides feedback
+6. Iterate or close
 
 ---
 
-## How to Use This Workflow
+## The Workflow
 
-### Complete Workflow (Spec → Code → Review)
+### 1. Agent 1 Creates Issue
 
-**Phase 1: Specification (GitHub Only)**
+**How Agent 1 works:**
+- Reads codebase through **GitHub repo synced in project knowledge base**
+- Uses **GitHub MCP** to create issue directly with full spec
+- No template needed - creates structured spec in issue body
 
-1. **Create issue on GitHub** — method depends on which agent you start with:
-   
-   **Option A: Starting with VS Code Copilot (Agent 2)**
-   ```bash
-   gh issue create --title "Feature: X" --body "What needs to happen..."
-   ```
-   
-   **Option B: Starting with Claude Desktop (Agent 1 with GitHub MCP)**
-   ```
-   "Create a GitHub issue in modryn-studio/PropTraderAI titled 'Feature: X' 
-   with [describe the task]"
-   ```
-   
-   **Option C: Web UI (manual)**
-   - Go to: https://github.com/modryn-studio/PropTraderAI/issues/new/choose
-   - Select "Agent Task" template (optional, just sets label)
+**Typical Agent 1 prompt:**
+```
+"Create a GitHub issue in modryn-studio/PropTraderAI for [FEATURE/BUG].
+Include problem statement, proposed solution, implementation plan."
+```
 
-2. **Claude Desktop (Agent 1)** or **VS Code Copilot (Agent 2)**: 
-   - Reads issue from GitHub via MCP/API
-   - Fills spec directly in the issue (no code yet)
-   - Updates status tracker
+### 2. Agent 2 Reviews Spec
 
-3. **The other agent** reviews:
-   - **Claude Desktop**: Reads via GitHub MCP, adds critique as comment
-   - **VS Code Copilot**: Reads via GitHub extension, adds critique via CLI comment
-   - Questions, edge cases, security concerns
+**Agent 2's job:**
+- Read the issue via GitHub extension
+- **If straightforward:** Proceed to implementation
+- **If complex:** Ask clarifying questions until 95% confident
 
-4. **Original agent** responds via GitHub issue comments
-   - Addresses concerns
-   - Updates spec if needed
+**When to ask questions (Agent 2):**
+- ✅ Unclear requirements or edge cases
+- ✅ Multiple valid approaches (which one?)
+- ✅ Security/performance concerns
+- ✅ Missing technical details
+- ❌ Don't ask if spec is clear and actionable
 
-5. **Iterate** all within GitHub issues (2-4 rounds typical)
-   - Keep iterating until both agents agree
-   - Mark status as "Ready to Implement"
-
-**Phase 2: Implementation (Local + GitHub)**
-
-6. **When ready to implement:**
-   ```bash
-   # Pull latest code
-   git pull origin main
-   
-   # Write the code (either agent can implement in VS Code)
-   # Test locally (npm run build, tests, etc.)
-   ```
-
-7. **🚨 CRITICAL: Commit and Push IMMEDIATELY after implementation:**
-   ```bash
-   # Stage all changes
-   git add .
-   
-   # Commit with issue reference and detailed description
-   git commit -m "Implement [feature] from issue #X
-   
-   - Bullet point summary of changes
-   - What was added/modified
-   - Build/test status"
-   
-   # Push to GitHub (REQUIRED for Agent 1 to review)
-   git push origin main
-   ```
-   
-   **⚠️ WHY THIS IS REQUIRED:**
-   - Agent 1 (Claude Desktop) reviews code via GitHub MCP server
-   - Cannot see local changes that aren't pushed
-   - No review possible until code is on GitHub
-   - DO NOT request review before pushing
-
-8. **Code review:**
-   - **Claude Desktop**: Reads commits from GitHub via MCP (no local pull needed)
-   - **VS Code Copilot**: Reviews via GitHub extension or git commands
-   - Comments on the issue with code review feedback
-   - Checks if implementation matches the spec
-   - Verifies security, performance, edge cases
-
-9. **Iterate on code** if needed:
-   - Make changes locally
-   - Push again
-   - Review
-   - Close issue when complete
-
-### Quick Reference (5 Steps)
-
-**Step 1: Create Issue (You or Agent)**
-
-**Via VS Code Copilot (CLI):**
+**HOW to ask questions:**
 ```bash
-gh issue create --title "Task description" --body "Details..."
+# Post questions as GitHub issue comment (Agent 1 sees via MCP)
+gh issue comment X --body "Question about Bug #Y: [your question]"
+
+# For multiple questions, use --body-file
+echo "## Clarifying Questions..." > temp.md
+gh issue comment X --body-file temp.md
+rm temp.md
 ```
 
-**Via Claude Desktop (MCP):**
-```
-"Create a GitHub issue for [task]"
-```
+**Don't ask the user in chat** - Agent 1 created the spec and monitors issue comments via MCP.
 
-**Via Web UI:**
-- https://github.com/modryn-studio/PropTraderAI/issues/new/choose
+### 3. Agent 2 Implements
 
-**Step 2: First Agent - Initial Spec**
-
-**Via VS Code Copilot (Agent 2):**
-```
-Prompt: "Read GitHub issue #[NUMBER] from modryn-studio/PropTraderAI 
-and fill in the initial spec sections for [FEATURE/TASK]."
-```
-
-**Via Claude Desktop (Agent 1):**
-```
-Prompt: "Read GitHub issue #[NUMBER] from modryn-studio/PropTraderAI 
-and create initial spec for [FEATURE/TASK]."
-```
-
-**Step 3: Second Agent - Critical Review**
-```
-Prompt: "Review GitHub issue #[NUMBER] from modryn-studio/PropTraderAI 
-with top 0.1% developer thinking. Add your critical review as a comment."
-```
-
-**Step 4: Iterate (Both Agents)**
-- Original agent responds via comments
-- Reviewing agent reviews response
-- Repeat 2-4 times until consensus
-
-**Step 5: Implement, Commit/Push, Then Review**
-- Either agent codes (in VS Code)
-- 🚨 **MUST commit and push to GitHub** 🚨
-- Post implementation comment to issue
-- Other agent reviews commits via GitHub
-- Iterate if needed
-
----
-
-## Agent Prompts
-
-### For Initial Spec (Either Agent)
-```
-I need you to create a technical specification for [FEATURE] in GitHub issue format.
-
-Read issue #[NUMBER] in modryn-studio/PropTraderAI and fill in these sections:
-- Problem Statement: What are we solving and why?
-- Proposed Solution: Your recommended technical approach
-- Architecture/Design: How components interact
-- Key Technical Decisions: Why this approach over alternatives?
-- Trade-offs: What are we giving up?
-
-Be specific about implementation details but don't write the code yet.
-Update the status tracker to show current agent (Claude Desktop or VS Code Copilot), Phase: Spec, Iteration: 1
-```
-
-### For Critical Review (The Other Agent)  
-```
-Review GitHub issue #[NUMBER] in modryn-studio/PropTraderAI with top 0.1% developer critical thinking.
-
-Your job is to find problems, not to be nice. Ask yourself:
-- What edge cases will break this?
-- What happens at 10x scale?
-- What security vulnerabilities exist?
-- Are there better architectural patterns?
-- What's missing from the spec?
-- What assumptions are dangerous?
-
-Add a comment to the issue with your critique organized by:
-- Questions (need answers)
-- Edge Cases & Concerns
-- Performance/Scalability
-- Security
-- Better Alternatives
-
-Update the status to Phase: Review, current agent, Iteration: 2
-```
-
-### For Response to Critique (Original Agent)
-```
-Read the critique on GitHub issue #[NUMBER].
-
-Respond to their concerns by:
-1. Answering all questions directly
-2. Addressing each edge case (accept, mitigate, or explain why it's not a concern)
-3. Updating the proposed solution if necessary
-4. Adding new technical decisions based on feedback
-
-Add your response as a comment or edit the issue body.
-Update iteration number.
-```
-
----
-
-## Agent Behavior Guidelines
-
-### Autonomous Actions (No Permission Needed)
-When working with GitHub issues, agents should act autonomously:
-
-✅ **Read issue content** via GitHub MCP or extension  
-✅ **Review code files** in the repo to understand context  
-✅ **Read documentation** to check conventions and patterns  
-✅ **Review commits** to see implementation details  
-✅ **Post comments** directly (critiques, reviews, responses)  
-✅ **Update status trackers** in issues  
-✅ **Analyze architecture** and propose solutions  
-✅ **Ask clarifying questions** to the other agent in issue comments
-
-**No need to ask permission** for standard workflow actions. Just:
-1. Read what you need from the repo
-2. Do your analysis
-3. Post your comment
-4. Confirm completion
-
-### When to Ask the User
-Only ask the user when:
-- Clarification needed on **THEIR intent** or requirements
-- Ambiguous user requirements (not technical questions)
-- Safety/security concerns that affect user data
-- Actions outside normal workflow (deleting branches, changing permissions)
-- Strategic decisions (which approach to prioritize)
-
-**Examples:**
-- ✅ Agent-to-Agent: "Your API design doesn't handle rate limiting. How should we address this?" (Post as comment)
-- ✅ Agent-to-Agent: "Should we use Option A (faster) or Option B (more maintainable)?" (Post as comment, let other agent decide)
-- ❌ Agent-to-User: "Can I read the code to review it?" (Just do it)
-- ❌ Agent-to-User: "Should I post my critique now?" (Yes, that's the workflow)
-- ✅ Agent-to-User: "You said 'fast authentication' - do you mean <2s response time or just 'good enough'?" (Genuine ambiguity)
-
-**Claude Desktop (Agent 1)**: Uses GitHub MCP server — can create issues, read/write comments, review commits
-- **VS Code Copilot (Agent 2)**: Uses GitHub extension (read) + CLI (write) — can read issues, comment via CLI
----
-
-## Why This Workflow Works
-
-### The MCP Advantage
-**Both agents work directly with GitHub:**
-- **Agent 1** (VS Code Copilot): Uses GitHub extension to read/write issues
-- **Agent 2** (Claude Desktop): Uses GitHub MCP server to read/write issues & review commits
-- **You**: Only interact with GitHub when creating issues or pushing code
-
-**No more:**
-- ❌ Copy-pasting specs between windows
-- ❌ Losing context when switching agents
-- ❌ Manual syncing between local files and GitHub
-- ❌ Wondering "where were we?"
-
-### Key Benefits
-
-✅ **Single Source of Truth**: Everything lives on GitHub  
-✅ **Interruption Recovery**: Status tracker shows exactly where you are  
-✅ **Audit Trail**: All decisions documented with timestamps  
-✅ **Code Review Integration**: Agent 2 reviews actual commits, not copy-pasted diffs  
-✅ **Async Collaboration**: Agents don't need to be "online" simultaneously  
-✅ **Better Context**: Full issue history available to both agents
-
----
-
-## Tips & Best Practices
-
-### For Smoother Workflow
-
-**During Spec Phase:**
-- Keep issue numbers handy (e.g., #2, #3, #4)
-- Agents can EDIT the issue body OR add comments (either works)
-- Use labels: `spec-in-progress`, `ready-for-critique`, `ready-to-implement`
-- 2-4 iterations is typical—don't rush to code
-- **For long comments**: Use `--body-file` instead of `--body` to avoid CLI issues
-
-**During Implementation Phase:**
-- Only pull code when spec is finalized
-- Test locally before pushing
-- 🚨 **ALWAYS commit and push before requesting review**
-- Reference issue number in commits: `"Implement feature from issue #X"`
-- Push frequently so other agent can review incrementally
-- Agent 1 CANNOT review local-only changes (needs GitHub)
-
-**GitHub CLI Tips:**
-- **Short comments** (1-2 lines): `gh issue comment X --body "Quick note"`
-- **Long comments** (paragraphs/tables/code): Save to file first, use `gh issue comment X --body-file comment.md`
-- **Why?** PowerShell struggles with multiline strings, special characters, and markdown formatting
-- **Pattern**: Create temp file → Post with `--body-file` → Delete temp file
-
-**If You Get Interrupted:**
-- Just check the status tracker at top of issue
-- See which phase and agent's turn
-- Continue exactly where you left off
-
-**Agent Capabilities:**
-
-| Agent | Create Issues | Read Issues | Comment | Review Commits |
-|-------|--------------|-------------|---------|----------------|
-| **Claude Desktop (Agent 1)** | ✅ Via MCP | ✅ Via MCP | ✅ Via MCP | ✅ Via MCP (diffs, history) |
-| **VS Code Copilot (Agent 2)** | ✅ Via CLI | ✅ Via extension | ✅ Via CLI | ✅ Via extension/git |
-
-**Key Differences:**
-- **Claude Desktop**: Full write access via MCP (can create issues directly)
-- **VS Code Copilot**: Uses CLI for writes (`gh issue create`, `gh issue comment`)
-- **Both**: Can read each other's work directly from GitHub
-
-**Choose starting agent based on where you are:**
-- In VS Code → Start with Copilot (use CLI)
-- In Claude Desktop app → Start with Claude Desktop (use MCP)
-
-**Key Difference:**
-- Claude Desktop can CREATE issues via MCP  
-- VS Code Copilot uses CLI (`gh issue create`) to create issues
-- Choose starting agent based on what's convenient for you
-
----
-
-## Example Commands
-
-### Creating an Issue (Optional - can use web UI)
 ```bash
-# If you have GitHub CLI installed
-gh issue create --title "[FEATURE] User Authentication" \
-  --template agent-dialectic-spec.md \
-  --label "agent-spec,needs-review"
-```
-
-### Implementation Workflow
-```bash
-# After spec is finalized, pull latest
+# Pull latest
 git pull origin main
 
-# Create feature branch (optional but recommended)
-git checkout -b feature/issue-X
+# Implement the feature/fix
+# Test locally (build, verify no errors)
 
-# Agent 1 helps you code the feature in VS Code
-# Test thoroughly
+# Stage changes
+git add .
 
 # Commit with issue reference
-git add .
-git commit -m "Implement user authentication from issue #X
+git commit -m "Fix [issue] from #X
 
-- Add login/logout routes
-- Integrate Supabase auth
-- Add protected route middleware
-- Tests passing"
+- Bullet summary of changes
+- What was modified
+- Build status"
 
-# Push to main (or create PR for larger features)
+# 🚨 CRITICAL: Push to GitHub BEFORE requesting review
 git push origin main
-
-# Agent 2 automatically reviews via GitHub MCP
-# Check issue comments for feedback
 ```
 
-### Checking Status
+**⚠️ Why push first:**
+- Agent 1 reviews via GitHub MCP (cannot see local changes)
+- No review possible until code is on GitHub
+
+### 4. Agent 2 Comments "Ready for Review"
+
+```bash
+# For SHORT comments
+gh issue comment X --body "Implementation complete, ready for review"
+
+# For LONG comments (use file to avoid PowerShell issues)
+echo "Your detailed summary..." > temp.md
+gh issue comment X --body-file temp.md
+rm temp.md
+```
+
+**PowerShell tip:** Always use `--body-file` for multi-line comments (markdown, tables, code blocks)
+
+### 5. Agent 1 Reviews Code
+
+**Agent 1's review process:**
+- Reads commits from GitHub via MCP (no local pull needed)
+- Checks implementation matches spec
+- Verifies edge cases, security, performance
+- Comments on issue with feedback
+
+### 6. Close or Iterate
+
+- ✅ **Approved:** Agent 1 closes issue
+- 🔄 **Changes needed:** Agent 2 makes updates, pushes, repeats step 4
+
+
+---
+
+## Common Commands
+
+### Agent 2 CLI Reference
+
 ```bash
 # View open issues
 gh issue list --label "agent-spec"
@@ -382,36 +125,81 @@ gh issue list --label "agent-spec"
 # View specific issue
 gh issue view X
 
-# Add SHORT comment to issue
-gh issue comment X --body "Implementation complete, ready for review"
+# Short comment
+gh issue comment X --body "Implementation complete"
 
-# Add LONG comment (use file to avoid PowerShell issues)
-# 1. Save comment to temp file
-echo "Your long markdown comment here..." > temp_comment.md
-# 2. Post from file
-gh issue comment X --body-file temp_comment.md
-# 3. Clean up
-rm temp_comment.md
+# Long comment (ALWAYS use file for multi-line)
+echo "## Summary..." > temp.md
+gh issue comment X --body-file temp.md
+rm temp.md
+
+# Check git status
+git status
+
+# View recent commits
+git log --oneline -5
 ```
 
-**Best Practice for Long Comments:**
-Always use `--body-file` for comments longer than a few lines. Direct CLI strings break with:
+### Why Use `--body-file` for Long Comments?
+
+PowerShell breaks with:
 - Multiple paragraphs
+- Markdown tables
 - Code blocks
 - Special characters
-- Markdown tables
+
+**Pattern:** Create temp file → Post with `--body-file` → Delete
 
 ---
 
-## Next Steps
+## Agent Capabilities
 
-1. **Try it out** with issue #2 (the example)
-2. **Create your first real feature issue** using the template
-3. **Run through the workflow** with both agents
-4. **Iterate and improve** - adjust the template if needed
-
-You can always refer back to `docs/AGENT_WORKFLOW.md` for the complete guide.
+| Capability | Agent 1 (Claude Desktop) | Agent 2 (VS Code Copilot) |
+|-----------|------------------------|--------------------------|
+| **Read codebase** | Via project knowledge base | Via workspace files |
+| **Create issues** | ✅ Via MCP | ✅ Via CLI (`gh issue create`) |
+| **Read issues** | ✅ Via MCP | ✅ Via GitHub extension |
+| **Comment on issues** | ✅ Via MCP | ✅ Via CLI (`gh issue comment`) |
+| **Review commits** | ✅ Via MCP (diffs, history) | ✅ Via git commands |
+| **Implement code** | ❌ No local access | ✅ Full VS Code access |
 
 ---
 
-**Check out the example:** https://github.com/modryn-studio/PropTraderAI/issues/2
+## Best Practices
+
+### For Agent 1 (Issue Creation)
+- ✅ Read repo via project knowledge before creating issue
+- ✅ Include clear problem statement and solution
+- ✅ Specify files/components affected
+- ✅ Note edge cases or security concerns
+- ✅ Provide implementation hints if helpful
+
+### For Agent 2 (Implementation)
+- ✅ Ask clarifying questions if spec is unclear (95% confidence rule)
+- ✅ Test locally before pushing
+- ✅ Commit with descriptive message + issue reference
+- ✅ **Always push before requesting review**
+- ✅ Use `--body-file` for detailed comments
+- ✅ Include build status in review request
+
+### For Both Agents
+- ✅ Act autonomously (no permission needed for standard workflow)
+- ✅ Read what you need from repo/docs
+- ✅ Comment directly on issues
+- ✅ Reference commit hashes in reviews
+- ❌ Don't ask user for permission to read files or post comments
+
+---
+
+## When to Use This Workflow
+
+**Use for:**
+- ✅ Complex features requiring spec-first approach
+- ✅ Architectural changes needing documentation
+- ✅ Bug fixes requiring analysis before implementation
+- ✅ Features where Agent 2 needs clear requirements
+
+**Don't use for:**
+- ❌ Trivial typo fixes
+- ❌ Simple content updates
+- ❌ Emergency hotfixes (just do it)

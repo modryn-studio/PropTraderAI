@@ -2,10 +2,11 @@
 
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
-import { X, Check, AlertCircle, ChevronRight, ChevronDown, Pencil } from 'lucide-react';
+import { X, Check, AlertCircle, ChevronRight, ChevronDown, Pencil, Loader2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import type { StrategyRule } from '@/lib/utils/ruleExtractor';
 import { needsConfirmation } from '@/lib/utils/parameterUtils';
+import { useState } from 'react';
 
 /**
  * REVIEW ALL MODAL
@@ -57,6 +58,9 @@ export function ReviewAllModal({
   onEditParameter,
   strategyName = 'Strategy Overview',
 }: ReviewAllModalProps) {
+  // Bug #14: Track which parameter is being edited
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  
   const handleCardClick = (displayIndex: number) => {
     onCardSelect(displayIndex);
     onClose();
@@ -65,6 +69,7 @@ export function ReviewAllModal({
   const handleEditClick = (e: React.MouseEvent, originalIndex: number) => {
     e.stopPropagation(); // Prevent card jump
     if (onEditParameter) {
+      setEditingIndex(originalIndex); // Bug #14: Show loading state
       onEditParameter(originalIndex);
       // Don't close modal - let edit modal slide on top
     }
@@ -182,11 +187,17 @@ export function ReviewAllModal({
                             className={cn(
                               'p-2 rounded-lg',
                               'hover:bg-zinc-700 transition-colors',
-                              'text-zinc-400 hover:text-zinc-200'
+                              'text-zinc-400 hover:text-zinc-200',
+                              editingIndex === originalIndex && 'opacity-50 cursor-not-allowed'
                             )}
                             aria-label={`Edit ${rule.label}`}
+                            disabled={editingIndex === originalIndex}
                           >
-                            <Pencil className="w-4 h-4" />
+                            {editingIndex === originalIndex ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <Pencil className="w-4 h-4" />
+                            )}
                           </button>
                         )}
                         
