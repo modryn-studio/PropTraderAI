@@ -58,6 +58,7 @@ export interface GapAction {
   type: 'ask_question' | 'apply_defaults' | 'generate' | 'reject';
   questions?: QuestionOption[];
   reason?: string;
+  gapComponent?: StrategyComponent | 'input_quality'; // The component being asked about
 }
 
 export interface GapDetectionResult {
@@ -196,12 +197,39 @@ const EXTENDED_INSTRUMENT_PATTERNS = [
  * This should run BEFORE Claude API call to save costs
  */
 export function validateInputQuality(
-  message: string
+  message: string,
+  options?: { isAnsweringQuestion?: boolean }
 ): InputQualityResult {
   const issues: string[] = [];
   const trimmed = message.trim();
   
-  // Check 1: Empty or too short
+  // PHASE 2 FIX: Skip length validation if answering a question (e.g., "nq", "ES", "20")
+  // Context: When user clicks "Other (specify)" they're answering a specific question
+  if (options?.isAnsweringQuestion) {
+    // Only check for completely empty input
+    if (trimmed.length === 0) {
+      return {
+        component: 'input_quality',
+        status: 'missing',
+        severity: 'blocker',
+        issues: ['Please provide an answer'],
+        canProceed: false,
+        evidence: ['Empty input'],
+        confidence: 100,
+      };
+    }
+    // Allow short answers when answering questions
+    return {
+      component: 'input_quality',
+      status: 'present',
+      severity: 'none',
+      issues: [],
+      canProceed: true,
+      confidence: 100,
+    };
+  }
+  
+  // Check 1: Empty or too short (ONLY for initial strategy input)
   if (trimmed.length < 3) {
     return {
       component: 'input_quality',
@@ -885,6 +913,7 @@ function determineAction(
       action: {
         type: 'ask_question',
         questions: topGap.suggestedQuestions || [],
+        gapComponent: topGap.component, // FIX: Include the actual gap component for correct questionType mapping
       },
     };
   }

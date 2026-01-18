@@ -3,7 +3,8 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, RotateCcw } from 'lucide-react';
+import { ArrowLeft, RotateCcw, X } from 'lucide-react';
+import { motion } from 'framer-motion';
 import { toast } from '@/components/ui/sonner';
 import ChatMessageList, { ChatMessage } from '@/components/chat/ChatMessageList';
 import ChatInput from '@/components/chat/ChatInput';
@@ -160,10 +161,30 @@ export default function ChatInterface({
   // Fallback to false if flag is undefined (Bug #12 fix)
   const useRapidFlow = isDev ? devOverrideRapidFlow : (flags?.generate_first_flow ?? false);
   
-  // Critical question state (for rapid flow)
+  // PHASE 1 FIX: Explicit conversation state for rapid flow
+  type ConversationMode = 'initial' | 'answering_question';
+  type QuestionType = 'stopLoss' | 'instrument' | 'entryTrigger' | 'direction' | 'profitTarget' | 'positionSizing';
+  
+  interface ConversationState {
+    mode: ConversationMode;
+    currentQuestion: {
+      question: string;
+      questionType: QuestionType;
+      options: Array<{ value: string; label: string; default?: boolean }>;
+      askedAt: string;
+    } | null;
+  }
+  
+  const [conversationState, setConversationState] = useState<ConversationState>({
+    mode: 'initial',
+    currentQuestion: null,
+  });
+  
+  // Critical question state (for rapid flow) - DEPRECATED: use conversationState instead
+  // Keeping for backward compatibility during transition
   const [criticalQuestion, setCriticalQuestion] = useState<{
     question: string;
-    questionType: 'stopLoss' | 'instrument' | 'entryTrigger' | 'direction';
+    questionType: QuestionType;
     options: Array<{ value: string; label: string; default?: boolean }>;
     partialStrategy: {
       rules: StrategyRule[];
@@ -196,12 +217,21 @@ export default function ChatInterface({
     ? generatedStrategy.parsed_rules[editingParamIndex] 
     : null;
   
+  // Desktop: Panel visibility state (independent of strategy existence)
+  const [isPanelVisible, setIsPanelVisible] = useState(true);
+  
   // AbortController for canceling requests
   const abortControllerRef = useRef<AbortController | null>(null);
   
-  // ESC to go back (power user keyboard shortcut)
+  // ESC to go back (power user keyboard shortcut) or close panel
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
+      // ESC closes panel if it's open (desktop only)
+      if (e.key === 'Escape' && !isMobile && generatedStrategy && isPanelVisible) {
+        setIsPanelVisible(false);
+        return;
+      }
+      // Otherwise ESC goes back to dashboard
       if (e.key === 'Escape' && !strategyComplete) {
         router.push('/dashboard');
       }
@@ -218,7 +248,7 @@ export default function ChatInterface({
       window.removeEventListener('keydown', handleEscape);
       setAnimationConfig(null);
     };
-  }, [router, strategyComplete]);
+  }, [router, strategyComplete, isMobile, generatedStrategy, isPanelVisible]);
 
   // Load saved animation preference when conversation ID changes
   useEffect(() => {
@@ -278,12 +308,23 @@ export default function ChatInterface({
     // Bug #4: Clear any previous errors from rapid flow
     setError(null);
 
-    // If they clicked "Other (specify)" button, guide them to type instead
+    // If they clicked "Other (specify)" button, switch to text input mode (Agent 1 Q1: Option B)
     const matchingOption = criticalQuestion.options.find(o => o.value === value);
     if (matchingOption && (matchingOption.label.toLowerCase().includes('other') || matchingOption.label.toLowerCase().includes('specify'))) {
-      // Show guidance toast and clear question UI so they can type
-      toast.info('Type your custom answer in the chat below');
-      setCriticalQuestion(null);
+      // PHASE 1 FIX: Transform question panel to text input mode instead of clearing
+      setConversationState(prev => ({
+        ...prev,
+        mode: 'answering_question',
+        currentQuestion: prev.currentQuestion ? {
+          ...prev.currentQuestion,
+          showTextInput: true, // Signal to show text input
+        } as any : null, // Cast to any to avoid type error during transition
+      }));
+      
+      // Show guidance toast
+      toast.info('Type your answer below (e.g., NQ, GC, CL)');
+      
+      // Keep criticalQuestion for backward compat but don't clear it yet
       return;
     }
 
@@ -300,6 +341,12 @@ export default function ChatInterface({
     setMessages(prev => [...prev, userMsg]);
     setIsLoading(true);
 
+    // PHASE 1 FIX: Store current question context before making API call
+    const currentQuestionContext = {
+      questionType: criticalQuestion.questionType,
+      partialStrategy: criticalQuestion.partialStrategy,
+    };
+
     try {
       const response = await fetch('/api/strategy/generate-rapid', {
         method: 'POST',
@@ -308,35 +355,85 @@ export default function ChatInterface({
           message: answerLabel,
           conversationId,
           criticalAnswer: {
-            questionType: criticalQuestion.questionType,
+            questionType: currentQuestionContext.questionType,
             value,
           },
+          partialStrategy: currentQuestionContext.partialStrategy,
         }),
       });
 
       const data = await response.json();
 
-      if (data.type === 'strategy_complete') {
-        // Strategy generated successfully
+      // PHASE 1 FIX: Handle both critical_question and strategy_complete responses
+      if (data.type === 'critical_question') {
+        // Another question needed - update state with new question
+        setCriticalQuestion({
+          question: data.question,
+          questionType: data.questionType,
+          options: data.options,
+          partialStrategy: data.partialStrategy,
+        });
+        
+        // Update conversation state
+        setConversationState({
+          mode: 'answering_question',
+          currentQuestion: {
+            question: data.question,
+            questionType: data.questionType,
+            options: data.options,
+            askedAt: new Date().toISOString(),
+          },
+        });
+
+        // Set conversation ID if not already set
+        if (data.conversationId && !conversationId) {
+          setConversationId(data.conversationId);
+        }
+
+        // Log that another question was asked
+        await logBehavioralEvent(
+          userId,
+          'critical_question_followup',
+          {
+            conversationId: data.conversationId,
+            previousQuestionType: currentQuestionContext.questionType,
+            nextQuestionType: data.questionType,
+            pattern: data.partialStrategy.pattern,
+          }
+        );
+      } else if (data.type === 'strategy_complete') {
+        // Strategy generation complete!
         setGeneratedStrategy(data.strategy);
+        setIsPanelVisible(true); // Show panel when new strategy generated
+        
+        // Clear question state since we're done
         setCriticalQuestion(null);
+        setConversationState({
+          mode: 'initial',
+          currentQuestion: null,
+        });
 
         // Add confirmation message
         const assistantMsg: ChatMessage = {
           id: `assistant-${Date.now()}`,
           role: 'assistant',
-          content: 'Perfect! Strategy created. Review and edit below:',
+          content: 'Strategy created! Review and edit below:',
           timestamp: new Date().toISOString(),
         };
         setMessages(prev => [...prev, assistantMsg]);
+
+        // Set conversation ID from response
+        if (data.conversationId && !conversationId) {
+          setConversationId(data.conversationId);
+        }
 
         // Log completion
         await logBehavioralEvent(
           userId,
           'rapid_flow_completed',
           {
-            conversationId,
-            messageCount: 2,
+            conversationId: data.conversationId,
+            messageCount: messages.length + 1,
             defaultsApplied: data.defaultsApplied || [],
           }
         );
@@ -344,8 +441,8 @@ export default function ChatInterface({
         throw new Error(data.error);
       }
     } catch (err) {
-      console.error('[RapidFlow] Error handling answer:', err);
-      setError(err instanceof Error ? err.message : 'Failed to process answer');
+      console.error('[RapidFlow] Error:', err);
+      setError(err instanceof Error ? err.message : 'Failed to send message');
       
       // Add error message to chat
       const errorMsg: ChatMessage = {
@@ -355,10 +452,12 @@ export default function ChatInterface({
         timestamp: new Date().toISOString(),
       };
       setMessages(prev => [...prev, errorMsg]);
+      
+      // PHASE 1 FIX: Don't clear question on error - let user retry
     } finally {
       setIsLoading(false);
     }
-  }, [criticalQuestion, conversationId, userId]);
+  }, [criticalQuestion, conversationId, userId, messages.length]);
 
   /**
    * Handle rapid flow message (generate-first approach)
@@ -416,6 +515,7 @@ export default function ChatInterface({
       } else if (data.type === 'strategy_complete') {
         // Strategy generated without questions!
         setGeneratedStrategy(data.strategy);
+        setIsPanelVisible(true); // Show panel when new strategy generated
 
         // Add confirmation message
         const assistantMsg: ChatMessage = {
@@ -472,15 +572,23 @@ export default function ChatInterface({
       useRapidFlow,
       generatedStrategy: !!generatedStrategy,
       criticalQuestion: !!criticalQuestion,
+      conversationState,
       isDev,
       devOverrideRapidFlow,
       'flags.generate_first_flow': flags.generate_first_flow,
       'final useRapidFlow': useRapidFlow,
     });
 
-    // If there's a critical question, treat this as an answer to it
+    // PHASE 1 FIX: Check conversation state first
+    // If we're in "answering_question" mode, treat ANY input as answer to that question
+    if (conversationState.mode === 'answering_question' && criticalQuestion) {
+      console.log('[ChatInterface] ✅ In answering mode - routing to CRITICAL ANSWER');
+      return handleCriticalAnswer(message);
+    }
+
+    // Legacy check: If there's a critical question, treat this as an answer to it
     if (criticalQuestion) {
-      console.log('[ChatInterface] ✅ Routing to CRITICAL ANSWER');
+      console.log('[ChatInterface] ✅ Legacy check - routing to CRITICAL ANSWER');
       return handleCriticalAnswer(message);
     }
 
@@ -785,7 +893,7 @@ export default function ChatInterface({
       setPendingMessage(null);
       setIsLoading(false);
     }
-  }, [conversationId, messages, userId, userProfile?.timezone, animationConfig, handleAnimationAutoExpand, toolsShown, expertiseData, useRapidFlow, generatedStrategy, handleRapidFlowMessage, criticalQuestion, handleCriticalAnswer, isDev, devOverrideRapidFlow, flags.generate_first_flow]);
+  }, [conversationId, messages, userId, userProfile?.timezone, animationConfig, handleAnimationAutoExpand, toolsShown, expertiseData, useRapidFlow, generatedStrategy, handleRapidFlowMessage, criticalQuestion, handleCriticalAnswer, conversationState, isDev, devOverrideRapidFlow, flags.generate_first_flow]);
 
   // ========================================================================
   // SMART TOOL HANDLERS
@@ -1220,6 +1328,8 @@ export default function ChatInterface({
       {/* Messages area - scrollable (with margin for sidebar on desktop when panel visible) */}
       <div className={`flex-1 overflow-y-auto min-h-0 flex flex-col ${
         FEATURES.summary_panel_visible && !isMobile && accumulatedRules.length > 0 ? 'ml-80' : ''
+      } ${
+        generatedStrategy && !isMobile && isPanelVisible ? 'mr-[480px]' : ''
       }`}>
         <ChatMessageList
           messages={messages}
@@ -1268,9 +1378,10 @@ export default function ChatInterface({
 
         {/* Rapid Flow: Strategy editable card (responsive desktop/mobile) */}
         {generatedStrategy && (
-          <div className={isMobile ? '' : 'max-w-3xl mx-auto px-6 pb-4'}>
+          <>
             {isMobile ? (
               /* Mobile: Swipeable Cards */
+              <div>
               <StrategySwipeableCards
                 name={generatedStrategy.name}
                 rules={generatedStrategy.parsed_rules}
@@ -1319,9 +1430,33 @@ export default function ChatInterface({
                   }
                 }}
               />
+              </div>
             ) : (
-              /* Desktop: Editable Card */
-              <StrategyEditableCard
+              /* Desktop: Slide-out Panel from Right (ChatGPT-style) */
+              <>
+                {/* Panel - slides in/out based on visibility */}
+                {isPanelVisible && (
+                  <motion.div
+                    initial={{ x: '100%' }}
+                    animate={{ x: 0 }}
+                    exit={{ x: '100%' }}
+                    transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+                    className="fixed top-0 right-0 h-screen w-[480px] bg-zinc-950 border-l border-zinc-800 shadow-2xl overflow-y-auto z-40"
+                  >
+                    {/* Hide button (on left edge of panel) */}
+                    <button
+                      onClick={() => setIsPanelVisible(false)}
+                      className="absolute top-1/2 -left-8 -translate-y-1/2 p-2 rounded-l-lg bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 transition-colors border-l border-t border-b border-zinc-800"
+                      aria-label="Hide panel"
+                      title="Hide panel (ESC)"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                    </button>
+
+                <div className="p-6 pt-16">
+                  <StrategyEditableCard
                 name={generatedStrategy.name}
                 rules={generatedStrategy.parsed_rules}
                 pattern={generatedStrategy.pattern}
@@ -1374,8 +1509,28 @@ export default function ChatInterface({
                 }}
                 isSaving={isLoading}
               />
+                </div>
+              </motion.div>
+                )}
+
+                {/* Show button when panel is hidden */}
+                {!isPanelVisible && (
+                  <motion.button
+                    initial={{ x: 100 }}
+                    animate={{ x: 0 }}
+                    onClick={() => setIsPanelVisible(true)}
+                    className="fixed top-1/2 right-0 -translate-y-1/2 p-3 rounded-l-lg bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 transition-colors border-l border-t border-b border-zinc-800 shadow-lg z-40"
+                    aria-label="Show strategy panel"
+                    title="Show strategy panel"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                    </svg>
+                  </motion.button>
+                )}
+              </>
             )}
-          </div>
+          </>
         )}
 
         {/* Mobile: Review All Modal */}
@@ -1466,9 +1621,13 @@ export default function ChatInterface({
         </div>
       )}
 
-      {/* Input area - in flow at bottom (hide when preview, confirmation, or generated strategy shows) */}
-      {!showPreviewCard && !strategyComplete && !generatedStrategy && (
-        <div className={FEATURES.summary_panel_visible && !isMobile && accumulatedRules.length > 0 ? 'ml-80' : ''}>
+      {/* Input area - in flow at bottom (hide only when preview or confirmation shows) */}
+      {!showPreviewCard && !strategyComplete && (
+        <div className={`${
+          FEATURES.summary_panel_visible && !isMobile && accumulatedRules.length > 0 ? 'ml-80' : ''
+        } ${
+          generatedStrategy && !isMobile && isPanelVisible ? 'mr-[480px]' : ''
+        }`}>
           <ChatInput
             onSubmit={handleSendMessage}
             onStop={handleStopGeneration}

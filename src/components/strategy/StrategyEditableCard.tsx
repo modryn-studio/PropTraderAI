@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Check, Pencil, X, Save, Loader2, ChevronDown, ChevronUp, Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
+import { getConstrainedInput } from '@/components/strategy/ConstrainedInputs';
 import type { StrategyRule } from '@/lib/utils/ruleExtractor';
 
 /**
@@ -254,45 +255,23 @@ export default function StrategyEditableCard({
                             className="relative"
                           >
                             {isEditing ? (
-                              /* Edit Mode */
-                              <motion.div
-                                ref={editBoxRef}
-                                initial={{ scale: 0.98 }}
-                                animate={{ scale: 1 }}
-                                className="flex items-center gap-2 p-2 rounded-md bg-zinc-800 border border-zinc-600"
-                              >
-                                <span className="text-sm text-zinc-400 min-w-[100px]">
-                                  {rule.label}:
-                                </span>
-                                <input
-                                  type="text"
-                                  value={editing.value}
-                                  onChange={(e) => setEditing({ ...editing, value: e.target.value })}
-                                  onKeyDown={(e) => {
-                                    if (e.key === 'Enter') handleEditSave();
-                                    if (e.key === 'Escape') handleEditCancel();
-                                  }}
-                                  className={cn(
-                                    'flex-1 px-2 py-1 rounded text-sm',
-                                    'bg-zinc-900 border border-zinc-700',
-                                    'text-zinc-100 placeholder:text-zinc-500',
-                                    'focus:outline-none focus:ring-1 focus:ring-zinc-500'
-                                  )}
-                                  autoFocus
-                                />
-                                <button
-                                  onClick={handleEditSave}
-                                  className="p-1 rounded hover:bg-zinc-700 text-emerald-400"
-                                >
-                                  <Check className="w-4 h-4" />
-                                </button>
-                                <button
-                                  onClick={handleEditCancel}
-                                  className="p-1 rounded hover:bg-zinc-700 text-zinc-500"
-                                >
-                                  <X className="w-4 h-4" />
-                                </button>
-                              </motion.div>
+                              /* Edit Mode - Use constrained inputs based on parameter type */
+                              (() => {
+                                const ConstrainedInput = getConstrainedInput(rule.label);
+                                return (
+                                  <div ref={editBoxRef}>
+                                    <ConstrainedInput
+                                      label={rule.label}
+                                      currentValue={rule.value}
+                                      onSave={(newValue) => {
+                                        onParameterEdit(rule, newValue);
+                                        setEditing(null);
+                                      }}
+                                      onCancel={handleEditCancel}
+                                    />
+                                  </div>
+                                );
+                              })()
                             ) : (
                               /* View Mode */
                               <div

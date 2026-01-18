@@ -399,7 +399,9 @@ export async function POST(request: NextRequest): Promise<NextResponse<RapidGene
     // STEP 1: INPUT QUALITY VALIDATION (BEFORE Claude call - save costs)
     // ========================================================================
     
-    const inputQuality = validateInputQuality(message);
+    // PHASE 2 FIX: Pass context so validation knows if this is an answer to a question
+    const isAnsweringQuestion = !!criticalAnswer;
+    const inputQuality = validateInputQuality(message, { isAnsweringQuestion });
     
     if (!inputQuality.canProceed) {
       // Log rejection
@@ -520,6 +522,11 @@ export async function POST(request: NextRequest): Promise<NextResponse<RapidGene
     if (criticalAnswer) {
       const answerRule = answerToRule(criticalAnswer.questionType, criticalAnswer.value);
       if (answerRule) {
+        // PHASE 3 FIX: Deduplicate rules before adding new one
+        // Remove existing rules of the same category to prevent duplicates
+        const answerCategory = answerRule.category;
+        rulesWithDefaults = rulesWithDefaults.filter(r => r.category !== answerCategory);
+        
         rulesWithDefaults = [...rulesWithDefaults, answerRule];
         
         // Update context from answer (e.g., if they answered "instrument", update it)
@@ -550,9 +557,10 @@ export async function POST(request: NextRequest): Promise<NextResponse<RapidGene
       if (questions.length > 0) {
         const topQuestion = questions[0];
         
-        // Determine question type from the first gap
-        const firstGap = gapsResult.gaps.find(g => g.status !== 'present');
-        const questionType = mapComponentToQuestionType(firstGap?.component);
+        // FIX: Use gapComponent from action (prioritized) instead of searching unprioritized gaps array
+        // This fixes the bug where instrument question was sent with stopLoss questionType
+        const gapComponent = gapsResult.action.gapComponent;
+        const questionType = mapComponentToQuestionType(gapComponent);
         
         // Log critical question shown
         await logBehavioralEventServer(
@@ -596,6 +604,32 @@ export async function POST(request: NextRequest): Promise<NextResponse<RapidGene
     // ========================================================================
     // STEP 7: Generate complete strategy
     // ========================================================================
+    
+    // PHASE 3 FIX: Generate default ENTRY rule if pattern detected but no entry rules exist
+    const hasEntryRules = rulesWithDefaults.some(r => r.category === 'entry');
+    if (pattern && !hasEntryRules) {
+      // Generate entry rule from detected pattern
+      const patternDescriptions: Record<string, string> = {
+        'orb': 'Opening Range Breakout',
+        'vwap': 'VWAP Cross',
+        'ema_crossover': 'EMA Crossover',
+        'pullback': 'Pullback to Support',
+        'breakout': 'Breakout',
+        'scalping': 'Scalp Entry',
+        'reversal': 'Reversal Pattern',
+      };
+      
+      const entryDescription = patternDescriptions[pattern] || pattern.replace(/_/g, ' ');
+      
+      rulesWithDefaults.push({
+        category: 'entry',
+        label: 'Entry Trigger',
+        value: entryDescription,
+        isDefaulted: true,
+        source: 'detected_pattern',
+        confidence: 85,
+      });
+    }
     
     const strategyName = generateStrategyName(pattern, instrument, rulesWithDefaults);
     
