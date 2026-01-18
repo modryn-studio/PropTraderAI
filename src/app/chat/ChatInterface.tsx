@@ -271,6 +271,9 @@ export default function ChatInterface({
    */
   const handleCriticalAnswer = useCallback(async (value: string) => {
     if (!criticalQuestion) return;
+    
+    // Bug #4: Clear any previous errors from rapid flow
+    setError(null);
 
     // If they clicked "Other (specify)" button, guide them to type instead
     const matchingOption = criticalQuestion.options.find(o => o.value === value);
