@@ -23,10 +23,11 @@
 - Reads codebase through **GitHub repo synced in project knowledge base**
 - Uses **GitHub MCP** to create issue directly with full spec
 - No template needed - creates structured spec in issue body
+- **REQUIRED:** Issue title MUST start with "Agent 1: " prefix
 
 **Typical Agent 1 prompt:**
 ```
-"Create a GitHub issue in modryn-studio/PropTraderAI for [FEATURE/BUG].
+"Create a GitHub issue in modryn-studio/PropTraderAI with title 'Agent 1: [FEATURE/BUG]'.
 Include problem statement, proposed solution, implementation plan."
 ```
 
@@ -47,10 +48,11 @@ Include problem statement, proposed solution, implementation plan."
 **HOW to ask questions:**
 ```bash
 # Post questions as GitHub issue comment (Agent 1 sees via MCP)
-gh issue comment X --body "Question about Bug #Y: [your question]"
+# REQUIRED: Start with "Agent 2: " prefix
+gh issue comment X --body "Agent 2: Question about Bug #Y: [your question]"
 
 # For multiple questions, use --body-file
-echo "## Clarifying Questions..." > temp.md
+echo "Agent 2: ## Clarifying Questions..." > temp.md
 gh issue comment X --body-file temp.md
 rm temp.md
 ```
@@ -88,10 +90,11 @@ git push origin main
 
 ```bash
 # For SHORT comments
-gh issue comment X --body "Implementation complete, ready for review"
+# REQUIRED: Start with "Agent 2: " prefix
+gh issue comment X --body "Agent 2: Implementation complete, ready for review"
 
 # For LONG comments (use file to avoid PowerShell issues)
-echo "Your detailed summary..." > temp.md
+echo "Agent 2: Your detailed summary..." > temp.md
 gh issue comment X --body-file temp.md
 rm temp.md
 ```
@@ -125,11 +128,11 @@ gh issue list --label "agent-spec"
 # View specific issue
 gh issue view X
 
-# Short comment
-gh issue comment X --body "Implementation complete"
+# Short comment (ALWAYS start with "Agent 2: ")
+gh issue comment X --body "Agent 2: Implementation complete"
 
 # Long comment (ALWAYS use file for multi-line)
-echo "## Summary..." > temp.md
+echo "Agent 2: ## Summary..." > temp.md
 gh issue comment X --body-file temp.md
 rm temp.md
 
@@ -168,6 +171,7 @@ PowerShell breaks with:
 ## Best Practices
 
 ### For Agent 1 (Issue Creation)
+- ✅ **Start issue title with "Agent 1: " prefix**
 - ✅ Read repo via project knowledge before creating issue
 - ✅ Include clear problem statement and solution
 - ✅ Specify files/components affected
@@ -175,6 +179,7 @@ PowerShell breaks with:
 - ✅ Provide implementation hints if helpful
 
 ### For Agent 2 (Implementation)
+- ✅ **Start all issue comments with "Agent 2: " prefix**
 - ✅ Ask clarifying questions if spec is unclear (95% confidence rule)
 - ✅ Test locally before pushing
 - ✅ Commit with descriptive message + issue reference
