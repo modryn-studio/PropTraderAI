@@ -271,7 +271,6 @@ export function validateInputQuality(
           { value: 'pullback', label: 'Pullback/retracement' },
           { value: 'breakout', label: 'Breakout strategy' },
           { value: 'scalp', label: 'Scalping strategy' },
-          { value: 'other', label: 'Let me describe it' },
         ],
       }],
       confidence: 95,
@@ -441,7 +440,6 @@ function getEntrySetupQuestion(message?: string): QuestionOption {
           { value: 'break_high_low', label: 'Break above high or below low of range', default: true },
           { value: 'close_outside', label: 'Close outside the range' },
           { value: 'retest', label: 'Retest after breakout' },
-          { value: 'custom', label: 'Let me describe it' },
         ],
       };
     }
@@ -453,7 +451,6 @@ function getEntrySetupQuestion(message?: string): QuestionOption {
           { value: 'bounce_ema', label: 'Bounce off moving average', default: true },
           { value: 'support_reject', label: 'Rejection at support level' },
           { value: 'candlestick', label: 'Specific candlestick pattern' },
-          { value: 'custom', label: 'Let me describe it' },
         ],
       };
     }
@@ -465,7 +462,6 @@ function getEntrySetupQuestion(message?: string): QuestionOption {
           { value: 'cross_above', label: 'Price crosses above VWAP', default: true },
           { value: 'cross_below', label: 'Price crosses below VWAP' },
           { value: 'bounce', label: 'Bounce off VWAP as support/resistance' },
-          { value: 'custom', label: 'Let me describe it' },
         ],
       };
     }
@@ -477,7 +473,6 @@ function getEntrySetupQuestion(message?: string): QuestionOption {
           { value: 'close_above', label: 'Close above resistance', default: true },
           { value: 'volume_spike', label: 'Volume spike on breakout' },
           { value: 'retest', label: 'Successful retest of breakout level' },
-          { value: 'custom', label: 'Let me describe it' },
         ],
       };
     }
@@ -492,7 +487,6 @@ function getEntrySetupQuestion(message?: string): QuestionOption {
       { value: 'vwap', label: 'VWAP cross' },
       { value: 'breakout', label: 'Breakout of structure' },
       { value: 'momentum', label: 'Momentum / New highs' },
-      { value: 'custom', label: 'Let me describe it' },
     ],
   };
 }
