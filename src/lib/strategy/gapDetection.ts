@@ -204,7 +204,7 @@ export function validateInputQuality(
   const trimmed = message.trim();
   
   // PHASE 2 FIX: Skip length validation if answering a question (e.g., "nq", "ES", "20")
-  // Context: When user clicks "Other (specify)" they're answering a specific question
+  // Context: When user types custom answer instead of using quick buttons
   if (options?.isAnsweringQuestion) {
     // Only check for completely empty input
     if (trimmed.length === 0) {
@@ -382,7 +382,6 @@ function getStopLossQuestion(pattern?: string): QuestionOption {
         { value: 'range_50', label: 'Middle of range (50%)' },
         { value: 'fixed_10', label: 'Fixed: 10 ticks' },
         { value: 'fixed_20', label: 'Fixed: 20 ticks' },
-        { value: 'custom', label: 'Other (specify)' },
       ],
     };
   }
@@ -394,7 +393,6 @@ function getStopLossQuestion(pattern?: string): QuestionOption {
         { value: 'structure', label: 'Below recent swing low', default: true },
         { value: 'fixed_15', label: 'Fixed: 15 ticks' },
         { value: 'atr_1', label: '1 ATR from entry' },
-        { value: 'custom', label: 'Other (specify)' },
       ],
     };
   }
@@ -406,7 +404,6 @@ function getStopLossQuestion(pattern?: string): QuestionOption {
         { value: 'fixed_5', label: 'Fixed: 5 ticks (tight)', default: true },
         { value: 'fixed_10', label: 'Fixed: 10 ticks' },
         { value: 'structure', label: 'Below recent low' },
-        { value: 'custom', label: 'Other (specify)' },
       ],
     };
   }
@@ -419,7 +416,6 @@ function getStopLossQuestion(pattern?: string): QuestionOption {
       { value: 'fixed_10', label: 'Fixed: 10 ticks' },
       { value: 'fixed_20', label: 'Fixed: 20 ticks' },
       { value: 'atr_1', label: '1 ATR from entry' },
-      { value: 'custom', label: 'Other (specify)' },
     ],
   };
 }
@@ -560,7 +556,6 @@ export function detectInstrumentGap(
           { value: 'MES', label: 'MES (Micro E-mini S&P)' },
           { value: 'MNQ', label: 'MNQ (Micro E-mini Nasdaq)' },
           { value: 'CL', label: 'CL (Crude Oil)' },
-          { value: 'other', label: 'Other (specify)' },
         ],
       }],
     };

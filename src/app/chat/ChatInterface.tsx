@@ -312,27 +312,8 @@ export default function ChatInterface({
     // Bug #4: Clear any previous errors from rapid flow
     setError(null);
 
-    // If they clicked "Other (specify)" button, switch to text input mode (Agent 1 Q1: Option B)
-    const matchingOption = criticalQuestion.options.find(o => o.value === value);
-    if (matchingOption && (matchingOption.label.toLowerCase().includes('other') || matchingOption.label.toLowerCase().includes('specify'))) {
-      // PHASE 1 FIX: Transform question panel to text input mode instead of clearing
-      setConversationState(prev => ({
-        ...prev,
-        mode: 'answering_question',
-        currentQuestion: prev.currentQuestion ? {
-          ...prev.currentQuestion,
-          showTextInput: true, // Signal to show text input
-        } : null,
-      }));
-      
-      // Show guidance toast
-      toast.info('Type your answer below (e.g., NQ, GC, CL)');
-      
-      // Keep criticalQuestion for backward compat but don't clear it yet
-      return;
-    }
-
     // Use the value as-is (could be from button click or typed text)
+    const matchingOption = criticalQuestion.options.find(o => o.value === value);
     const answerLabel = matchingOption?.label || value;
     
     // Add user's answer to chat

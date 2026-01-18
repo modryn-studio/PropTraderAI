@@ -104,7 +104,6 @@ function getStopLossOptions(pattern?: string): AnswerOption[] {
       { value: 'range_50', label: 'Middle of range (50%)', default: false },
       { value: 'fixed_10', label: 'Fixed: 10 ticks', default: false },
       { value: 'fixed_20', label: 'Fixed: 20 ticks', default: false },
-      { value: 'custom', label: 'Other (specify)', default: false },
     ];
   }
   
@@ -113,7 +112,6 @@ function getStopLossOptions(pattern?: string): AnswerOption[] {
       { value: 'structure', label: 'Below recent swing low', default: true },
       { value: 'fixed_15', label: 'Fixed: 15 ticks', default: false },
       { value: 'atr_1', label: '1 ATR from entry', default: false },
-      { value: 'custom', label: 'Other (specify)', default: false },
     ];
   }
   
@@ -122,7 +120,6 @@ function getStopLossOptions(pattern?: string): AnswerOption[] {
       { value: 'structure', label: 'Below breakout level', default: true },
       { value: 'fixed_10', label: 'Fixed: 10 ticks', default: false },
       { value: 'fixed_20', label: 'Fixed: 20 ticks', default: false },
-      { value: 'custom', label: 'Other (specify)', default: false },
     ];
   }
   
@@ -131,7 +128,6 @@ function getStopLossOptions(pattern?: string): AnswerOption[] {
       { value: 'fixed_5', label: 'Fixed: 5 ticks (tight)', default: true },
       { value: 'fixed_10', label: 'Fixed: 10 ticks', default: false },
       { value: 'structure', label: 'Below recent low', default: false },
-      { value: 'custom', label: 'Other (specify)', default: false },
     ];
   }
   
@@ -141,7 +137,6 @@ function getStopLossOptions(pattern?: string): AnswerOption[] {
     { value: 'fixed_10', label: 'Fixed: 10 ticks', default: false },
     { value: 'fixed_20', label: 'Fixed: 20 ticks', default: false },
     { value: 'atr_1', label: '1 ATR from entry', default: false },
-    { value: 'custom', label: 'Other (specify)', default: false },
   ];
 }
 
@@ -318,13 +313,12 @@ function answerToRule(
         'vwap': 'VWAP cross',
         'breakout': 'Breakout of structure',
         'momentum': 'Momentum / New highs',
-        'custom': value,  // For "Let me describe it" option
       };
 
       return {
         category: 'entry',
         label: 'Entry Trigger',
-        value: entryDescriptions[value] || value,  // Use full description or raw value
+        value: entryDescriptions[value] || value,  // Use full description or raw value if custom
         isDefaulted: false,
         source: 'user',
       };
