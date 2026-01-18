@@ -425,6 +425,78 @@ function getStopLossQuestion(pattern?: string): QuestionOption {
   };
 }
 
+/**
+ * Get entry setup question for beginners
+ * Pattern-aware to ask relevant follow-up questions
+ */
+function getEntrySetupQuestion(message?: string): QuestionOption {
+  // If pattern already detected, ask for specifics
+  if (message) {
+    const lowerMessage = message.toLowerCase();
+    
+    if (lowerMessage.includes('opening range') || lowerMessage.includes('orb')) {
+      return {
+        question: "When exactly do you enter the ORB trade?",
+        options: [
+          { value: 'break_high_low', label: 'Break above high or below low of range', default: true },
+          { value: 'close_outside', label: 'Close outside the range' },
+          { value: 'retest', label: 'Retest after breakout' },
+          { value: 'custom', label: 'Let me describe it' },
+        ],
+      };
+    }
+    
+    if (lowerMessage.includes('pullback') || lowerMessage.includes('ema') || lowerMessage.includes('moving average')) {
+      return {
+        question: "What triggers your entry on pullbacks?",
+        options: [
+          { value: 'bounce_ema', label: 'Bounce off moving average', default: true },
+          { value: 'support_reject', label: 'Rejection at support level' },
+          { value: 'candlestick', label: 'Specific candlestick pattern' },
+          { value: 'custom', label: 'Let me describe it' },
+        ],
+      };
+    }
+    
+    if (lowerMessage.includes('vwap')) {
+      return {
+        question: "What triggers your VWAP entry?",
+        options: [
+          { value: 'cross_above', label: 'Price crosses above VWAP', default: true },
+          { value: 'cross_below', label: 'Price crosses below VWAP' },
+          { value: 'bounce', label: 'Bounce off VWAP as support/resistance' },
+          { value: 'custom', label: 'Let me describe it' },
+        ],
+      };
+    }
+    
+    if (lowerMessage.includes('breakout') && !lowerMessage.includes('opening range')) {
+      return {
+        question: "What confirms the breakout entry?",
+        options: [
+          { value: 'close_above', label: 'Close above resistance', default: true },
+          { value: 'volume_spike', label: 'Volume spike on breakout' },
+          { value: 'retest', label: 'Successful retest of breakout level' },
+          { value: 'custom', label: 'Let me describe it' },
+        ],
+      };
+    }
+  }
+  
+  // Generic for complete beginners (no pattern detected)
+  return {
+    question: "What type of setup triggers your entries?",
+    options: [
+      { value: 'orb', label: 'Opening range breakout', default: true },
+      { value: 'pullback', label: 'Pullback to support/MA' },
+      { value: 'vwap', label: 'VWAP cross' },
+      { value: 'breakout', label: 'Breakout of structure' },
+      { value: 'momentum', label: 'Momentum / New highs' },
+      { value: 'custom', label: 'Let me describe it' },
+    ],
+  };
+}
+
 // ============================================================================
 // INSTRUMENT DETECTOR
 // ============================================================================
@@ -605,26 +677,30 @@ export function detectEntryGap(
     return {
       component: 'entry_criteria',
       status: 'ambiguous',
-      severity: 'critical',
+      severity: 'blocker', // Changed from 'critical' - Entry is REQUIRED, never optional
       specificity,
       evidence: ['Entry criteria too vague to be actionable'],
-      suggestedQuestions: [{
-        question: "Can you be more specific about your entry? For example: 'Long when price breaks above 15-min range high'",
-        options: [
-          { value: 'breakout_high', label: 'Break above high', default: true },
-          { value: 'breakout_low', label: 'Break below low' },
-          { value: 'pullback_ema', label: 'Pullback to EMA' },
-          { value: 'pullback_vwap', label: 'Pullback to VWAP' },
-          { value: 'custom', label: 'Let me describe it' },
-        ],
-      }],
+      suggestedQuestions: [getEntrySetupQuestion()],
+    };
+  }
+  
+  // Entry present but check if it's sufficient
+  if (specificity === 'moderate' && !entryRule) {
+    // Pattern detected but no explicit entry rule - need to ask for specifics
+    return {
+      component: 'entry_criteria',
+      status: 'missing',
+      severity: 'blocker', // Entry is required
+      specificity,
+      evidence: ['Pattern detected but no entry rule specified'],
+      suggestedQuestions: [getEntrySetupQuestion(message)],
     };
   }
   
   return {
     component: 'entry_criteria',
     status: 'present',
-    severity: 'critical',
+    severity: 'blocker', // Keep as blocker even when present for consistency
     specificity,
     confidence: specificity === 'specific' ? 90 : 70,
   };
@@ -943,13 +1019,13 @@ function determineAction(
  */
 function prioritizeGaps(gaps: GapAssessment[]): GapAssessment[] {
   const priority: Array<StrategyComponent | 'input_quality'> = [
-    'input_quality', // Reject bad input first
-    'instrument',    // Must know what to trade
-    'stop_loss',     // Most critical risk parameter
-    'entry_criteria',// Must know when to enter
-    'profit_target', // Should know when to exit
-    'position_sizing',
-    'risk_parameters',
+    'input_quality',   // 1. Reject bad input first
+    'instrument',      // 2. Must know what to trade
+    'entry_criteria',  // 3. MUST know when to enter (THE STRATEGY) - Fixed: moved before stop_loss
+    'stop_loss',       // 4. MUST know when to exit (RISK MANAGEMENT)
+    'profit_target',   // 5. Should know when to exit (can default)
+    'position_sizing', // 6. Can default
+    'risk_parameters', // 7. Can default
   ];
   
   return gaps.sort((a, b) => {
