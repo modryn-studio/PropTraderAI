@@ -1327,11 +1327,11 @@ export default function ChatInterface({
               </label>
             )}
             
-            {messages.length > 0 && !strategyComplete && !generatedStrategy && (
+            {messages.length > 0 && !strategyComplete && (
               <button
                 onClick={handleStartOver}
                 className="p-2 text-[rgba(255,255,255,0.5)] hover:text-white transition-colors"
-                title="Start over"
+                title={generatedStrategy ? "Create another strategy" : "Start over"}
               >
                 <RotateCcw className="w-5 h-5" />
               </button>
@@ -1362,7 +1362,7 @@ export default function ChatInterface({
         <ChatMessageList
           messages={messages}
           pendingMessage={pendingMessage || undefined}
-          isLoading={isLoading}
+          isLoading={isLoading || useRapidFlow}
           onEditMessage={handleEditMessage}
           keyboardPadding={isMobile ? keyboardHeight : 0}
         />
