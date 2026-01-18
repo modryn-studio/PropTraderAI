@@ -39,14 +39,18 @@ export function StickyActionBar({
   onSave,
 }: StickyActionBarProps) {
   const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const isComplete = completedCount === totalCount;
 
   const handleSave = async () => {
     if (!canSave || isSaving) return;
     
     setIsSaving(true);
+    setError(null);
     try {
       await onSave();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save strategy');
     } finally {
       setIsSaving(false);
     }
@@ -128,8 +132,19 @@ export function StickyActionBar({
         </div>
       </div>
 
+      {/* Error message */}
+      {error && (
+        <motion.p
+          initial={{ opacity: 0, y: 5 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="text-xs text-red-400 text-center pb-1"
+        >
+          {error}
+        </motion.p>
+      )}
+
       {/* Unconfirmed warning */}
-      {!canSave && (
+      {!canSave && !error && (
         <motion.p
           initial={{ opacity: 0, y: 5 }}
           animate={{ opacity: 1, y: 0 }}

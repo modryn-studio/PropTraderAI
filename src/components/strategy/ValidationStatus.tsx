@@ -151,8 +151,11 @@ function CompletionProgress({ score, isComplete }: CompletionProgressProps) {
     );
     
     if (crossedMilestone) {
-      // Haptic feedback
-      triggerHapticFeedback(crossedMilestone === 100 ? 'heavy' : 'medium');
+      // Progressive haptic feedback
+      const style = crossedMilestone === 100 ? 'heavy' 
+        : crossedMilestone >= 60 ? 'medium' 
+        : 'light';
+      triggerHapticFeedback(style);
       
       // Screen reader announcement
       const announcement = crossedMilestone === 100 

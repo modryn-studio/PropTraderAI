@@ -118,7 +118,7 @@ export function ParameterCard({
         {parameter.isDefaulted && parameter.explanation && (
           <div className="flex items-start gap-2 p-3 rounded-lg bg-zinc-800/50 max-w-xs">
             <Info className="w-4 h-4 text-zinc-500 mt-0.5 flex-shrink-0" />
-            <p className="text-xs text-zinc-400 leading-relaxed">
+            <p className="text-sm text-zinc-400 leading-relaxed">
               {parameter.explanation}
             </p>
           </div>
@@ -130,7 +130,10 @@ export function ParameterCard({
         <div className="flex gap-3">
           {/* Edit Button */}
           <button
-            onClick={onEdit}
+            onClick={() => {
+              if ('vibrate' in navigator) navigator.vibrate(10);
+              onEdit();
+            }}
             className={cn(
               'flex-1 flex items-center justify-center gap-2',
               'min-h-[48px] px-4 py-3 rounded-lg',
@@ -175,13 +178,17 @@ export function ParameterCard({
           )}
           
           {/* Auto-confirm badge (for non-critical params) */}
-          {!requiresConfirmation && !isConfirmed && (
+          {!requiresConfirmation && (
             <div className={cn(
               'flex-1 flex items-center justify-center gap-2',
               'min-h-[48px] px-4 py-3 rounded-lg',
-              'bg-zinc-800/50 text-zinc-500 border border-zinc-700'
+              isConfirmed 
+                ? 'bg-emerald-600/20 text-emerald-400 border border-emerald-600/30'
+                : 'bg-zinc-800/50 text-zinc-500 border border-zinc-700'
             )}>
-              <span className="text-sm">Auto-confirmed</span>
+              <span className="text-sm">
+                {isConfirmed ? 'Auto-confirmed ✓' : 'Will auto-confirm'}
+              </span>
             </div>
           )}
         </div>

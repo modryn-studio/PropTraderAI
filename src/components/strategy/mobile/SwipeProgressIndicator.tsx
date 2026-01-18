@@ -48,8 +48,13 @@ export function SwipeProgressIndicator({
       return;
     }
     
+    // Validate critical indices are within bounds
+    const validCriticalIndices = unconfirmedCriticalIndices.filter(
+      idx => idx >= 0 && idx < total
+    );
+    
     // Find any unconfirmed critical params between current and target
-    const blockingIndices = unconfirmedCriticalIndices.filter(
+    const blockingIndices = validCriticalIndices.filter(
       criticalIndex => criticalIndex > current && criticalIndex < targetIndex
     );
     
@@ -81,9 +86,12 @@ export function SwipeProgressIndicator({
               key={index}
               onClick={() => handleDotClick(index)}
               disabled={!canClick}
+              aria-label={`Go to parameter ${index + 1}`}
+              aria-current={isActive ? 'true' : undefined}
               className={cn(
                 'relative flex items-center justify-center transition-all',
                 'min-w-[24px] min-h-[24px] rounded-full',
+                'focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 focus:ring-offset-zinc-900',
                 canClick ? 'cursor-pointer' : 'cursor-not-allowed opacity-50',
                 isActive && 'ring-2 ring-offset-2 ring-offset-zinc-900',
                 isActive && (isCriticalUnconfirmed ? 'ring-amber-500' : 'ring-indigo-500'),
@@ -100,8 +108,8 @@ export function SwipeProgressIndicator({
                   isActive && !isCompleted && (isCriticalUnconfirmed ? 'bg-amber-500' : 'bg-indigo-500'),
                   !isActive && !isCompleted && 'bg-zinc-700',
                 )}
-                animate={isActive ? { scale: [1, 1.2, 1] } : {}}
-                transition={{ duration: 0.3 }}
+                animate={isPulsing ? { scale: [1, 1.2, 1] } : isActive ? { scale: [1, 1.2, 1] } : {}}
+                transition={{ duration: isPulsing ? 0.5 : 0.3, repeat: isPulsing ? 2 : 0 }}
               />
               
               {/* Completed check icon */}
