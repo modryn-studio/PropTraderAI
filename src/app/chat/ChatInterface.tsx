@@ -161,8 +161,8 @@ export default function ChatInterface({
   const searchParams = useSearchParams();
   const forceLegacy = searchParams.get('legacy') === 'true';
   
-  // Use feature flag, with URL override for dev testing
-  const useRapidFlow = forceLegacy ? false : (flags?.generate_first_flow ?? false);
+  // Use feature flag with fallback to static config, with URL override for dev testing
+  const useRapidFlow = forceLegacy ? false : (flags?.generate_first_flow ?? FEATURES.generate_first_flow);
   
   // PHASE 1 FIX: Explicit conversation state for rapid flow
   type ConversationMode = 'initial' | 'answering_question';
