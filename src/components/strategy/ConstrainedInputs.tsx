@@ -56,7 +56,28 @@ const INSTRUMENTS = [
 export function InstrumentInput({ label, currentValue, onSave, onCancel }: BaseInputProps) {
   const [selected, setSelected] = useState(currentValue);
   const [isOpen, setIsOpen] = useState(false);
+  const [isMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth < 768);
   
+  // Mobile: Use native select
+  if (isMobile) {
+    return (
+      <InputContainer label={label} onSave={() => onSave(selected)} onCancel={onCancel}>
+        <select
+          value={selected}
+          onChange={(e) => setSelected(e.target.value)}
+          className="w-full px-3 py-2 border border-white/10 bg-[#000000] text-white font-mono text-sm focus:border-[#00FFD1] focus:outline-none"
+        >
+          {INSTRUMENTS.map(inst => (
+            <option key={inst.value} value={inst.value}>
+              {inst.label}
+            </option>
+          ))}
+        </select>
+      </InputContainer>
+    );
+  }
+  
+  // Desktop: Custom dropdown
   return (
     <InputContainer label={label} onSave={() => onSave(selected)} onCancel={onCancel}>
       <div className="relative">
@@ -146,7 +167,28 @@ const RANGE_PERIODS = [
 export function RangePeriodInput({ label, currentValue, onSave, onCancel }: BaseInputProps) {
   const [selected, setSelected] = useState(currentValue);
   const [isOpen, setIsOpen] = useState(false);
+  const [isMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth < 768);
   
+  // Mobile: Use native select
+  if (isMobile) {
+    return (
+      <InputContainer label={label} onSave={() => onSave(selected)} onCancel={onCancel}>
+        <select
+          value={selected}
+          onChange={(e) => setSelected(e.target.value)}
+          className="w-full px-3 py-2 border border-white/10 bg-[#000000] text-white font-mono text-sm focus:border-[#00FFD1] focus:outline-none"
+        >
+          {RANGE_PERIODS.map(period => (
+            <option key={period.value} value={period.value}>
+              {period.label}
+            </option>
+          ))}
+        </select>
+      </InputContainer>
+    );
+  }
+  
+  // Desktop: Custom dropdown
   return (
     <InputContainer label={label} onSave={() => onSave(selected)} onCancel={onCancel}>
       <div className="relative">
@@ -579,41 +621,6 @@ export function SessionInput({ label, currentValue, onSave, onCancel, onChatExpl
 }
 
 // ============================================================================
-// GENERIC TEXT INPUT (Fallback) - TO BE REMOVED
-// TODO: Replace all usages with constrained inputs, then delete this component
-// ============================================================================
-
-export function GenericInput({ label, currentValue, onSave, onCancel }: BaseInputProps) {
-  const [value, setValue] = useState(currentValue);
-  const inputRef = useRef<HTMLInputElement>(null);
-  
-  useEffect(() => {
-    inputRef.current?.focus();
-  }, []);
-  
-  return (
-    <InputContainer label={label} onSave={() => onSave(value)} onCancel={onCancel}>
-      <input
-        ref={inputRef}
-        type="text"
-        value={value}
-        onChange={(e) => setValue(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter') onSave(value);
-          if (e.key === 'Escape') onCancel();
-        }}
-        className={cn(
-          'w-full px-3 py-2 text-sm font-mono',
-          'bg-[#000000] border border-white/10',
-          'text-white placeholder:text-white/30',
-          'focus:outline-none focus:border-[#00FFD1]'
-        )}
-      />
-    </InputContainer>
-  );
-}
-
-// ============================================================================
 // SHARED CONTAINER
 // ============================================================================
 
@@ -723,6 +730,26 @@ export function getConstrainedInput(label: string): typeof StopLossInput {
     return SessionInput;
   }
   
-  // Fallback - TODO: Replace with proper constrained input
-  return GenericInput;
+  // NO FALLBACK - all parameters MUST have constrained inputs
+  // If you see this error, create a proper constrained input for this label
+  console.error(`❌ NO CONSTRAINED INPUT FOR: "${label}"`);
+  console.error('Available inputs: Instrument, Pattern, RangePeriod, EntryTrigger, Direction, MaxContracts, StopLoss, ProfitTarget, PositionSizing, Session');
+  
+  // Return a placeholder that shows the error to the user
+  return ({ currentValue, onCancel }: BaseInputProps) => (
+    <div className="p-4 border border-red-500/50 bg-red-500/10">
+      <p className="text-red-400 font-mono text-sm mb-2">
+        ❌ No constrained input for: "{label}"
+      </p>
+      <p className="text-white/50 text-xs mb-3">
+        Current value: {currentValue}
+      </p>
+      <button 
+        onClick={onCancel}
+        className="px-3 py-1 bg-white/10 text-white text-sm hover:bg-white/20"
+      >
+        Cancel
+      </button>
+    </div>
+  );
 }

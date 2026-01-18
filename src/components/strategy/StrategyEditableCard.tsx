@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Check, Pencil, Save, Loader2, ChevronDown, ChevronUp, Info } from 'lucide-react';
+import { Check, Pencil, Save, Loader2, Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { getConstrainedInput } from '@/components/strategy/ConstrainedInputs';
@@ -70,7 +70,6 @@ export default function StrategyEditableCard({
   isSaved = false,
 }: StrategyEditableCardProps) {
   const [editing, setEditing] = useState<EditingState | null>(null);
-  const [isExpanded, setIsExpanded] = useState(true);
   const [showTooltip, setShowTooltip] = useState<number | null>(null);
   const cardRef = useRef<HTMLDivElement>(null);
   const editBoxRef = useRef<HTMLDivElement>(null);
@@ -163,10 +162,7 @@ export default function StrategyEditableCard({
       )}
     >
       {/* Header */}
-      <div 
-        className="flex items-center justify-between p-4 cursor-pointer hover:bg-white/5 transition-colors border-b border-white/10"
-        onClick={() => setIsExpanded(!isExpanded)}
-      >
+      <div className="flex items-center justify-between p-4 border-b border-white/10">
         <div className="flex items-center gap-3">
           <div>
             <h3 className="text-lg font-semibold text-white">{name}</h3>
@@ -190,35 +186,20 @@ export default function StrategyEditableCard({
           </div>
         </div>
         
-        <div className="flex items-center gap-2">
-          {isSaved && (
-            <motion.div
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              className="flex items-center gap-1 text-[#00FFD1] text-sm"
-            >
-              <Check className="w-4 h-4" />
-              <span>Saved</span>
-            </motion.div>
-          )}
-          {isExpanded ? (
-            <ChevronUp className="w-5 h-5 text-white/30" />
-          ) : (
-            <ChevronDown className="w-5 h-5 text-white/30" />
-          )}
-        </div>
+        {isSaved && (
+          <motion.div
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            className="flex items-center gap-1 text-[#00FFD1] text-sm"
+          >
+            <Check className="w-4 h-4" />
+            <span>Saved</span>
+          </motion.div>
+        )}
       </div>
       
-      {/* Content */}
-      <AnimatePresence>
-        {isExpanded && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.2 }}
-          >
-            <div className="px-4 pb-4 space-y-4">
+      {/* Content - Always Visible */}
+      <div className="px-4 pb-4 space-y-4">
               {/* Rules by Category */}
               {groupedRules.map(([category, { rules: categoryRules, indices }]) => {
                 const config = CATEGORY_CONFIG[category] || { label: category, color: 'text-zinc-400' };
@@ -370,9 +351,6 @@ export default function StrategyEditableCard({
                 </div>
               )}
             </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+          </div>
     </motion.div>
-  );
-}
+  );\n}
