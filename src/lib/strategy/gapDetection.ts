@@ -222,7 +222,7 @@ export function validateInputQuality(
     return {
       component: 'input_quality',
       status: 'present',
-      severity: 'none',
+      severity: 'recommended',
       issues: [],
       canProceed: true,
       confidence: 100,
