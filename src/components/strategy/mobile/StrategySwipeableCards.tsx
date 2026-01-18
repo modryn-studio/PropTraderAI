@@ -156,7 +156,7 @@ export function StrategySwipeableCards({
       setCardIndex(currentCardIndex + 1);
       triggerHaptic();
     }
-  }, [currentCardIndex, orderedParams.length, setCardIndex]);
+  }, [currentCardIndex, orderedParams.length, setCardIndex, triggerHaptic]);
 
   // Navigation handlers
   const goToPrev = useCallback(() => {

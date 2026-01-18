@@ -3,7 +3,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, RotateCcw, X } from 'lucide-react';
+import { ArrowLeft, RotateCcw } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { toast } from '@/components/ui/sonner';
 import ChatMessageList, { ChatMessage } from '@/components/chat/ChatMessageList';
@@ -172,6 +172,7 @@ export default function ChatInterface({
       questionType: QuestionType;
       options: Array<{ value: string; label: string; default?: boolean }>;
       askedAt: string;
+      showTextInput?: boolean;
     } | null;
   }
   
@@ -318,7 +319,7 @@ export default function ChatInterface({
         currentQuestion: prev.currentQuestion ? {
           ...prev.currentQuestion,
           showTextInput: true, // Signal to show text input
-        } as any : null, // Cast to any to avoid type error during transition
+        } : null,
       }));
       
       // Show guidance toast

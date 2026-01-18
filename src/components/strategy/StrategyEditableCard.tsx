@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Check, Pencil, X, Save, Loader2, ChevronDown, ChevronUp, Info } from 'lucide-react';
+import { Check, Pencil, Save, Loader2, ChevronDown, ChevronUp, Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { getConstrainedInput } from '@/components/strategy/ConstrainedInputs';
@@ -135,19 +135,6 @@ export default function StrategyEditableCard({
   const handleEditStart = (index: number, currentValue: string) => {
     setShowTooltip(null); // Bug #10: Close tooltip when editing
     setEditing({ ruleIndex: index, value: currentValue });
-  };
-  
-  // Handle edit save
-  const handleEditSave = () => {
-    if (editing && editing.value !== rules[editing.ruleIndex].value) {
-      onParameterEdit(rules[editing.ruleIndex], editing.value);
-    }
-    setEditing(null);
-  };
-  
-  // Handle edit cancel
-  const handleEditCancel = () => {
-    setEditing(null);
   };
   
   // Bug #9: Auto-apply unsaved edit before saving strategy
