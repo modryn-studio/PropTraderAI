@@ -20,6 +20,7 @@ import {
 import { AnimationConfig, tryExtractFromStream } from '@/components/strategy-animation';
 import { shouldExpectAnimation } from '@/lib/claude/promptManager';
 import { logAnimationGenerated } from '@/lib/behavioral/animationLogger';
+import { cn } from '@/lib/utils';
 import StrategySummaryPanel, { StrategyRule } from '@/components/strategy/StrategySummaryPanel';
 import StrategyReadinessGate, { type GateMode } from '@/components/strategy/StrategyReadinessGate';
 import StrategyPreviewCard from '@/components/strategy/StrategyPreviewCard';
@@ -40,7 +41,6 @@ import type { ActiveTool } from '@/components/chat/SmartTools/types';
 import { formatToolResponse, type ToolType } from '@/lib/utils/toolDetection';
 import { FEATURES } from '@/config/features';
 import { useFeatureFlags } from '@/lib/hooks/useFeatureFlags';
-import InlineCriticalQuestion from '@/components/strategy/InlineCriticalQuestion';
 import StrategyEditableCard from '@/components/strategy/StrategyEditableCard';
 import { StrategySwipeableCards, ReviewAllModal, ParameterEditModal } from '@/components/strategy/mobile';
 
@@ -378,6 +378,13 @@ export default function ChatInterface({
           partialStrategy: data.partialStrategy,
         });
         
+        // Add question to chat history for visibility
+        setMessages(prev => [...prev, {
+          id: `question-${Date.now()}`,
+          role: 'assistant',
+          content: data.question,
+        }]);
+        
         // Update conversation state
         setConversationState({
           mode: 'answering_question',
@@ -516,7 +523,12 @@ export default function ChatInterface({
           partialStrategy: data.partialStrategy,
         });
 
-        // Don't add to chat - InlineCriticalQuestion component will show it
+        // Add question to chat history for visibility
+        setMessages(prev => [...prev, {
+          id: `question-${Date.now()}`,
+          role: 'assistant',
+          content: data.question,
+        }]);
 
         // Set conversation ID from response
         if (data.conversationId && !conversationId) {
@@ -1642,15 +1654,27 @@ export default function ChatInterface({
         )}
       </div>
 
-      {/* Rapid Flow: Critical question */}
+      {/* Rapid Flow: Critical question buttons - show inline after question message */}
       {criticalQuestion && (
         <div className="max-w-3xl mx-auto px-6 pb-4">
-          <InlineCriticalQuestion
-            question={criticalQuestion.question}
-            options={criticalQuestion.options}
-            onSelect={handleCriticalAnswer}
-            variant={criticalQuestion.questionType === 'stopLoss' ? 'stop_loss' : criticalQuestion.questionType as 'instrument' | 'entry' | 'direction'}
-          />
+          <div className="flex flex-wrap gap-2">
+            {criticalQuestion.options.map((option) => (
+              <button
+                key={option.value}
+                onClick={() => handleCriticalAnswer(option.value)}
+                className={cn(
+                  'px-4 py-2 rounded-lg border transition-all',
+                  'bg-[rgba(255,255,255,0.05)] border-[rgba(255,255,255,0.2)]',
+                  'hover:bg-[rgba(0,255,209,0.1)] hover:border-[rgba(0,255,209,0.3)]',
+                  'text-white text-sm',
+                  option.default && 'border-[#00FFD1] bg-[rgba(0,255,209,0.1)]'
+                )}
+              >
+                {option.label}
+                {option.default && ' (recommended)'}
+              </button>
+            ))}
+          </div>
         </div>
       )}
 
