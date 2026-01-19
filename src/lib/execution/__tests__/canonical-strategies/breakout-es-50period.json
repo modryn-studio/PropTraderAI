@@ -1,0 +1,38 @@
+{
+  "name": "ES 50-Period Breakout with Volume Confirmation",
+  "description": "Trade ES breakouts from 50-period high/low with volume confirmation, 1.5 ATR stop, 3R target",
+  "pattern": "breakout",
+  "direction": "both",
+  "instrument": {
+    "symbol": "ES",
+    "contractSize": 50,
+    "tickSize": 0.25,
+    "tickValue": 12.50
+  },
+  "entry": {
+    "breakout": {
+      "lookbackPeriod": 50,
+      "levelType": "both",
+      "confirmation": "volume"
+    }
+  },
+  "exit": {
+    "stopLoss": {
+      "type": "atr_multiple",
+      "value": 1.5
+    },
+    "takeProfit": {
+      "type": "rr_ratio",
+      "value": 3
+    }
+  },
+  "risk": {
+    "positionSizing": "risk_percent",
+    "riskPercent": 0.5,
+    "maxContracts": 10
+  },
+  "time": {
+    "session": "ny",
+    "timezone": "America/New_York"
+  }
+}

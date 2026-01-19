@@ -4,6 +4,7 @@ import { logBehavioralEvent } from '@/lib/behavioral/logger';
 import { ParsedRules } from '@/lib/claude/client';
 import { validateStrategyQuality } from '@/lib/strategy/strategyQualityMetrics';
 import { clearConversationState, getChangesSummary } from '@/lib/strategy/componentHistoryTracker';
+import { claudeToCanonical, type ClaudeStrategyOutput } from '@/lib/strategy/claudeToCanonical';
 import type { StrategyRule } from '@/lib/utils/ruleExtractor';
 
 interface SaveRequest {
@@ -89,16 +90,53 @@ export async function POST(request: Request) {
       .select('*', { count: 'exact', head: true })
       .eq('user_id', user.id);
 
+    // ========================================================================
+    // NORMALIZE TO CANONICAL FORMAT
+    // Try to convert Claude's ParsedRules to the canonical execution schema
+    // This ensures the execution engine receives consistent, validated data
+    // ========================================================================
+    
+    let canonicalRules: unknown = null;
+    let normalizationSucceeded = false;
+    let normalizationErrors: string[] = [];
+    
+    try {
+      const claudeOutput: ClaudeStrategyOutput = {
+        strategy_name: name,
+        summary: summary || naturalLanguage || '',
+        parsed_rules: parsedRules,
+        instrument: instrument || '',
+      };
+      
+      const normResult = claudeToCanonical(claudeOutput);
+      
+      if (normResult.success) {
+        canonicalRules = normResult.canonical;
+        normalizationSucceeded = true;
+        console.log(`[Normalization] Strategy normalized successfully: ${normResult.canonical.pattern}`);
+      } else {
+        normalizationErrors = normResult.errors;
+        console.log(`[Normalization] Fallback to legacy format. Errors: ${normResult.errors.join(', ')}`);
+      }
+    } catch (normError) {
+      console.error('[Normalization] Error during normalization:', normError);
+      normalizationErrors = [(normError as Error).message];
+    }
+
     // Create the strategy
+    // Use canonical format if available, otherwise fall back to Claude's format
     const { data: strategy, error: strategyError } = await supabase
       .from('strategies')
       .insert({
         user_id: user.id,
         name: name.trim(),
         natural_language: naturalLanguage || summary || '',
-        parsed_rules: parsedRules,
+        // Store canonical format if normalization succeeded, otherwise legacy format
+        parsed_rules: canonicalRules || parsedRules,
         status: 'draft', // Start as draft, user activates when ready
         autonomy_level: 'copilot', // Default to copilot mode
+        // Store metadata about normalization (optional columns - may not exist yet)
+        ...(normalizationSucceeded && { format_version: 'canonical_v1' }),
       })
       .select()
       .single();
@@ -275,6 +313,12 @@ export async function POST(request: Request) {
         finalCompleteness,
         wasRapidFlow: (messageCount || 0) <= 4,
         wasSlowFlow: (messageCount || 0) > 8,
+        // Canonical schema normalization tracking
+        normalizationSucceeded,
+        normalizationErrors: normalizationErrors.length > 0 ? normalizationErrors : undefined,
+        canonicalPattern: normalizationSucceeded && canonicalRules 
+          ? (canonicalRules as { pattern: string }).pattern 
+          : undefined,
       }
     );
 

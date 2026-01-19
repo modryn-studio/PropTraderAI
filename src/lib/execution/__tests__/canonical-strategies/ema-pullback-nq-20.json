@@ -1,0 +1,44 @@
+{
+  "name": "NQ 20 EMA Pullback with RSI Filter",
+  "description": "Trade NQ pullbacks to 20 EMA when RSI is below 40, structure stop, 2R target",
+  "pattern": "ema_pullback",
+  "direction": "long",
+  "instrument": {
+    "symbol": "NQ",
+    "contractSize": 20,
+    "tickSize": 0.25,
+    "tickValue": 5.00
+  },
+  "entry": {
+    "emaPullback": {
+      "emaPeriod": 20,
+      "pullbackConfirmation": "bounce"
+    },
+    "indicators": {
+      "rsi": {
+        "period": 14,
+        "threshold": 40,
+        "direction": "below"
+      }
+    }
+  },
+  "exit": {
+    "stopLoss": {
+      "type": "structure",
+      "value": 0
+    },
+    "takeProfit": {
+      "type": "rr_ratio",
+      "value": 2
+    }
+  },
+  "risk": {
+    "positionSizing": "risk_percent",
+    "riskPercent": 1,
+    "maxContracts": 3
+  },
+  "time": {
+    "session": "ny",
+    "timezone": "America/New_York"
+  }
+}

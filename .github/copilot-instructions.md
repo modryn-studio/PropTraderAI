@@ -238,6 +238,59 @@ Hosting:
 
 ---
 
+## 🔧 Canonical Schema Architecture (January 2026)
+
+**Status:** Implemented and tested (55/55 tests passing ✅)  
+**Purpose:** Strict type-safe contract between Claude AI output and execution compilers
+
+### Quick Overview
+
+The canonical schema is a **4-layer architecture** that transforms loose Claude output into type-safe execution-ready format:
+
+```
+Claude AI (loose, snake_case) 
+  → claudeToCanonical() (normalizer)
+    → Canonical Schema (Zod validation, camelCase)
+      → Canonical Compilers (type-safe, no text parsing)
+```
+
+### Key Files
+
+- `src/lib/execution/canonical-schema.ts` - Zod schemas, discriminated union, INSTRUMENT_DEFAULTS
+- `src/lib/execution/canonical-compilers.ts` - Pattern-specific compilers (ORB, EMA Pullback, Breakout)
+- `src/lib/strategy/claudeToCanonical.ts` - Normalizer (pattern detection, parsing, instrument aliases)
+
+### Database Migration
+
+```sql
+CREATE TABLE strategies (
+  parsed_rules JSONB,           -- Legacy format (deprecated Q2 2026)
+  canonical_rules JSONB,        -- New canonical format
+  format_version TEXT,          -- 'legacy' or 'canonical_v1'
+);
+```
+
+**Execution priority:** Try `canonical_rules` first, fallback to `parsed_rules` if needed.
+
+### Critical Rules
+
+✅ **Always use canonical schema** when:
+- Creating new pattern compilers
+- Writing execution logic tests
+- Building Phase 1B execution server
+
+❌ **Never:**
+- Mix snake_case and camelCase
+- Parse text in compilers (use structured configs)
+- Hardcode defaults (use explicit fields)
+- Bypass Zod validation
+
+### Complete Documentation
+
+For full architecture, design decisions, and patterns: **[docs/00_OVERVIEW/canonical_schema_architecture.md](docs/00_OVERVIEW/canonical_schema_architecture.md)**
+
+---
+
 ## 🧩 Claude Skills Integration (Extracted Utilities)
 
 ### Current Implementation (Phase 1A)

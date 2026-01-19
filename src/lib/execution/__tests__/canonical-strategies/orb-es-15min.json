@@ -1,0 +1,37 @@
+{
+  "name": "ES 15-Minute Opening Range Breakout",
+  "description": "Trade ES breakouts from first 15 minutes, stop at opposite side of range, 2R target",
+  "pattern": "opening_range_breakout",
+  "direction": "both",
+  "instrument": {
+    "symbol": "ES",
+    "contractSize": 50,
+    "tickSize": 0.25,
+    "tickValue": 12.50
+  },
+  "entry": {
+    "openingRange": {
+      "periodMinutes": 15,
+      "entryOn": "both"
+    }
+  },
+  "exit": {
+    "stopLoss": {
+      "type": "opposite_range",
+      "value": 0
+    },
+    "takeProfit": {
+      "type": "rr_ratio",
+      "value": 2
+    }
+  },
+  "risk": {
+    "positionSizing": "risk_percent",
+    "riskPercent": 1,
+    "maxContracts": 5
+  },
+  "time": {
+    "session": "ny",
+    "timezone": "America/New_York"
+  }
+}
