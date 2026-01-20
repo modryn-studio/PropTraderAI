@@ -43,6 +43,10 @@ import { FEATURES } from '@/config/features';
 import { useFeatureFlags } from '@/lib/hooks/useFeatureFlags';
 import StrategyEditableCard from '@/components/strategy/StrategyEditableCard';
 import { StrategySwipeableCards, ReviewAllModal, ParameterEditModal } from '@/components/strategy/mobile';
+import { PatternConfirmation, UnsupportedPattern } from '@/components/strategy/PatternConfirmation';
+import { MissingFieldPrompt } from '@/components/strategy/MissingFieldPrompt';
+import { validatePattern, detectsVWAP, getAlternativePatterns, type FieldInfo } from '@/lib/strategy/validateAgainstCanonical';
+import type { SupportedPattern } from '@/lib/execution/canonical-schema';
 
 interface ChatInterfaceProps {
   userId: string;
@@ -224,6 +228,22 @@ export default function ChatInterface({
   // Desktop: Panel visibility state (independent of strategy existence)
   const [isPanelVisible, setIsPanelVisible] = useState(true);
   
+  // Pattern confirmation flow state (Issue #44)
+  const [patternConfirmationState, setPatternConfirmationState] = useState<{
+    pending: boolean;
+    detectedPattern: SupportedPattern | null;
+    isUnsupported: boolean;
+    unsupportedName?: string;
+    missingFields: FieldInfo[];
+    showMissingFields: boolean;
+  }>({
+    pending: false,
+    detectedPattern: null,
+    isUnsupported: false,
+    missingFields: [],
+    showMissingFields: false,
+  });
+  
   // AbortController for canceling requests
   const abortControllerRef = useRef<AbortController | null>(null);
   
@@ -394,8 +414,66 @@ export default function ChatInterface({
           }
         );
       } else if (data.type === 'strategy_complete') {
-        // Strategy generation complete!
-        setGeneratedStrategy(data.strategy);
+        // Strategy generation complete - but first validate pattern (Issue #44)
+        const strategy = data.strategy;
+        const detectedPattern = strategy.pattern as SupportedPattern | undefined;
+        
+        // Check for unsupported patterns (VWAP, etc.)
+        if (detectsVWAP({ pattern: detectedPattern || 'unknown' } as never)) {
+          setPatternConfirmationState({
+            pending: true,
+            detectedPattern: null,
+            isUnsupported: true,
+            unsupportedName: strategy.pattern || 'VWAP',
+            missingFields: [],
+            showMissingFields: false,
+          });
+          
+          // Store strategy for later use after pattern selection
+          setGeneratedStrategy(strategy);
+          
+          // Add guidance message
+          const assistantMsg: ChatMessage = {
+            id: `assistant-${Date.now()}`,
+            role: 'assistant',
+            content: 'I detected a pattern that we don\'t support yet. Please choose an alternative:',
+            timestamp: new Date().toISOString(),
+          };
+          setMessages(prev => [...prev, assistantMsg]);
+          return;
+        }
+        
+        // Validate pattern against canonical schema
+        if (detectedPattern) {
+          const validation = validatePattern({ pattern: detectedPattern } as never);
+          
+          if (validation.missingFields.length > 0) {
+            // Show pattern confirmation first, then missing fields
+            setPatternConfirmationState({
+              pending: true,
+              detectedPattern,
+              isUnsupported: false,
+              missingFields: validation.missingFields,
+              showMissingFields: false, // Will be true after pattern confirmed
+            });
+            
+            setGeneratedStrategy(strategy);
+            setIsPanelVisible(true);
+            
+            // Add confirmation message
+            const assistantMsg: ChatMessage = {
+              id: `assistant-${Date.now()}`,
+              role: 'assistant',
+              content: `I've detected a **${detectedPattern.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}** pattern. Please confirm:`,
+              timestamp: new Date().toISOString(),
+            };
+            setMessages(prev => [...prev, assistantMsg]);
+            return;
+          }
+        }
+        
+        // No missing fields - proceed directly
+        setGeneratedStrategy(strategy);
         setIsPanelVisible(true); // Show panel when new strategy generated
         
         // Clear question state since we're done
@@ -919,6 +997,127 @@ export default function ChatInterface({
   }, [conversationId, messages, userId, userProfile?.timezone, animationConfig, handleAnimationAutoExpand, toolsShown, expertiseData, useRapidFlow, generatedStrategy, handleRapidFlowMessage, criticalQuestion, handleCriticalAnswer, conversationState, forceLegacy, flags.generate_first_flow]);
 
   // ========================================================================
+  // PATTERN CONFIRMATION HANDLERS (Issue #44)
+  // ========================================================================
+  
+  const handlePatternConfirm = useCallback(() => {
+    // User confirmed the detected pattern
+    if (patternConfirmationState.missingFields.length > 0) {
+      // Show missing fields prompt
+      setPatternConfirmationState(prev => ({
+        ...prev,
+        pending: true,
+        showMissingFields: true,
+      }));
+    } else {
+      // No missing fields, proceed directly
+      setPatternConfirmationState({
+        pending: false,
+        detectedPattern: null,
+        isUnsupported: false,
+        missingFields: [],
+        showMissingFields: false,
+      });
+    }
+    
+    // Log confirmation
+    logBehavioralEvent(
+      userId,
+      'pattern_confirmed',
+      {
+        conversationId,
+        pattern: patternConfirmationState.detectedPattern,
+      }
+    );
+  }, [patternConfirmationState, userId, conversationId]);
+  
+  const handlePatternChange = useCallback(() => {
+    // Show pattern selector
+    // This is already handled in PatternConfirmation component's internal state
+    logBehavioralEvent(
+      userId,
+      'pattern_change_requested',
+      {
+        conversationId,
+        originalPattern: patternConfirmationState.detectedPattern,
+      }
+    );
+  }, [patternConfirmationState.detectedPattern, userId, conversationId]);
+  
+  const handlePatternSelect = useCallback((pattern: SupportedPattern) => {
+    // User selected a different pattern
+    if (generatedStrategy) {
+      // Update generated strategy with new pattern
+      setGeneratedStrategy(prev => prev ? { ...prev, pattern } : prev);
+      
+      // Re-validate with new pattern
+      const validation = validatePattern({ pattern } as never);
+      
+      if (validation.missingFields.length > 0) {
+        setPatternConfirmationState({
+          pending: true,
+          detectedPattern: pattern,
+          isUnsupported: false,
+          missingFields: validation.missingFields,
+          showMissingFields: true,
+        });
+      } else {
+        setPatternConfirmationState({
+          pending: false,
+          detectedPattern: null,
+          isUnsupported: false,
+          missingFields: [],
+          showMissingFields: false,
+        });
+      }
+    }
+    
+    logBehavioralEvent(
+      userId,
+      'pattern_selected',
+      {
+        conversationId,
+        pattern,
+        wasUnsupported: patternConfirmationState.isUnsupported,
+      }
+    );
+  }, [generatedStrategy, userId, conversationId, patternConfirmationState.isUnsupported]);
+  
+  const handleMissingFieldsComplete = useCallback((values: Record<string, string | number>) => {
+    // User provided missing field values
+    if (generatedStrategy) {
+      // Merge values into strategy rules
+      const updatedRules = generatedStrategy.parsed_rules.map(rule => {
+        const fieldKey = rule.label.toLowerCase().replace(/\s+/g, '_');
+        if (values[fieldKey] !== undefined) {
+          return { ...rule, value: String(values[fieldKey]), isDefaulted: false };
+        }
+        return rule;
+      });
+      
+      setGeneratedStrategy(prev => prev ? { ...prev, parsed_rules: updatedRules } : prev);
+    }
+    
+    // Clear confirmation state
+    setPatternConfirmationState({
+      pending: false,
+      detectedPattern: null,
+      isUnsupported: false,
+      missingFields: [],
+      showMissingFields: false,
+    });
+    
+    logBehavioralEvent(
+      userId,
+      'missing_fields_completed',
+      {
+        conversationId,
+        fields: Object.keys(values),
+      }
+    );
+  }, [generatedStrategy, userId, conversationId]);
+
+  // ========================================================================
   // SMART TOOL HANDLERS
   // ========================================================================
   
@@ -1402,8 +1601,42 @@ export default function ChatInterface({
           </div>
         )}
 
+        {/* Pattern Confirmation Flow (Issue #44) */}
+        {patternConfirmationState.pending && (
+          <div className={`mx-auto w-full ${isMobile ? 'px-4' : 'max-w-3xl px-6'} mb-4`}>
+            {patternConfirmationState.isUnsupported ? (
+              <UnsupportedPattern
+                detectedPattern={patternConfirmationState.unsupportedName || 'Unknown'}
+                alternatives={getAlternativePatterns(patternConfirmationState.unsupportedName || 'vwap')}
+                onSelectAlternative={handlePatternSelect}
+                onJoinWaitlist={() => {
+                  toast.success('You\'ll be notified when this pattern launches!');
+                  logBehavioralEvent(userId, 'waitlist_joined', {
+                    pattern: patternConfirmationState.unsupportedName,
+                    conversationId,
+                  });
+                }}
+              />
+            ) : patternConfirmationState.showMissingFields && patternConfirmationState.detectedPattern ? (
+              <MissingFieldPrompt
+                pattern={patternConfirmationState.detectedPattern}
+                missingFields={patternConfirmationState.missingFields}
+                onComplete={handleMissingFieldsComplete}
+                onCancel={() => setPatternConfirmationState(prev => ({ ...prev, showMissingFields: false }))}
+              />
+            ) : patternConfirmationState.detectedPattern ? (
+              <PatternConfirmation
+                detectedPattern={patternConfirmationState.detectedPattern}
+                onConfirm={handlePatternConfirm}
+                onChangePattern={handlePatternChange}
+                onPatternSelect={handlePatternSelect}
+              />
+            ) : null}
+          </div>
+        )}
+
         {/* Rapid Flow: Strategy editable card (responsive desktop/mobile) */}
-        {generatedStrategy && (
+        {generatedStrategy && !patternConfirmationState.pending && (
           <>
             {isMobile ? (
               /* Mobile: Swipeable Cards */

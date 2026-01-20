@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useMemo, useEffect, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Check, Pencil, Save, Loader2, Info } from 'lucide-react';
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
+import { motion, AnimatePresence, useMotionValue, useTransform, PanInfo } from 'framer-motion';
+import { Check, Pencil, Save, Loader2, Info, ChevronRight, Settings2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getConstrainedInput } from '@/components/strategy/ConstrainedInputs';
 import type { StrategyRule } from '@/lib/utils/ruleExtractor';
@@ -11,15 +11,28 @@ import type { StrategyRule } from '@/lib/utils/ruleExtractor';
  * STRATEGY EDITABLE CARD
  * 
  * Part of the Rapid Strategy Flow (Phase 1).
- * Shows generated strategy with all parameters editable.
- * Highlights defaults with clear "tap to change" affordance.
+ * Shows generated strategy with Simple/Advanced tabs.
+ * 
+ * Simple Tab (Default):
+ * - Read-only summary with key parameters
+ * - One tap to switch to Advanced
+ * - "Good enough" for most users
+ * 
+ * Advanced Tab:
+ * - Full parameter editing grouped by category
+ * - Click-to-edit any parameter
+ * - Power user mode
  * 
  * Design principles:
- * - Desktop-first (mobile swipeable cards come in Phase 2)
- * - Click-to-edit any parameter
+ * - Simple-first UX (hide complexity)
+ * - Mobile swipe between tabs
  * - Clear visual distinction for defaults
- * - Grouped by category for scanability
+ * - Grouped by category in Advanced
+ * 
+ * @see Issue #44 - Enhanced Strategy Builder UX
  */
+
+type ViewMode = 'simple' | 'advanced';
 
 interface StrategyEditableCardProps {
   /** Strategy name */
@@ -40,6 +53,8 @@ interface StrategyEditableCardProps {
   isSaving?: boolean;
   /** Whether the strategy has been saved */
   isSaved?: boolean;
+  /** Initial view mode */
+  defaultView?: ViewMode;
 }
 
 // Category display configuration
@@ -51,6 +66,19 @@ const CATEGORY_CONFIG: Record<string, { label: string; order: number; color: str
   filters: { label: 'FILTERS', order: 5, color: 'text-white/40' },
   timeframe: { label: 'TIMEFRAME', order: 6, color: 'text-white/40' },
 };
+
+// Key parameters to show in Simple view (ordered by importance)
+const SIMPLE_VIEW_FIELDS = [
+  'Instrument',
+  'Direction',
+  'Stop Loss',
+  'Take Profit', 
+  'Risk per Trade',
+  'Trading Session',
+  'Opening Range Period',
+  'EMA Period',
+  'Lookback Period',
+];
 
 interface EditingState {
   ruleIndex: number;
@@ -67,12 +95,27 @@ export default function StrategyEditableCard({
   onDiscard,
   isSaving = false,
   isSaved = false,
+  defaultView = 'simple',
 }: StrategyEditableCardProps) {
+  const [viewMode, setViewMode] = useState<ViewMode>(defaultView);
   const [editing, setEditing] = useState<EditingState | null>(null);
   const [showTooltip, setShowTooltip] = useState<number | null>(null);
   const cardRef = useRef<HTMLDivElement>(null);
   const editBoxRef = useRef<HTMLDivElement>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
+  
+  // Mobile swipe support
+  const x = useMotionValue(0);
+  const swipeProgress = useTransform(x, [-100, 0, 100], [1, 0, -1]);
+  
+  const handleDragEnd = useCallback((_: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
+    const threshold = 50;
+    if (info.offset.x < -threshold && viewMode === 'simple') {
+      setViewMode('advanced');
+    } else if (info.offset.x > threshold && viewMode === 'advanced') {
+      setViewMode('simple');
+    }
+  }, [viewMode]);
   
   // Close edit/tooltip when clicking outside their specific containers
   useEffect(() => {
@@ -121,6 +164,19 @@ export default function StrategyEditableCard({
       });
   }, [rules]);
   
+  // Simple view: Filter to key parameters only
+  const simpleViewRules = useMemo(() => {
+    return SIMPLE_VIEW_FIELDS
+      .map(fieldName => {
+        const index = rules.findIndex(r => 
+          r.label.toLowerCase() === fieldName.toLowerCase() ||
+          r.label.toLowerCase().includes(fieldName.toLowerCase())
+        );
+        return index >= 0 ? { rule: rules[index], index } : null;
+      })
+      .filter((item): item is { rule: StrategyRule; index: number } => item !== null);
+  }, [rules]);
+  
   // Count defaults
   const defaultsCount = useMemo(() => 
     rules.filter(r => r.isDefaulted).length
@@ -147,6 +203,9 @@ export default function StrategyEditableCard({
     onSave();
   };
   
+  // Suppress unused variable warning for swipe progress (used for future animations)
+  void swipeProgress;
+  
   return (
     <motion.div
       ref={cardRef}
@@ -160,8 +219,10 @@ export default function StrategyEditableCard({
           : 'border-white/10 bg-[#000000]'
       )}
     >
-      {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-white/10">
+      {/* Header with Tab Switcher */}
+      <div className="p-4 border-b border-white/10">
+        {/* Title Row */}
+        <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-3">
           <div>
             <h3 className="text-lg font-semibold text-white">{name}</h3>
@@ -197,9 +258,134 @@ export default function StrategyEditableCard({
         )}
       </div>
       
-      {/* Content - Always Visible */}
-      <div className="px-4 pb-4 space-y-4">
-        {/* Rules by Category */}
+        {/* Tab Switcher */}
+        {!isSaved && (
+          <div className="flex items-center gap-1 bg-white/5 p-1 rounded-md">
+            <button
+              onClick={() => setViewMode('simple')}
+              className={cn(
+                'flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded transition-all',
+                viewMode === 'simple'
+                  ? 'bg-white/10 text-white'
+                  : 'text-white/50 hover:text-white/80'
+              )}
+            >
+              <Check className="w-3 h-3" />
+              Simple
+            </button>
+            <button
+              onClick={() => setViewMode('advanced')}
+              className={cn(
+                'flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded transition-all',
+                viewMode === 'advanced'
+                  ? 'bg-white/10 text-white'
+                  : 'text-white/50 hover:text-white/80'
+              )}
+            >
+              <Settings2 className="w-3 h-3" />
+              Advanced
+            </button>
+          </div>
+        )}
+      </div>
+      
+      {/* Content - Swipeable on Mobile */}
+      <motion.div 
+        className="px-4 pb-4"
+        drag={!isSaved ? "x" : false}
+        dragConstraints={{ left: 0, right: 0 }}
+        dragElastic={0.2}
+        onDragEnd={handleDragEnd}
+        style={{ x }}
+      >
+        <AnimatePresence mode="wait">
+          {viewMode === 'simple' ? (
+            /* ===== SIMPLE VIEW ===== */
+            <motion.div
+              key="simple"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              transition={{ duration: 0.2 }}
+              className="space-y-3"
+            >
+              {/* Key Parameters Summary */}
+              <div className="space-y-2">
+                {simpleViewRules.map(({ rule }) => (
+                  <div 
+                    key={`simple-${rule.label}`}
+                    className={cn(
+                      'flex items-center justify-between p-2.5 rounded',
+                      rule.isDefaulted ? 'bg-white/[0.02]' : 'bg-white/[0.01]'
+                    )}
+                  >
+                    <div className="flex items-center gap-2">
+                      <Check className={cn(
+                        'w-4 h-4',
+                        rule.isDefaulted ? 'text-[#FFB800]' : 'text-[#00FFD1]'
+                      )} />
+                      <span className="text-[13px] text-white/60">{rule.label}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[14px] text-white font-medium">{rule.value}</span>
+                      {rule.isDefaulted && (
+                        <span className="text-[10px] text-[#FFB800]">⚙</span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              
+              {/* Switch to Advanced hint */}
+              {!isSaved && (
+                <button
+                  onClick={() => setViewMode('advanced')}
+                  className="w-full flex items-center justify-center gap-2 py-2 text-white/40 hover:text-white/60 text-xs transition-colors"
+                >
+                  <span>Need to customize?</span>
+                  <ChevronRight className="w-3 h-3" />
+                </button>
+              )}
+              
+              {/* Save Button */}
+              {!isSaved && (
+                <div className="flex gap-2 pt-3 border-t border-white/10">
+                  <button
+                    onClick={handleStrategySave}
+                    disabled={isSaving}
+                    className={cn(
+                      'flex-1 flex items-center justify-center gap-2 px-4 py-3',
+                      'bg-[#00FFD1] hover:bg-transparent text-black hover:text-[#00FFD1] font-semibold',
+                      'transition-all hover:shadow-[inset_0_0_0_2px_#00FFD1]',
+                      isSaving && 'opacity-50 cursor-not-allowed'
+                    )}
+                  >
+                    {isSaving ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span>Saving...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Save className="w-4 h-4" />
+                        <span>Save Strategy</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              )}
+            </motion.div>
+          ) : (
+            /* ===== ADVANCED VIEW ===== */
+            <motion.div
+              key="advanced"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+              transition={{ duration: 0.2 }}
+              className="space-y-4"
+            >
+              {/* Rules by Category */}
               {groupedRules.map(([category, { rules: categoryRules, indices }]) => {
                 const config = CATEGORY_CONFIG[category] || { label: category, color: 'text-zinc-400' };
                 
@@ -220,6 +406,7 @@ export default function StrategyEditableCard({
                           <div 
                             key={`${rule.label}-${globalIndex}`}
                             className="relative"
+                            data-rule-index={globalIndex}
                           >
                             {isEditing ? (
                               /* Edit Mode - Use constrained inputs based on parameter type */
@@ -349,7 +536,10 @@ export default function StrategyEditableCard({
                   )}
                 </div>
               )}
-      </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </motion.div>
     </motion.div>
   );
 }

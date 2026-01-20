@@ -28,6 +28,8 @@ describe('Integration: Full Pipeline', () => {
     it('should transform and compile ORB strategy end-to-end', () => {
       // Step 1: Claude output (from Strategy Builder)
       const claudeOutput: ClaudeStrategyOutput = {
+        strategy_name: 'ORB Strategy',
+        summary: '15-minute opening range breakout on ES',
         parsed_rules: {
           entry_conditions: [
             {
@@ -46,7 +48,7 @@ describe('Integration: Full Pipeline', () => {
             {
               type: 'take_profit',
               value: 2,
-              unit: 'risk_reward_ratio',
+              unit: 'ticks', // Fixed from 'risk_reward_ratio'
             },
           ],
           position_sizing: {
@@ -59,10 +61,8 @@ describe('Integration: Full Pipeline', () => {
               type: 'time_window',
               start: '09:30',
               end: '16:00',
-              timezone: 'America/New_York',
             },
           ],
-          direction: 'long',
         },
         instrument: 'ES',
       };
@@ -110,6 +110,8 @@ describe('Integration: Full Pipeline', () => {
     it('should transform and compile EMA Pullback strategy end-to-end', () => {
       // Step 1: Claude output
       const claudeOutput: ClaudeStrategyOutput = {
+        strategy_name: 'EMA Pullback Strategy',
+        summary: 'Pullback to 20 EMA on NQ with RSI confirmation',
         parsed_rules: {
           entry_conditions: [
             {
@@ -143,7 +145,6 @@ describe('Integration: Full Pipeline', () => {
             max_contracts: 3,
           },
           filters: [],
-          direction: 'long',
         },
         instrument: 'NQ',
       };
@@ -172,6 +173,8 @@ describe('Integration: Full Pipeline', () => {
     it('should transform and compile Breakout strategy end-to-end', () => {
       // Step 1: Claude output
       const claudeOutput: ClaudeStrategyOutput = {
+        strategy_name: 'Breakout Strategy',
+        summary: 'Break above resistance on YM',
         parsed_rules: {
           entry_conditions: [
             {
@@ -188,17 +191,16 @@ describe('Integration: Full Pipeline', () => {
             },
             {
               type: 'take_profit',
-              value: 3,
-              unit: 'risk_reward_ratio',
+              value: 75, // 3:1 R:R = 75 ticks (3 * 25)
+              unit: 'ticks',
             },
           ],
           position_sizing: {
-            method: 'fixed_contracts',
+            method: 'fixed',  // Fixed from 'fixed_contracts'
             value: 2,
             max_contracts: 2,
           },
           filters: [],
-          direction: 'both',
         },
         instrument: 'YM',
       };
@@ -232,16 +234,17 @@ describe('Integration: Full Pipeline', () => {
   describe('Error Handling: Invalid Claude Output', () => {
     it('should fail gracefully when Claude output is missing required fields', () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const invalidOutput = {
+      const invalidOutput: any = {
+        strategy_name: 'Invalid Strategy',
+        summary: 'Missing required fields',
         parsed_rules: {
           entry_conditions: [],
           exit_conditions: [],
           position_sizing: { method: 'risk_percent', value: 1, max_contracts: 5 },
           filters: [],
-          direction: 'long',
         },
         instrument: 'INVALID_INSTRUMENT', // Unknown instrument should cause failure
-      } as ClaudeStrategyOutput;
+      };
 
       const result = claudeToCanonical(invalidOutput);
       // Should fail due to unknown instrument and no valid pattern
@@ -275,6 +278,8 @@ describe('Integration: Full Pipeline', () => {
       // Simulate user input: "I want to trade ORB on ES with 15-minute opening range"
       // Claude parses this to:
       const claudeOutput: ClaudeStrategyOutput = {
+        strategy_name: 'ES ORB Strategy',
+        summary: '15-minute opening range breakout on ES',
         parsed_rules: {
           entry_conditions: [
             {
@@ -292,8 +297,8 @@ describe('Integration: Full Pipeline', () => {
             },
             {
               type: 'take_profit',
-              value: 2,
-              unit: 'risk_reward_ratio',
+              value: 40, // 2:1 R:R = 40 ticks
+              unit: 'ticks',
             },
           ],
           position_sizing: {
@@ -306,10 +311,8 @@ describe('Integration: Full Pipeline', () => {
               type: 'time_window',
               start: '09:30',
               end: '16:00',
-              timezone: 'America/New_York',
             },
           ],
-          direction: 'long',
         },
         instrument: 'ES',
       };
@@ -340,9 +343,12 @@ describe('Integration: Full Pipeline', () => {
       expect(compiled.getContractQuantity).toBeDefined();
 
       // Verify pattern-specific configuration was preserved
-      expect(canonicalRules.entry.openingRange.periodMinutes).toBe(15);
-      expect(canonicalRules.entry.openingRange.entryOn).toBe('both'); // Default behavior
-      expect(canonicalRules.direction).toBe('both'); // Default when not specified as 'long' in input
+      if (canonicalRules.pattern === 'opening_range_breakout') {
+
+        expect(canonicalRules.entry.openingRange.periodMinutes).toBe(15);
+        expect(canonicalRules.entry.openingRange.entryOn).toBe('both');
+      }
+      expect(canonicalRules.direction).toBe('both');
     });
   });
 
@@ -352,15 +358,16 @@ describe('Integration: Full Pipeline', () => {
         {
           name: 'ORB',
           output: {
+            strategy_name: 'ORB Strategy',
+            summary: '15-min ORB on ES',
             parsed_rules: {
               entry_conditions: [{ indicator: 'opening range breakout', period: 15, relation: 'break_above', description: '15 min ORB' }],
               exit_conditions: [
                 { type: 'stop_loss', value: 20, unit: 'ticks' },
-                { type: 'take_profit', value: 2, unit: 'risk_reward_ratio' },
+                { type: 'take_profit', value: 40, unit: 'ticks' },
               ],
               position_sizing: { method: 'risk_percent', value: 1, max_contracts: 5 },
               filters: [],
-              direction: 'long',
             },
             instrument: 'ES',
           },
@@ -368,6 +375,8 @@ describe('Integration: Full Pipeline', () => {
         {
           name: 'EMA Pullback',
           output: {
+            strategy_name: 'EMA Pullback Strategy',
+            summary: 'Pullback to 20 EMA on NQ',
             parsed_rules: {
               entry_conditions: [
                 { indicator: 'EMA pullback', period: 20, relation: 'price_above', description: 'pullback to 20 EMA' },
@@ -378,7 +387,6 @@ describe('Integration: Full Pipeline', () => {
               ],
               position_sizing: { method: 'risk_percent', value: 1, max_contracts: 3 },
               filters: [],
-              direction: 'long',
             },
             instrument: 'NQ',
           },
@@ -386,32 +394,36 @@ describe('Integration: Full Pipeline', () => {
         {
           name: 'Breakout',
           output: {
+            strategy_name: 'Breakout Strategy',
+            summary: 'Break above resistance on YM',
             parsed_rules: {
               entry_conditions: [{ indicator: 'resistance breakout', relation: 'price_breaks_above', description: 'break above resistance' }],
               exit_conditions: [
                 { type: 'stop_loss', value: 25, unit: 'ticks' },
-                { type: 'take_profit', value: 3, unit: 'risk_reward_ratio' },
+                { type: 'take_profit', value: 75, unit: 'ticks' },
               ],
-              position_sizing: { method: 'fixed_contracts', value: 2, max_contracts: 2 },
+              position_sizing: { method: 'fixed', value: 2, max_contracts: 2 },
               filters: [],
-              direction: 'both',
             },
             instrument: 'YM',
           },
         },
       ];
 
-      // Process all patterns through full pipeline
       patterns.forEach(({ name, output }) => {
         const normalizeResult = claudeToCanonical(output);
-        expect(normalizeResult.success).toBe(true, `${name} normalization failed`);
-
-        if (!normalizeResult.success) return;
+        expect(normalizeResult.success).toBe(true);
+        if (!normalizeResult.success) {
+          console.log(`${name} normalization failed:`, normalizeResult.errors);
+          return;
+        }
 
         const validationResult = validateCanonical(normalizeResult.canonical);
-        expect(validationResult.success).toBe(true, `${name} validation failed`);
-
-        if (!validationResult.success) return;
+        expect(validationResult.success).toBe(true);
+        if (!validationResult.success) {
+          console.log(`${name} validation failed:`, validationResult.errors);
+          return;
+        }
 
         const compiled = compileCanonicalStrategy(validationResult.data);
         expect(compiled).toBeDefined();

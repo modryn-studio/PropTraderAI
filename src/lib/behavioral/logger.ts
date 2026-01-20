@@ -28,6 +28,13 @@ export type BehavioralEventType =
   | 'strategy_conversation_completed'
   | 'strategy_conversation_abandoned'
   | 'multi_strategy_cta_shown'
+  | 'pattern_confirmed'
+  | 'pattern_changed'
+  | 'pattern_change_requested'
+  | 'pattern_selected'
+  | 'missing_field_prompted'
+  | 'missing_fields_completed'
+  | 'waitlist_joined'
   | 'multi_strategy_cta_clicked'
   | 'dashboard_add_strategy_clicked'
   
