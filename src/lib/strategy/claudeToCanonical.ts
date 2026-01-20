@@ -162,7 +162,7 @@ export function normalizeInstrument(symbol: string): InstrumentSpec | null {
 /**
  * Parse stop loss from Claude's exit conditions
  */
-export function parseStopLoss(exits: ExitCondition[], entryConditions: EntryCondition[]): ExitConfig['stopLoss'] {
+export function parseStopLoss(exits: ExitCondition[]): ExitConfig['stopLoss'] {
   const stopLoss = exits.find(e => e.type === 'stop_loss');
   
   if (!stopLoss) {
@@ -485,7 +485,7 @@ export function claudeToCanonical(input: ClaudeStrategyOutput): NormalizationRes
   const direction = detectDirection(entry_conditions);
   
   // 4. Normalize exits
-  const stopLoss = parseStopLoss(exit_conditions, entry_conditions);
+  const stopLoss = parseStopLoss(exit_conditions);
   const takeProfit = parseTakeProfit(exit_conditions);
   const exit: ExitConfig = { stopLoss, takeProfit };
   

@@ -20,7 +20,6 @@ import {
   extractEMAPullbackParams,
   extractBreakoutParams,
   type ClaudeStrategyOutput,
-  type DetectedPattern,
 } from '../claudeToCanonical';
 
 import type { EntryCondition, ExitCondition, Filter, PositionSizing } from '../../claude/client';

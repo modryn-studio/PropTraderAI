@@ -13,19 +13,13 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import {
   validateCanonical,
   parseCanonical,
-  CanonicalParsedRulesSchema,
-  OpeningRangeBreakoutRulesSchema,
-  EMAPullbackRulesSchema,
-  BreakoutRulesSchema,
   isSupportedPattern,
   isORBRules,
   isEMAPullbackRules,
   isBreakoutRules,
   getSessionTimes,
+  isSupportedPattern,
   type CanonicalParsedRules,
-  type OpeningRangeBreakoutRules,
-  type EMAPullbackRules,
-  type BreakoutRules,
 } from '../canonical-schema';
 
 import {

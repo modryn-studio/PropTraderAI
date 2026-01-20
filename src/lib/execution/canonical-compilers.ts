@@ -20,15 +20,10 @@ import type {
   EMAPullbackRules,
   BreakoutRules,
   ExitConfig,
-  RiskConfig,
-  TimeConfig,
 } from './canonical-schema';
 import {
   validateCanonical,
   getSessionTimes,
-  isORBRules,
-  isEMAPullbackRules,
-  isBreakoutRules,
 } from './canonical-schema';
 import type { OHLCV, Quote, OpeningRange } from './types';
 
@@ -391,7 +386,7 @@ function compileCanonicalEMAPullback(rules: EMAPullbackRules): CompiledStrategy 
       );
     },
 
-    getTargetPrice: (entryPrice: number, stopPrice: number, _context: EvaluationContext): number => {
+    getTargetPrice: (entryPrice: number, stopPrice: number): number => {
       const isLong = entryPrice > stopPrice;
 
       return calculateTargetPrice(
@@ -525,7 +520,7 @@ function compileCanonicalBreakout(rules: BreakoutRules): CompiledStrategy {
       );
     },
 
-    getTargetPrice: (entryPrice: number, stopPrice: number, _context: EvaluationContext): number => {
+    getTargetPrice: (entryPrice: number, stopPrice: number): number => {
       const isLong = entryPrice > stopPrice;
 
       return calculateTargetPrice(
