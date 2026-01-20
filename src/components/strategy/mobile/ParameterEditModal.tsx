@@ -332,7 +332,7 @@ export function ParameterEditModal({
             transition={{ type: 'spring', stiffness: 300, damping: 30 }}
             className={cn(
               'fixed inset-x-0 bottom-0 z-50',
-              'bg-zinc-900 rounded-t-2xl',
+              'bg-zinc-900',
               'max-h-[90vh] overflow-hidden',
               // iOS safe area
               'pb-[env(safe-area-inset-bottom)]'
@@ -361,7 +361,7 @@ export function ParameterEditModal({
                 onClick={handleSave}
                 disabled={!!error}
                 className={cn(
-                  'flex items-center gap-1 min-h-[44px] px-3 rounded-lg',
+                  'flex items-center gap-1 min-h-[44px] px-3',
                   'font-medium transition-colors',
                   error 
                     ? 'text-zinc-500 cursor-not-allowed'
@@ -414,7 +414,7 @@ export function ParameterEditModal({
                     onChange={(e) => handleValueChange(e.target.value)}
                     placeholder={config.placeholder}
                     className={cn(
-                      'w-full px-4 py-4 rounded-xl text-lg',
+                      'w-full px-4 py-4 text-lg',
                       'bg-zinc-800 border-2 transition-colors',
                       'text-zinc-100 placeholder:text-zinc-600',
                       'focus:outline-none',
@@ -477,7 +477,7 @@ export function ParameterEditModal({
                         key={suggestion}
                         onClick={() => handleSuggestionTap(suggestion)}
                         className={cn(
-                          'px-4 py-2 rounded-full text-sm font-medium',
+                            'px-4 py-2 text-sm font-medium',
                           'transition-colors min-h-[40px]',
                           value === suggestion
                             ? 'bg-emerald-600 text-white'
@@ -510,7 +510,7 @@ export function ParameterEditModal({
               
               {/* Help Text */}
               {config.helpText && (
-                <div className="flex items-start gap-2 p-3 rounded-lg bg-zinc-800/30">
+                <div className="flex items-start gap-2 p-3 bg-zinc-800/30">
                   <Info className="w-4 h-4 text-zinc-500 mt-0.5 flex-shrink-0" />
                   <p className="text-sm text-zinc-400">{config.helpText}</p>
                 </div>
@@ -518,7 +518,7 @@ export function ParameterEditModal({
               
               {/* Critical Warning */}
               {requiresConfirmation && (
-                <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                <div className="flex items-start gap-2 p-3 bg-amber-500/10 border border-amber-500/20">
                   <AlertTriangle className="w-4 h-4 text-amber-500 mt-0.5 flex-shrink-0" />
                   <div>
                     <p className="text-sm text-amber-200 font-medium">Critical Parameter</p>
@@ -531,7 +531,7 @@ export function ParameterEditModal({
               
               {/* Original Default Info */}
               {parameter.isDefaulted && parameter.explanation && (
-                <div className="p-3 rounded-lg bg-zinc-800/30 space-y-2">
+                <div className="p-3 bg-zinc-800/30 space-y-2">
                   <p className="text-xs text-zinc-500 uppercase tracking-wide">Why this was defaulted</p>
                   <p className="text-sm text-zinc-400">{parameter.explanation}</p>
                 </div>

@@ -97,7 +97,7 @@ export function TimeRangeSelector({
               onClick={() => onChange(session.value)}
               disabled={disabled}
               className={cn(
-                'w-full flex items-center justify-between px-3 py-2 border rounded-md transition-colors text-left',
+                'w-full flex items-center justify-between px-3 py-2 border transition-colors text-left',
                 value === session.value
                   ? 'bg-indigo-500/10 border-indigo-500'
                   : 'border-zinc-700 hover:border-zinc-600'
@@ -138,7 +138,7 @@ export function TimeRangeSelector({
           onChange={(e) => onChange(e.target.value as SessionValue)}
           disabled={disabled}
           className={cn(
-            'w-full px-3 py-2 border rounded-md bg-zinc-900 text-white font-mono text-sm',
+            'w-full px-3 py-2 border bg-zinc-900 text-white font-mono text-sm',
             'focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500',
             error ? 'border-red-500' : 'border-zinc-700'
           )}
@@ -165,7 +165,7 @@ export function TimeRangeSelector({
         onClick={() => !disabled && setIsOpen(!isOpen)}
         disabled={disabled}
         className={cn(
-          'w-full flex items-center justify-between px-3 py-2 border rounded-md',
+          'w-full flex items-center justify-between px-3 py-2 border',
           'bg-zinc-900 text-sm font-mono transition-colors',
           isOpen ? 'border-indigo-500' : error ? 'border-red-500' : 'border-zinc-700 hover:border-zinc-600'
         )}
@@ -182,7 +182,7 @@ export function TimeRangeSelector({
       {isOpen && (
         <>
           <div className="fixed inset-0 z-10" onClick={() => setIsOpen(false)} />
-          <div className="absolute z-20 w-full mt-1 bg-zinc-900 border border-zinc-700 rounded-md shadow-lg">
+          <div className="absolute z-20 w-full mt-1 bg-zinc-900 border border-zinc-700 shadow-lg">
             {SESSION_OPTIONS.map(session => (
               <button
                 key={session.value}

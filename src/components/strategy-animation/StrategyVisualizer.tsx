@@ -228,7 +228,7 @@ export default function StrategyVisualizer({
   }, [duration, loop, onComplete, animationKey]);
 
   return (
-    <div className="relative w-full max-w-2xl mx-auto bg-[#0A0A0A] border border-[rgba(255,255,255,0.1)] rounded-lg p-4">
+    <div className="relative w-full max-w-2xl mx-auto bg-[#0A0A0A] border border-[rgba(255,255,255,0.1)] p-4">
       {/* Header */}
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">

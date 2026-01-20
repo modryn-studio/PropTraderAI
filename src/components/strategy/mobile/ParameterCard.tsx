@@ -55,7 +55,7 @@ export function ParameterCard({
   return (
     <motion.div
       className={cn(
-        'flex flex-col rounded-xl border overflow-hidden',
+        'flex flex-col border overflow-hidden',
         'bg-zinc-900 min-h-[400px]',
         isConfirmed 
           ? 'border-emerald-500/30' 
@@ -116,7 +116,7 @@ export function ParameterCard({
         
         {/* Explanation (for defaulted params) */}
         {parameter.isDefaulted && parameter.explanation && (
-          <div className="flex items-start gap-2 p-3 rounded-lg bg-zinc-800/50 max-w-xs">
+          <div className="flex items-start gap-2 p-3 bg-zinc-800/50 max-w-xs">
             <Info className="w-4 h-4 text-zinc-500 mt-0.5 flex-shrink-0" />
             <p className="text-sm text-zinc-400 leading-relaxed">
               {parameter.explanation}
@@ -136,7 +136,7 @@ export function ParameterCard({
             }}
             className={cn(
               'flex-1 flex items-center justify-center gap-2',
-              'min-h-[48px] px-4 py-3 rounded-lg',
+              'min-h-[48px] px-4 py-3',
               'bg-zinc-800 hover:bg-zinc-700 text-zinc-300',
               'transition-colors focus:outline-none focus:ring-2 focus:ring-zinc-500'
             )}
@@ -151,7 +151,7 @@ export function ParameterCard({
               onClick={onConfirm}
               className={cn(
                 'flex-1 flex items-center justify-center gap-2',
-                'min-h-[48px] px-4 py-3 rounded-lg',
+                'min-h-[48px] px-4 py-3',
                 'bg-emerald-600 hover:bg-emerald-500 text-white',
                 'transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500'
               )}
@@ -168,7 +168,7 @@ export function ParameterCard({
               animate={{ scale: 1, opacity: 1 }}
               className={cn(
                 'flex-1 flex items-center justify-center gap-2',
-                'min-h-[48px] px-4 py-3 rounded-lg',
+                'min-h-[48px] px-4 py-3',
                 'bg-emerald-600/20 text-emerald-400 border border-emerald-600/30'
               )}
             >
@@ -181,7 +181,7 @@ export function ParameterCard({
           {!requiresConfirmation && (
             <div className={cn(
               'flex-1 flex items-center justify-center gap-2',
-              'min-h-[48px] px-4 py-3 rounded-lg',
+              'min-h-[48px] px-4 py-3',
               isConfirmed 
                 ? 'bg-emerald-600/20 text-emerald-400 border border-emerald-600/30'
                 : 'bg-zinc-800/50 text-zinc-500 border border-zinc-700'

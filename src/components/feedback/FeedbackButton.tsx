@@ -101,7 +101,7 @@ export default function FeedbackButton({
         animate={{ x: 0 }}
         transition={{ delay: 1.5, type: 'spring', stiffness: 100 }}
         onClick={() => setIsOpen(true)}
-        className="hidden md:flex fixed top-1/2 -translate-y-1/2 right-0 z-40 bg-[rgba(10,10,10,0.9)] backdrop-blur-sm border-l border-t border-b border-[rgba(255,255,255,0.1)] text-[rgba(255,255,255,0.5)] hover:text-[#00FFD1] hover:bg-[#121212] px-3 py-6 rounded-l-lg shadow-lg hover:px-4 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-[#00FFD1] items-center"
+        className="hidden md:flex fixed top-1/2 -translate-y-1/2 right-0 z-40 bg-[rgba(10,10,10,0.9)] backdrop-blur-sm border-l border-t border-b border-[rgba(255,255,255,0.1)] text-[rgba(255,255,255,0.5)] hover:text-[#00FFD1] hover:bg-[#121212] px-3 py-6 shadow-lg hover:px-4 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-[#00FFD1] items-center"
         aria-label="Send feedback"
         style={{ writingMode: 'vertical-rl' }}
       >
@@ -233,7 +233,7 @@ export default function FeedbackButton({
                             ? "What would help you pass your challenge?"
                             : "Bug? Feature idea? General thoughts?"
                         }
-                        className="w-full h-48 bg-[#121212] border border-[rgba(255,255,255,0.1)] rounded-lg px-4 py-3 text-white placeholder:text-[rgba(255,255,255,0.5)] focus:outline-none focus:ring-2 focus:ring-[#00FFD1] focus:border-transparent resize-none"
+                        className="w-full h-48 bg-[#121212] border border-[rgba(255,255,255,0.1)] px-4 py-3 text-white placeholder:text-[rgba(255,255,255,0.5)] focus:outline-none focus:ring-2 focus:ring-[#00FFD1] focus:border-transparent resize-none"
                         disabled={isSubmitting}
                         autoFocus
                       />
@@ -250,7 +250,7 @@ export default function FeedbackButton({
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         placeholder="your@email.com"
-                        className="w-full bg-[#121212] border border-[rgba(255,255,255,0.1)] rounded-lg px-4 py-3 text-white placeholder:text-[rgba(255,255,255,0.5)] focus:outline-none focus:ring-2 focus:ring-[#00FFD1] focus:border-transparent"
+                        className="w-full bg-[#121212] border border-[rgba(255,255,255,0.1)] px-4 py-3 text-white placeholder:text-[rgba(255,255,255,0.5)] focus:outline-none focus:ring-2 focus:ring-[#00FFD1] focus:border-transparent"
                         disabled={isSubmitting}
                       />
                       <p className="text-xs text-[rgba(255,255,255,0.5)] mt-1">

@@ -213,14 +213,14 @@ body {
   .card {
     background: var(--bg-secondary);
     border: 1px solid var(--border-subtle);
-    border-radius: 0.5rem;
+    border-radius: 0;
     padding: 1.5rem;
   }
 
   .card-elevated {
     background: var(--bg-tertiary);
     border: 1px solid var(--border-medium);
-    border-radius: 0.5rem;
+    border-radius: 0;
     padding: 1.5rem;
   }
 

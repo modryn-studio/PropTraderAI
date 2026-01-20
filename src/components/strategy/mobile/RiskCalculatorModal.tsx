@@ -353,7 +353,7 @@ export function RiskCalculatorModal({
             transition={{ type: 'spring', stiffness: 300, damping: 30 }}
             className={cn(
               'fixed inset-x-0 bottom-0 z-[60]',
-              'bg-zinc-900 rounded-t-2xl',
+              'bg-zinc-900',
               'max-h-[95vh] overflow-hidden',
               'pb-[env(safe-area-inset-bottom)]'
             )}
@@ -385,7 +385,7 @@ export function RiskCalculatorModal({
             <div className="px-5 py-6 space-y-6 overflow-y-auto max-h-[calc(95vh-180px)]">
               
               {/* Instrument Info */}
-              <div className="flex items-center justify-between p-3 rounded-lg bg-zinc-800/50">
+              <div className="flex items-center justify-between p-3 bg-zinc-800/50">
                 <div>
                   <p className="text-sm text-zinc-400">Instrument</p>
                   <p className="text-lg font-medium text-zinc-100">{instrument}</p>
@@ -411,7 +411,7 @@ export function RiskCalculatorModal({
                     onChange={(e) => setAccountBalance(e.target.value.replace(/[^0-9,]/g, ''))}
                     placeholder="50000"
                     className={cn(
-                      'w-full pl-8 pr-4 py-4 rounded-xl text-lg',
+                      'w-full pl-8 pr-4 py-4 text-lg',
                       'bg-zinc-800 border-2 transition-colors',
                       'text-zinc-100 placeholder:text-zinc-600',
                       'focus:outline-none',
@@ -443,7 +443,7 @@ export function RiskCalculatorModal({
                       key={preset}
                       onClick={() => setRiskPercentage(preset)}
                       className={cn(
-                        'flex-1 py-3 rounded-xl text-sm font-medium',
+                        'flex-1 py-3 text-sm font-medium',
                         'transition-colors min-h-[48px]',
                         riskPercentage === preset
                           ? 'bg-amber-600 text-white'
@@ -472,7 +472,7 @@ export function RiskCalculatorModal({
                     onChange={(e) => setStopDistance(e.target.value.replace(/[^0-9.]/g, ''))}
                     placeholder="20"
                     className={cn(
-                      'w-full px-4 py-4 rounded-xl text-lg',
+                      'w-full px-4 py-4 text-lg',
                       'bg-zinc-800 border-2 transition-colors',
                       'text-zinc-100 placeholder:text-zinc-600',
                       'focus:outline-none pr-20',
@@ -498,7 +498,7 @@ export function RiskCalculatorModal({
                       key={preset}
                       onClick={() => setStopDistance(preset.toString())}
                       className={cn(
-                        'flex-1 py-2 rounded-lg text-sm font-medium',
+                        'flex-1 py-2 text-sm font-medium',
                         'transition-colors min-h-[40px]',
                         stopDistance === preset.toString()
                           ? 'bg-zinc-600 text-white'
@@ -526,7 +526,7 @@ export function RiskCalculatorModal({
                   className="space-y-4"
                 >
                   {/* Main Result */}
-                  <div className="text-center p-6 rounded-xl bg-gradient-to-b from-zinc-800 to-zinc-800/50 border border-zinc-700">
+                  <div className="text-center p-6 bg-gradient-to-b from-zinc-800 to-zinc-800/50 border border-zinc-700">
                     <div className={cn(
                       'text-5xl font-bold mb-2',
                       result.positionSize === 0 ? 'text-red-400' : 'text-emerald-400'
@@ -564,7 +564,7 @@ export function RiskCalculatorModal({
                   </div>
                   
                   {/* Risk Breakdown */}
-                  <div className="space-y-3 p-4 rounded-lg bg-zinc-800/30">
+                  <div className="space-y-3 p-4 bg-zinc-800/30">
                     <h3 className="text-sm font-medium text-zinc-300 border-b border-zinc-700 pb-2">
                       Risk Breakdown
                     </h3>
@@ -627,7 +627,7 @@ export function RiskCalculatorModal({
                   )}
                   
                   {/* Formula Info */}
-                  <div className="flex items-start gap-2 p-3 rounded-lg bg-zinc-800/30">
+                  <div className="flex items-start gap-2 p-3 bg-zinc-800/30">
                     <Info className="w-4 h-4 text-zinc-500 mt-0.5 shrink-0" />
                     <div className="text-xs text-zinc-500">
                       <p className="font-medium text-zinc-400 mb-1">Position Size Formula</p>

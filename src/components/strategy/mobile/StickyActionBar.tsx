@@ -92,7 +92,7 @@ export function StickyActionBar({
             onClick={onReviewAll}
             className={cn(
               'flex items-center justify-center gap-2',
-              'min-h-[44px] px-4 py-2 rounded-lg',
+              'min-h-[44px] px-4 py-2',
               'bg-zinc-800 hover:bg-zinc-700 text-zinc-300',
               'transition-colors focus:outline-none focus:ring-2 focus:ring-zinc-500'
             )}
@@ -107,7 +107,7 @@ export function StickyActionBar({
             disabled={!canSave || isSaving}
             className={cn(
               'flex items-center justify-center gap-2',
-              'min-h-[44px] px-5 py-2 rounded-lg',
+              'min-h-[44px] px-5 py-2',
               'font-medium transition-all',
               'focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-zinc-900',
               canSave

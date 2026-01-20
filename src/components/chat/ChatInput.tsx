@@ -191,7 +191,7 @@ export default function ChatInput({
               <button
                 key={item.label}
                 onClick={() => handleQuickPrompt(item.prompt)}
-                className="px-3 py-1.5 text-xs font-mono bg-[rgba(255,255,255,0.05)] text-[rgba(255,255,255,0.7)] border border-[rgba(255,255,255,0.1)] rounded hover:bg-[rgba(255,255,255,0.1)] hover:text-white hover:border-[rgba(255,255,255,0.2)] transition-all whitespace-nowrap flex-shrink-0"
+                className="px-3 py-1.5 text-xs font-mono bg-[rgba(255,255,255,0.05)] text-[rgba(255,255,255,0.7)] border border-[rgba(255,255,255,0.1)] hover:bg-[rgba(255,255,255,0.1)] hover:text-white hover:border-[rgba(255,255,255,0.2)] transition-all whitespace-nowrap flex-shrink-0"
               >
                 {item.label}
               </button>
@@ -235,7 +235,7 @@ export default function ChatInput({
             <button
               onClick={disabled ? onStop : handleSubmit}
               disabled={!disabled && !value.trim()}
-              className={`absolute right-2 bottom-3 p-2 rounded-lg transition-all duration-200 ${
+              className={`absolute right-2 bottom-3 p-2 transition-all duration-200 ${
                 disabled
                   ? 'text-gray-700 hover:text-gray-900 bg-gray-200 hover:bg-gray-300 cursor-pointer'
                   : !value.trim()

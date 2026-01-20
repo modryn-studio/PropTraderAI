@@ -309,7 +309,7 @@ export default function AnimationContainer({
             </button>
           )}
           
-          <div className="bg-[#000000] border border-[rgba(255,255,255,0.1)] rounded-lg shadow-2xl overflow-hidden">
+          <div className="bg-[#000000] border border-[rgba(255,255,255,0.1)] shadow-2xl overflow-hidden">
             {/* Header */}
             <div className="flex items-center justify-between px-4 py-2 border-b border-[rgba(255,255,255,0.1)] bg-[#0A0A0A]">
               <div className="flex items-center gap-2">

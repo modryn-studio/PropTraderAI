@@ -27,7 +27,7 @@
 
 **Typical Agent 1 prompt:**
 ```
-"Create a GitHub issue in modryn-studio/PropTraderAI with title 'Agent 1: [FEATURE/BUG]'.
+"Create a GitHub issue in {OWNER}/{REPO} with title 'Agent 1: [FEATURE/BUG]'.
 Include problem statement, proposed solution, implementation plan."
 ```
 
@@ -49,7 +49,7 @@ Include problem statement, proposed solution, implementation plan."
 ```bash
 # Post questions as GitHub issue comment (Agent 1 sees via MCP)
 # REQUIRED: Start with "Agent 2: " prefix
-gh issue comment X --body "Agent 2: Question about Bug #Y: [your question]"
+gh issue comment X --body "Agent 2: Question about Issue #Y: [your question]"
 
 # For multiple questions, use --body-file
 echo "Agent 2: ## Clarifying Questions..." > temp.md
@@ -75,13 +75,13 @@ git commit -m "Fix [issue] from #X
 
 - Bullet summary of changes
 - What was modified
-- Build status"
+- Build/test status"
 
-# 🚨 CRITICAL: Build BEFORE pushing to verify no errors
-npm run build
+# 🚨 CRITICAL: Build/test BEFORE pushing to verify no errors
+npm run build  # or: npm test, cargo build, mvn verify, etc.
 
 # Push to GitHub (Agent 1 reviews via MCP)
-git push origin main
+git push origin main  # or your default branch
 ```
 
 **⚠️ Why push first:**
@@ -183,12 +183,12 @@ PowerShell breaks with:
 ### For Agent 2 (Implementation)
 - ✅ **Start all issue comments with "Agent 2: " prefix**
 - ✅ Ask clarifying questions if spec is unclear (95% confidence rule)
-- ✅ Build project to verify no TypeScript errors (`npm run build`)
+- ✅ Build/test project to verify no errors before pushing
 - ✅ Commit with descriptive message + issue reference
-- ✅ **Always build before pushing** (`npm run build`)
+- ✅ **Always build/test before pushing**
 - ✅ **Always push before requesting review**
 - ✅ Use `--body-file` for detailed comments
-- ✅ Include build status in review request
+- ✅ Include build/test status in review request
 
 ### For Both Agents
 - ✅ Act autonomously (no permission needed for standard workflow)

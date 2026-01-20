@@ -97,7 +97,7 @@ export default function InlineCriticalQuestion({
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.2 }}
       className={cn(
-        'my-4 p-4 rounded-lg border',
+        'my-4 p-4 border',
         config.borderColor,
         config.bgColor
       )}
@@ -124,7 +124,7 @@ export default function InlineCriticalQuestion({
               onClick={() => !isLoading && onSelect(option.value)}
               disabled={isLoading}
               className={cn(
-                'relative px-4 py-2.5 rounded-md text-sm font-medium transition-all',
+                'relative px-4 py-2.5 text-sm font-medium transition-all',
                 'border focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-zinc-900',
                 isSelected
                   ? 'bg-emerald-500/20 border-emerald-500 text-emerald-400 focus:ring-emerald-500'
@@ -188,7 +188,7 @@ export default function InlineCriticalQuestion({
             type="text"
             placeholder="Describe your stop loss..."
             className={cn(
-              'w-full px-3 py-2 rounded-md text-sm',
+              'w-full px-3 py-2 text-sm',
               'bg-zinc-800 border border-zinc-700',
               'text-zinc-200 placeholder:text-zinc-500',
               'focus:outline-none focus:ring-2 focus:ring-zinc-500'

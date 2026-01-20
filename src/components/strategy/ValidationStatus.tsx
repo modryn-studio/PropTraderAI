@@ -170,7 +170,7 @@ function CompletionProgress({ score, isComplete }: CompletionProgressProps) {
 
   return (
     <div 
-      className="px-3 py-3 border border-[rgba(255,255,255,0.1)] rounded-sm bg-[rgba(0,0,0,0.3)]"
+      className="px-3 py-3 border border-[rgba(255,255,255,0.1)] bg-[rgba(0,0,0,0.3)]"
       role="status"
       aria-label={`Strategy completion: ${score}%`}
     >

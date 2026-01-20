@@ -73,7 +73,7 @@ export function PropFirmCard({ firm, onConnect, isPersonal = false }: PropFirmCa
       style={{ backgroundColor: firm.bgColor }}
     >
       {/* Logo */}
-      <div className="w-16 h-16 flex items-center justify-center mb-3 rounded-lg bg-[rgba(255,255,255,0.05)] overflow-hidden">
+      <div className="w-16 h-16 flex items-center justify-center mb-3 bg-[rgba(255,255,255,0.05)] overflow-hidden">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={firm.logo}

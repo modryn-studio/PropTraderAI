@@ -168,10 +168,10 @@ export default function AdminDashboardClient({
                   'text-[#6b7280]';
                 
                 return (
-                  <div key={conv.id} className="bg-[#121212] rounded-lg p-3 flex items-center justify-between">
+                  <div key={conv.id} className="bg-[#121212] p-3 flex items-center justify-between">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
-                        <code className="text-xs text-[rgba(255,255,255,0.5)] bg-[#1a1a1a] px-1.5 py-0.5 rounded font-mono">
+                        <code className="text-xs text-[rgba(255,255,255,0.5)] bg-[#1a1a1a] px-1.5 py-0.5 font-mono">
                           {conv.id.slice(0, 8)}
                         </code>
                         <span className={`text-xs font-medium ${statusColor}`}>
@@ -208,7 +208,7 @@ export default function AdminDashboardClient({
           </div>
 
           {statsError ? (
-            <div className="bg-[rgba(181,50,61,0.1)] border border-[rgba(181,50,61,0.3)] rounded-lg p-4">
+            <div className="bg-[rgba(181,50,61,0.1)] border border-[rgba(181,50,61,0.3)] p-4">
               <div className="flex items-center gap-2 text-[#b5323d]">
                 <AlertTriangle className="w-4 h-4" />
                 <span className="text-sm">Error loading stats: {statsError}</span>

@@ -78,7 +78,7 @@ export function InstrumentSelector({
               onClick={() => onChange(inst.value as InstrumentValue)}
               disabled={disabled}
               className={cn(
-                'px-3 py-2 text-sm font-mono border rounded-md transition-colors',
+                'px-3 py-2 text-sm font-mono border transition-colors',
                 value === inst.value
                   ? 'bg-indigo-500/10 border-indigo-500 text-indigo-400'
                   : 'border-zinc-700 text-zinc-400 hover:border-zinc-600 hover:text-zinc-300'
@@ -103,7 +103,7 @@ export function InstrumentSelector({
           onChange={(e) => onChange(e.target.value as InstrumentValue)}
           disabled={disabled}
           className={cn(
-            'w-full px-3 py-2 border rounded-md bg-zinc-900 text-white font-mono text-sm',
+            'w-full px-3 py-2 border bg-zinc-900 text-white font-mono text-sm',
             'focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500',
             error ? 'border-red-500' : 'border-zinc-700'
           )}
@@ -130,7 +130,7 @@ export function InstrumentSelector({
         onClick={() => !disabled && setIsOpen(!isOpen)}
         disabled={disabled}
         className={cn(
-          'w-full flex items-center justify-between px-3 py-2 border rounded-md',
+          'w-full flex items-center justify-between px-3 py-2 border',
           'bg-zinc-900 text-sm font-mono transition-colors',
           isOpen ? 'border-indigo-500' : error ? 'border-red-500' : 'border-zinc-700 hover:border-zinc-600'
         )}
@@ -152,7 +152,7 @@ export function InstrumentSelector({
           />
           
           {/* Dropdown */}
-          <div className="absolute z-20 w-full mt-1 bg-zinc-900 border border-zinc-700 rounded-md shadow-lg max-h-60 overflow-y-auto">
+          <div className="absolute z-20 w-full mt-1 bg-zinc-900 border border-zinc-700 shadow-lg max-h-60 overflow-y-auto">
             {instruments.map(inst => (
               <button
                 key={inst.value}

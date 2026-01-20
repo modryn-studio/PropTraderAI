@@ -137,7 +137,7 @@ export function MissingFieldPrompt({
     const options = displayInfo?.options || field.options?.map(o => ({ value: o, label: o })) || [];
 
     return (
-      <div className="w-full max-w-2xl mx-auto bg-amber-900/10 border border-amber-500/50 rounded-lg">
+      <div className="w-full max-w-2xl mx-auto bg-amber-900/10 border border-amber-500/50">
         {/* Header */}
         <div className="p-4 pb-2">
           <div className="flex items-center gap-2">
@@ -171,7 +171,7 @@ export function MissingFieldPrompt({
                   type="button"
                   onClick={() => handleValueChange(field.field, option.value)}
                   className={cn(
-                    'flex flex-col items-center justify-center rounded-md border-2 p-3 transition-all',
+                    'flex flex-col items-center justify-center border-2 p-3 transition-all',
                     values[field.field] === option.value
                       ? 'border-indigo-500 bg-indigo-500/10'
                       : 'border-zinc-700 bg-zinc-900 hover:border-zinc-600'
@@ -201,7 +201,7 @@ export function MissingFieldPrompt({
             onClick={handleComplete}
             disabled={!values[field.field]}
             className={cn(
-              'flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-md transition-colors',
+              'flex-1 flex items-center justify-center gap-2 px-4 py-2 transition-colors',
               values[field.field]
                 ? 'bg-indigo-600 text-white hover:bg-indigo-700'
                 : 'bg-zinc-800 text-zinc-500 cursor-not-allowed'
@@ -253,7 +253,7 @@ export function MissingFieldPrompt({
             <div 
               key={field.field}
               className={cn(
-                'p-3 rounded-lg border transition-all',
+                'p-3 border transition-all',
                 isActive 
                   ? 'border-indigo-500 bg-indigo-500/5' 
                   : isFilled
@@ -297,7 +297,7 @@ export function MissingFieldPrompt({
                         type="button"
                         onClick={() => handleValueChange(field.field, option.value)}
                         className={cn(
-                          'flex flex-col items-center justify-center rounded-md border-2 p-2 transition-all text-sm',
+                          'flex flex-col items-center justify-center border-2 p-2 transition-all text-sm',
                           values[field.field] === option.value
                             ? 'border-indigo-500 bg-indigo-500/10'
                             : 'border-zinc-700 bg-zinc-900 hover:border-zinc-600'
@@ -328,7 +328,7 @@ export function MissingFieldPrompt({
           onClick={handleComplete}
           disabled={!allFilled}
           className={cn(
-            'flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-md transition-colors',
+            'flex-1 flex items-center justify-center gap-2 px-4 py-2 transition-colors',
             allFilled
               ? 'bg-indigo-600 text-white hover:bg-indigo-700'
               : 'bg-zinc-800 text-zinc-500 cursor-not-allowed'

@@ -83,7 +83,7 @@ export function PeriodSelector({
           onChange={(e) => onChange(parseInt(e.target.value, 10))}
           disabled={disabled}
           className={cn(
-            'w-full px-3 py-2 border rounded-md bg-zinc-900 text-white font-mono text-sm',
+            'w-full px-3 py-2 border bg-zinc-900 text-white font-mono text-sm',
             'focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500',
             error ? 'border-red-500' : 'border-zinc-700'
           )}
@@ -115,7 +115,7 @@ export function PeriodSelector({
             onClick={() => onChange(opt.value)}
             disabled={disabled}
             className={cn(
-              'flex flex-col items-center justify-center px-2 py-2 border rounded-md transition-all',
+              'flex flex-col items-center justify-center px-2 py-2 border transition-all',
               numericValue === opt.value
                 ? 'bg-indigo-500/10 border-indigo-500'
                 : 'border-zinc-700 hover:border-zinc-600'

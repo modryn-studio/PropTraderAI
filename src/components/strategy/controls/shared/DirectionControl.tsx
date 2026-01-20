@@ -56,7 +56,7 @@ export function DirectionControl({
               onClick={() => onChange(dir.value)}
               disabled={disabled}
               className={cn(
-                'flex flex-col items-center justify-center border rounded-md transition-all font-mono',
+                'flex flex-col items-center justify-center border transition-all font-mono',
                 compact ? 'px-2 py-1.5 gap-0.5' : 'px-4 py-3 gap-1',
                 isSelected
                   ? 'bg-indigo-500/10 border-indigo-500'

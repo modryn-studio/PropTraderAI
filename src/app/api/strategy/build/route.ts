@@ -409,14 +409,16 @@ export async function POST(request: NextRequest): Promise<NextResponse<StrategyB
           user_id: user.id,
           messages: [{ role: 'user', content: message, timestamp: new Date().toISOString() }],
           status: 'in_progress',
-          conversation_type: 'unified_build', // New conversation type for tracking
         })
         .select('id')
         .single();
       
       if (createError || !newConversation) {
-        console.error('[StrategyBuild] Failed to create conversation:', createError);
-        return NextResponse.json({ type: 'error', error: 'Failed to create conversation' }, { status: 500 });
+        console.error('[StrategyBuild] Failed to create conversation:', createError, 'Details:', JSON.stringify(createError, null, 2));
+        return NextResponse.json({ 
+          type: 'error', 
+          error: `Failed to create conversation: ${createError?.message || 'Unknown error'}` 
+        }, { status: 500 });
       }
       
       currentConversationId = newConversation.id as string;

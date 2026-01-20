@@ -32,7 +32,7 @@ export default function TimezonePicker({
         type="button"
         onClick={() => !disabled && setIsOpen(!isOpen)}
         disabled={disabled}
-        className="w-full flex items-center justify-between px-4 py-2.5 bg-[#12171f] border border-[rgba(255,255,255,0.1)] rounded-lg text-[rgba(255,255,255,0.85)] hover:border-[rgba(255,255,255,0.2)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        className="w-full flex items-center justify-between px-4 py-2.5 bg-[#12171f] border border-[rgba(255,255,255,0.1)] text-[rgba(255,255,255,0.85)] hover:border-[rgba(255,255,255,0.2)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
       >
         <div className="flex items-center gap-2">
           <Globe className="w-4 h-4 text-[rgba(255,255,255,0.5)]" />

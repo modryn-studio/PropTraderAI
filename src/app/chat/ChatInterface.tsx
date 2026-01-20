@@ -457,7 +457,7 @@ export default function ChatInterface({
           const assistantMsg: ChatMessage = {
             id: `assistant-${Date.now()}`,
             role: 'assistant',
-            content: 'I detected a pattern that we don\'t support yet. Please choose an alternative:',
+            content: 'This pattern isn\'t supported yet. Choose an alternative:',
             timestamp: new Date().toISOString(),
           };
           setMessages(prev => [...prev, assistantMsg]);
@@ -660,8 +660,8 @@ export default function ChatInterface({
           id: `pattern-${Date.now()}`,
           role: 'assistant',
           content: isVWAP 
-            ? `I detected a **VWAP** strategy. VWAP is coming in Phase 2! For now, you can choose from our supported patterns.`
-            : `I detected a **${data.patternName}** pattern with ${data.fieldCount} parameters. Please confirm below:`,
+            ? `**VWAP** — coming in Phase 2. Choose from our supported patterns.`
+            : `**${data.patternName}** — solid choice. ${data.fieldCount} settings to configure.`,
           timestamp: new Date().toISOString(),
         };
         setMessages(prev => [...prev, patternMessage]);
@@ -1847,7 +1847,7 @@ export default function ChatInterface({
                     {/* Hide button (on left edge of panel) */}
                     <button
                       onClick={() => setIsPanelVisible(false)}
-                      className="absolute top-1/2 -left-8 -translate-y-1/2 p-2 rounded-l-lg bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 transition-colors border-l border-t border-b border-zinc-800"
+                      className="absolute top-1/2 -left-8 -translate-y-1/2 p-2 bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 transition-colors border-l border-t border-b border-zinc-800"
                       aria-label="Hide panel"
                       title="Hide panel (ESC)"
                     >
@@ -1920,7 +1920,7 @@ export default function ChatInterface({
                     initial={{ x: 100 }}
                     animate={{ x: 0 }}
                     onClick={() => setIsPanelVisible(true)}
-                    className="fixed top-1/2 right-0 -translate-y-1/2 p-3 rounded-l-lg bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 transition-colors border-l border-t border-b border-zinc-800 shadow-lg z-40"
+                    className="fixed top-1/2 right-0 -translate-y-1/2 p-3 bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 transition-colors border-l border-t border-b border-zinc-800 shadow-lg z-40"
                     aria-label="Show strategy panel"
                     title="Show strategy panel"
                   >
@@ -2019,7 +2019,7 @@ export default function ChatInterface({
                 key={option.value}
                 onClick={() => handleCriticalAnswer(option.value)}
                 className={cn(
-                  'px-4 py-2 rounded-lg border transition-all',
+                  'px-4 py-2 border transition-all',
                   'bg-[rgba(255,255,255,0.05)] border-[rgba(255,255,255,0.2)]',
                   'hover:bg-[rgba(0,255,209,0.1)] hover:border-[rgba(0,255,209,0.3)]',
                   'text-white text-sm',
@@ -2062,7 +2062,7 @@ export default function ChatInterface({
       {/* Start Over Confirmation Modal */}
       {showStartOverModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="bg-[#0a0a0a] border border-[rgba(255,255,255,0.1)] rounded-lg p-6 max-w-md w-full space-y-4 shadow-2xl">
+          <div className="bg-[#0a0a0a] border border-[rgba(255,255,255,0.1)] p-6 max-w-md w-full space-y-4 shadow-2xl">
             <div>
               <h3 className="text-lg font-semibold text-white mb-2">
                 Start a new conversation?

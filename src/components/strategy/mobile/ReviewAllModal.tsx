@@ -138,7 +138,7 @@ export function ReviewAllModal({
                       key={`${rule.label}-${displayIndex}`}
                       onClick={() => handleCardClick(displayIndex)}
                       className={cn(
-                        'w-full flex items-center justify-between p-4 rounded-lg',
+                        'w-full flex items-center justify-between p-4',
                         'bg-zinc-800/50 hover:bg-zinc-800 transition-colors',
                         'text-left min-h-[60px]'
                       )}
@@ -185,7 +185,7 @@ export function ReviewAllModal({
                           <button
                             onClick={(e) => handleEditClick(e, originalIndex)}
                             className={cn(
-                              'p-2 rounded-lg',
+                              'p-2',
                               'hover:bg-zinc-700 transition-colors',
                               'text-zinc-400 hover:text-zinc-200',
                               editingIndex === originalIndex && 'opacity-50 cursor-not-allowed'

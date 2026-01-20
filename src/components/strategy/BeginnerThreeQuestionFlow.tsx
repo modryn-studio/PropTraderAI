@@ -267,7 +267,7 @@ export default function BeginnerThreeQuestionFlow({
       exit={{ opacity: 0, y: -10 }}
       className="mx-auto w-full max-w-md my-4"
     >
-      <div className="bg-[#0a0a0a] border border-[rgba(255,255,255,0.15)] rounded-xl overflow-hidden shadow-2xl">
+      <div className="bg-[#0a0a0a] border border-[rgba(255,255,255,0.15)] overflow-hidden shadow-2xl">
         {/* Header */}
         <div className="px-4 py-3 border-b border-[rgba(255,255,255,0.08)] flex items-center gap-3">
           <div className="w-8 h-8 rounded-full bg-[#6366f1]/10 flex items-center justify-center">

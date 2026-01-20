@@ -52,21 +52,21 @@ interface PatternInfo {
 const PATTERN_INFO: Record<SupportedPattern, PatternInfo> = {
   opening_range_breakout: {
     name: 'Opening Range Breakout',
-    description: 'Trade breakouts from the first 5-30 minutes of market open. Solid choice for momentum traders.',
+    description: 'Trade breakouts from the first 5-30 minutes of market open. Solid choice for momentum.',
     fieldCount: 7,
     icon: <Zap className="w-5 h-5 text-[#00FFD1]" />,
     popularity: 'Most popular among prop traders',
   },
   ema_pullback: {
     name: 'EMA Pullback',
-    description: 'Enter when price pulls back to a moving average in a trend. Favorite for trend following.',
+    description: 'Enter when price pulls back to a moving average in a trend. Solid choice for trend following.',
     fieldCount: 8,
     icon: <TrendingUp className="w-5 h-5 text-[#00FFD1]" />,
     popularity: 'Favorite for trend following',
   },
   breakout: {
     name: 'Breakout',
-    description: 'Trade when price breaks above resistance or below support. Classic momentum strategy.',
+    description: 'Trade when price breaks above resistance or below support. Solid choice for momentum.',
     fieldCount: 8,
     icon: <BarChart3 className="w-5 h-5 text-[#00FFD1]" />,
     popularity: 'Classic momentum strategy',
@@ -102,7 +102,7 @@ export function PatternConfirmation({
   // Pattern selector view
   if (isChanging) {
     return (
-      <div className="w-full max-w-2xl mx-auto bg-[#000000] border border-white/10 rounded-lg">
+      <div className="w-full max-w-2xl mx-auto bg-[#000000] border border-white/10">
         <div className="border-b border-white/10 p-4">
           <h3 className="text-lg font-semibold text-white font-mono">
             Choose Your Pattern
@@ -119,14 +119,14 @@ export function PatternConfirmation({
                   key={pattern}
                   onClick={() => handlePatternSelect(pattern)}
                   className={cn(
-                    'w-full p-4 rounded-lg border-2 text-left transition-all',
+                    'w-full p-4 border-2 text-left transition-all',
                     isSelected 
                       ? 'border-[#00FFD1] bg-[#00FFD1]/10' 
                       : 'border-white/10 bg-[#000000] hover:border-[#00FFD1]/50'
                   )}
                 >
                   <div className="flex items-start gap-3">
-                    <div className="p-2 rounded-lg bg-[#00FFD1]/15">
+                    <div className="p-2 bg-[#00FFD1]/15">
                       {info.icon}
                     </div>
                     <div className="flex-1">
@@ -138,7 +138,7 @@ export function PatternConfirmation({
                       </div>
                       <p className="text-sm text-white/85 mt-1">{info.description}</p>
                       <div className="flex items-center gap-2 mt-2">
-                        <span className="text-xs px-2 py-0.5 rounded bg-white/5 text-white/50 font-mono">
+                        <span className="text-xs px-2 py-0.5 bg-white/5 text-white/50 font-mono">
                           {info.fieldCount} settings
                         </span>
                         <span className="text-xs text-white/50">{info.popularity}</span>
@@ -153,7 +153,7 @@ export function PatternConfirmation({
         <div className="border-t border-white/10 p-4">
           <button 
             onClick={() => setIsChanging(false)}
-            className="w-full px-4 py-2 text-white/85 hover:bg-white/5 rounded-md transition-colors font-mono"
+            className="w-full px-4 py-2 text-white/85 hover:bg-white/5 transition-colors font-mono"
           >
             Cancel
           </button>
@@ -164,14 +164,14 @@ export function PatternConfirmation({
 
   // Confirmation view
   return (
-    <div className="w-full max-w-2xl mx-auto bg-[#000000] border border-white/10 rounded-lg overflow-hidden">
+    <div className="w-full max-w-2xl mx-auto bg-[#000000] border border-white/10 overflow-hidden">
       <div className="border-b border-white/10 p-4">
         <div className="flex items-center gap-3">
-          <div className="p-2 rounded-lg bg-[#00FFD1]/15">
+          <div className="p-2 bg-[#00FFD1]/15">
             {patternInfo.icon}
           </div>
           <div>
-            <p className="text-xs text-white/50 uppercase tracking-wide font-mono">Your Strategy</p>
+            <p className="text-xs text-white/50 uppercase tracking-wide font-mono">YOUR STRATEGY</p>
             <h3 className="text-lg font-semibold text-white font-mono">
               {patternInfo.name}
             </h3>
@@ -184,11 +184,11 @@ export function PatternConfirmation({
         
         <div className="flex items-center gap-4 mt-4 pt-4 border-t border-white/10">
           <div className="flex-1">
-            <p className="text-xs text-white/50 uppercase tracking-wide font-mono">Settings</p>
+            <p className="text-xs text-white/50 uppercase tracking-wide font-mono">SETTINGS</p>
             <p className="text-lg font-mono text-white">{patternInfo.fieldCount}</p>
           </div>
           <div className="flex-1">
-            <p className="text-xs text-white/50 uppercase tracking-wide font-mono">Status</p>
+            <p className="text-xs text-white/50 uppercase tracking-wide font-mono">STATUS</p>
             <div className="flex items-center gap-1 text-[#00FFD1]">
               <Check className="w-4 h-4" />
               <span className="text-sm font-medium font-mono">SET UP NEXT</span>
@@ -200,14 +200,14 @@ export function PatternConfirmation({
       <div className="border-t border-white/10 p-4 flex gap-3">
         <button 
           onClick={handleChangeClick}
-          className="flex-1 flex items-center justify-center gap-2 px-4 py-2 border border-white/10 rounded-md text-white/85 hover:border-[#00FFD1] hover:text-[#00FFD1] transition-all font-mono"
+          className="flex-1 flex items-center justify-center gap-2 px-4 py-2 border border-white/10 text-white/85 hover:border-[#00FFD1] hover:text-[#00FFD1] transition-all font-mono"
         >
           <RefreshCw className="w-4 h-4" />
           Change
         </button>
         <button 
           onClick={onConfirm}
-          className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-[#00FFD1] text-[#000000] rounded-md hover:bg-[#00e6bc] transition-colors font-mono font-semibold"
+          className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-[#00FFD1] text-[#000000] hover:bg-[#00e6bc] transition-colors font-mono font-semibold"
         >
           <Check className="w-4 h-4" />
           Confirm
@@ -243,11 +243,11 @@ export function UnsupportedPattern({
     .replace(/\b\w/g, c => c.toUpperCase());
 
   return (
-    <div className="w-full max-w-2xl mx-auto bg-[#000000] border border-[#00FFD1]/30 rounded-lg">
+    <div className="w-full max-w-2xl mx-auto bg-[#000000] border border-[#00FFD1]/30">
       {/* Header */}
       <div className="border-b border-[#00FFD1]/30 p-4">
         <div className="flex items-center gap-3">
-          <div className="p-2 rounded-lg bg-[#00FFD1]/15">
+          <div className="p-2 bg-[#00FFD1]/15">
             <span className="text-2xl">🔮</span>
           </div>
           <div>
@@ -275,7 +275,7 @@ export function UnsupportedPattern({
                   <button
                     key={pattern}
                     onClick={() => onSelectAlternative(pattern)}
-                    className="w-full p-3 rounded-lg border border-white/10 bg-[#000000] 
+                    className="w-full p-3 border border-white/10 bg-[#000000]
                              hover:border-[#00FFD1]/50 hover:bg-[#00FFD1]/5 
                              text-left transition-all flex items-center gap-3"
                   >
@@ -296,9 +296,9 @@ export function UnsupportedPattern({
       
       {/* Footer */}
       <div className="border-t border-[#00FFD1]/30 p-4">
-        <button 
+        <button
           onClick={onJoinWaitlist}
-          className="w-full px-4 py-2 border border-[#00FFD1]/50 text-[#00FFD1] rounded-md hover:bg-[#00FFD1]/10 transition-colors font-mono"
+          className="w-full px-4 py-2 border border-[#00FFD1]/50 text-[#00FFD1] hover:bg-[#00FFD1]/10 transition-colors font-mono"
         >
           Notify Me When {formattedPattern} Launches
         </button>
