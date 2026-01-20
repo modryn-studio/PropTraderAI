@@ -36,8 +36,8 @@ export const INSTRUMENT_PATTERNS = {
  */
 export const PATTERN_TYPES = {
   orb: /\b(ORB|opening\s?range|open\s?range|opening\s?range\s?breakout|range\s?break)\b/i,
-  pullback: /\b(pullback|pull\s?back|retrace|retracement|bounce)\b/i,
-  breakout: /\b(breakout|break\s?out|break\s?above|break\s?below|level\s?break)\b/i,
+  pullback: /\b(pullbacks?|pull\s?backs?|retrace|retracements?|bounces?)\b/i,
+  breakout: /\b(breakouts?|break\s?outs?|break\s?above|break\s?below|level\s?break)\b/i,
   momentum: /\b(momentum|momo|thrust|impulse|strong\s?move)\b/i,
   vwap: /\b(VWAP|volume\s?weighted)\b/i,
   ema: /\b(EMA|exponential\s?moving|(\d+)\s?ema)\b/i,
@@ -351,12 +351,18 @@ export function calculateCompleteness(message: string): CompletenessResult {
 
 export type ExpertiseLevel = 'beginner' | 'intermediate' | 'advanced';
 
+// Canonical pattern types supported by the system
+export type CanonicalPatternType = 'opening_range_breakout' | 'ema_pullback' | 'breakout' | 'vwap';
+
 export interface ExpertiseDetectionResult {
   level: ExpertiseLevel;
   questionCount: 0 | 1 | 2 | 3;
   approach: 'structured_options' | 'rapid_completion' | 'parse_and_confirm';
   tone: 'encouraging' | 'confirmatory' | 'professional';
   completeness: CompletenessResult;
+  // Pattern detection for Issue #44/#46 - wire to PatternConfirmation.tsx
+  detectedPattern?: CanonicalPatternType;
+  patternConfidence?: 'high' | 'medium' | 'low';
 }
 
 /**
@@ -368,9 +374,37 @@ export interface ExpertiseDetectionResult {
 export function detectExpertiseLevel(message: string): ExpertiseDetectionResult {
   const completeness = calculateCompleteness(message);
   
+  // ============================================================================
+  // PATTERN DETECTION for Issue #44/#46 - detect canonical patterns
+  // ============================================================================
+  let detectedPattern: CanonicalPatternType | undefined;
+  let patternConfidence: 'high' | 'medium' | 'low' = 'low';
+  
+  const messageLower = message.toLowerCase();
+  
+  // Priority order: most specific patterns first (ORB before generic breakout)
+  if (PATTERN_TYPES.orb.test(message)) {
+    detectedPattern = 'opening_range_breakout';
+    // Higher confidence if they explicitly say "opening range"
+    patternConfidence = messageLower.includes('opening range') || messageLower.includes('orb') ? 'high' : 'medium';
+  } else if (PATTERN_TYPES.pullback.test(message)) {
+    detectedPattern = 'ema_pullback';
+    // Higher confidence if they mention EMA specifically
+    patternConfidence = PATTERN_TYPES.ema.test(message) ? 'high' : 'medium';
+  } else if (PATTERN_TYPES.vwap.test(message)) {
+    detectedPattern = 'vwap';
+    patternConfidence = 'high'; // VWAP is very specific
+  } else if (PATTERN_TYPES.breakout.test(message)) {
+    // Generic breakout - only if not already matched ORB
+    detectedPattern = 'breakout';
+    patternConfidence = 'medium';
+  }
+  // ============================================================================
+  
   // Check for very vague beginner indicators
   const isVeryVague = /\b(want|start|learn|new|begin|how\s+do\s+i|teach|help\s+me)\b/i.test(message);
-  const hasNoSpecifics = completeness.detected.length === 0;
+  // FIX: If we detected a pattern, it's NOT "no specifics" even if completeness says so
+  const hasNoSpecifics = completeness.detected.length === 0 && !detectedPattern;
   
   // Beginner: Very vague with no specifics
   if (isVeryVague && hasNoSpecifics) {
@@ -380,6 +414,8 @@ export function detectExpertiseLevel(message: string): ExpertiseDetectionResult 
       approach: 'structured_options',
       tone: 'encouraging',
       completeness,
+      detectedPattern,
+      patternConfidence: detectedPattern ? patternConfidence : undefined,
     };
   }
   
@@ -391,6 +427,8 @@ export function detectExpertiseLevel(message: string): ExpertiseDetectionResult 
       approach: 'parse_and_confirm',
       tone: 'professional',
       completeness,
+      detectedPattern,
+      patternConfidence: detectedPattern ? patternConfidence : undefined,
     };
   }
   
@@ -402,6 +440,8 @@ export function detectExpertiseLevel(message: string): ExpertiseDetectionResult 
       approach: 'rapid_completion',
       tone: 'confirmatory',
       completeness,
+      detectedPattern,
+      patternConfidence: detectedPattern ? patternConfidence : undefined,
     };
   }
   
@@ -413,6 +453,8 @@ export function detectExpertiseLevel(message: string): ExpertiseDetectionResult 
       approach: 'rapid_completion',
       tone: 'confirmatory',
       completeness,
+      detectedPattern,
+      patternConfidence: detectedPattern ? patternConfidence : undefined,
     };
   }
   
@@ -424,6 +466,8 @@ export function detectExpertiseLevel(message: string): ExpertiseDetectionResult 
       approach: 'rapid_completion',
       tone: 'confirmatory',
       completeness,
+      detectedPattern,
+      patternConfidence: detectedPattern ? patternConfidence : undefined,
     };
   }
   
@@ -434,6 +478,8 @@ export function detectExpertiseLevel(message: string): ExpertiseDetectionResult 
     approach: 'structured_options',
     tone: 'encouraging',
     completeness,
+    detectedPattern,
+    patternConfidence: detectedPattern ? patternConfidence : undefined,
   };
 }
 

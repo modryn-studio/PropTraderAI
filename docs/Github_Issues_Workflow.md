@@ -66,7 +66,6 @@ rm temp.md
 git pull origin main
 
 # Implement the feature/fix
-# Test locally (build, verify no errors)
 
 # Stage changes
 git add .
@@ -78,7 +77,10 @@ git commit -m "Fix [issue] from #X
 - What was modified
 - Build status"
 
-# 🚨 CRITICAL: Push to GitHub BEFORE requesting review
+# 🚨 CRITICAL: Build BEFORE pushing to verify no errors
+npm run build
+
+# Push to GitHub (Agent 1 reviews via MCP)
 git push origin main
 ```
 
@@ -181,8 +183,9 @@ PowerShell breaks with:
 ### For Agent 2 (Implementation)
 - ✅ **Start all issue comments with "Agent 2: " prefix**
 - ✅ Ask clarifying questions if spec is unclear (95% confidence rule)
-- ✅ Test locally before pushing
+- ✅ Build project to verify no TypeScript errors (`npm run build`)
 - ✅ Commit with descriptive message + issue reference
+- ✅ **Always build before pushing** (`npm run build`)
 - ✅ **Always push before requesting review**
 - ✅ Use `--body-file` for detailed comments
 - ✅ Include build status in review request

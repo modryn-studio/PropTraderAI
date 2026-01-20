@@ -1,21 +1,21 @@
 /**
- * RAPID STRATEGY GENERATION API
+ * UNIFIED STRATEGY BUILD API
  * 
- * ⚠️ DEPRECATION NOTICE (Issue #47 Week 2)
- * =========================================
- * This endpoint will be consolidated into /api/strategy/build in Week 3.
- * As of Week 2, this is still the active endpoint, but:
- * - Pattern detection (Week 1) is now working
- * - Legacy Socratic system has been deleted
- * - Week 3 will merge this endpoint with parse-stream into unified /api/strategy/build
+ * Issue #47 Week 3: Consolidated endpoint replacing:
+ * - /api/strategy/generate-rapid (critical questions, pattern detection)
+ * - /api/strategy/parse-stream (streaming, rule extraction)
  * 
- * Phase 1 "Generate-First" flow:
- * 1. User describes strategy in natural language
- * 2. Detect pattern FIRST (Issue #46 fix) - show PatternConfirmation
- * 3. If pattern confirmed OR no pattern → ask critical questions if needed
- * 4. If complete → return strategy card
+ * Single flow:
+ * 1. User message → Pattern detection (instant regex)
+ * 2. If pattern detected with high confidence → return pattern_detected
+ * 3. If no pattern or after confirmation → check gaps, ask critical questions
+ * 4. If complete → return strategy_complete
  * 
- * Target: 1-2 messages to complete strategy (vs 10+ in old Socratic flow)
+ * Response types:
+ * - pattern_detected: Show PatternConfirmation.tsx
+ * - critical_question: Show question with options
+ * - strategy_complete: Show StrategyEditableCard
+ * - error: Show error message
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -37,18 +37,25 @@ import {
 import type { StrategyRule } from '@/lib/utils/ruleExtractor';
 
 // ============================================================================
-// TYPES
+// TYPES - Unified request/response schema
 // ============================================================================
 
-interface RapidGenerateRequest {
-  /** User's strategy description */
+type QuestionType = 'stopLoss' | 'instrument' | 'entryTrigger' | 'direction' | 'profitTarget' | 'positionSizing';
+
+interface StrategyBuildRequest {
+  /** User's strategy description or follow-up message */
   message: string;
-  /** Optional conversation ID for tracking */
+  /** Conversation ID for tracking (created on first message) */
   conversationId?: string;
-  /** Answer to critical question (if this is message 2+) */
+  /** Answer to critical question (if responding to a question) */
   criticalAnswer?: {
-    questionType: 'stopLoss' | 'instrument' | 'entryTrigger' | 'direction' | 'profitTarget' | 'positionSizing';
+    questionType: QuestionType;
     value: string;
+  };
+  /** Pattern confirmation (if responding to pattern_detected) */
+  patternConfirmation?: {
+    confirmed: boolean;
+    pattern?: CanonicalPatternType;
   };
   /** Previous partial strategy (for stateless re-evaluation) */
   partialStrategy?: {
@@ -64,10 +71,20 @@ interface AnswerOption {
   default?: boolean;
 }
 
+// Unified response types
+interface PatternDetectedResponse {
+  type: 'pattern_detected';
+  pattern: CanonicalPatternType;
+  patternName: string;
+  fieldCount: number;
+  conversationId: string;
+  originalMessage: string;
+}
+
 interface CriticalQuestionResponse {
   type: 'critical_question';
   question: string;
-  questionType: 'stopLoss' | 'instrument' | 'entryTrigger' | 'direction' | 'profitTarget' | 'positionSizing';
+  questionType: QuestionType;
   options: AnswerOption[];
   partialStrategy: {
     rules: StrategyRule[];
@@ -75,7 +92,6 @@ interface CriticalQuestionResponse {
     instrument?: string;
   };
   conversationId: string;
-  /** All gaps detected (for debugging/analytics) */
   allGaps?: GapDetectionResult;
 }
 
@@ -93,84 +109,37 @@ interface StrategyCompleteResponse {
   defaultsApplied: string[];
 }
 
-/**
- * Pattern detected response - triggers PatternConfirmation.tsx in ChatInterface
- * @see Issue #44, #46 - Pattern detection flow
- */
-interface PatternDetectedResponse {
-  type: 'pattern_detected';
-  pattern: CanonicalPatternType;
-  patternName: string;
-  fieldCount: number;
-  conversationId: string;
-  /** Original message for context if user changes pattern */
-  originalMessage: string;
-}
-
 interface ErrorResponse {
   type: 'error';
   error: string;
 }
 
-type RapidGenerateResponse = CriticalQuestionResponse | StrategyCompleteResponse | PatternDetectedResponse | ErrorResponse;
+type StrategyBuildResponse = 
+  | PatternDetectedResponse 
+  | CriticalQuestionResponse 
+  | StrategyCompleteResponse 
+  | ErrorResponse;
 
 // ============================================================================
-// STOP LOSS OPTIONS BY PATTERN
-// NOTE: Currently unused as gap detection provides its own questions
+// HELPER FUNCTIONS
 // ============================================================================
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-function getStopLossOptions(pattern?: string): AnswerOption[] {
-  // Pattern-specific options
-  if (pattern === 'opening_range_breakout' || pattern === 'orb') {
-    return [
-      { value: 'below_range', label: 'Below opening range low', default: true },
-      { value: 'range_50', label: 'Middle of range (50%)', default: false },
-      { value: 'fixed_10', label: 'Fixed: 10 ticks', default: false },
-      { value: 'fixed_20', label: 'Fixed: 20 ticks', default: false },
-    ];
-  }
-  
-  if (pattern === 'pullback' || pattern === 'ema_pullback') {
-    return [
-      { value: 'structure', label: 'Below recent swing low', default: true },
-      { value: 'fixed_15', label: 'Fixed: 15 ticks', default: false },
-      { value: 'atr_1', label: '1 ATR from entry', default: false },
-    ];
-  }
-  
-  if (pattern === 'breakout') {
-    return [
-      { value: 'structure', label: 'Below breakout level', default: true },
-      { value: 'fixed_10', label: 'Fixed: 10 ticks', default: false },
-      { value: 'fixed_20', label: 'Fixed: 20 ticks', default: false },
-    ];
-  }
-  
-  if (pattern === 'scalp') {
-    return [
-      { value: 'fixed_5', label: 'Fixed: 5 ticks (tight)', default: true },
-      { value: 'fixed_10', label: 'Fixed: 10 ticks', default: false },
-      { value: 'structure', label: 'Below recent low', default: false },
-    ];
-  }
-  
-  // Generic options for unknown patterns
-  return [
-    { value: 'structure', label: 'Below recent structure', default: true },
-    { value: 'fixed_10', label: 'Fixed: 10 ticks', default: false },
-    { value: 'fixed_20', label: 'Fixed: 20 ticks', default: false },
-    { value: 'atr_1', label: '1 ATR from entry', default: false },
-  ];
-}
+const PATTERN_DISPLAY_NAMES: Record<CanonicalPatternType, string> = {
+  opening_range_breakout: 'Opening Range Breakout',
+  ema_pullback: 'EMA Pullback',
+  breakout: 'Breakout',
+  vwap: 'VWAP',
+};
 
-// ============================================================================
-// STRATEGY PARSING (Simplified - no Socratic dialogue)
-// ============================================================================
+const PATTERN_FIELD_COUNTS: Record<CanonicalPatternType, number> = {
+  opening_range_breakout: 7,
+  ema_pullback: 8,
+  breakout: 8,
+  vwap: 6,
+};
 
 /**
  * Parse user message into strategy rules using Claude
- * Simpler than the full Socratic flow - just extract what's there
  */
 async function parseUserStrategy(message: string): Promise<StrategyRule[]> {
   const anthropic = createAnthropicClient();
@@ -210,16 +179,13 @@ Respond with ONLY the JSON array, no other text.`;
       messages: [{ role: 'user', content: message }],
     });
     
-    // Extract text from response
     const textContent = response.content.find(c => c.type === 'text');
     if (!textContent || textContent.type !== 'text') {
       return [];
     }
     
-    // Parse JSON response
     const parsed = JSON.parse(textContent.text);
     
-    // Validate and return
     if (Array.isArray(parsed)) {
       return parsed.map(rule => ({
         category: rule.category || 'setup',
@@ -232,13 +198,13 @@ Respond with ONLY the JSON array, no other text.`;
     
     return [];
   } catch (error) {
-    console.error('[RapidGenerate] Parse error:', error);
+    console.error('[StrategyBuild] Parse error:', error);
     return [];
   }
 }
 
 /**
- * Generate a strategy name from pattern and instrument
+ * Generate strategy name from pattern and instrument
  */
 function generateStrategyName(pattern?: string, instrument?: string, rules?: StrategyRule[]): string {
   const patternNames: Record<string, string> = {
@@ -252,7 +218,6 @@ function generateStrategyName(pattern?: string, instrument?: string, rules?: Str
     'scalp': 'Scalping',
   };
   
-  // Try to find entry pattern from rules for more specific name
   let entryDetail = '';
   if (rules) {
     const entryRule = rules.find(r => 
@@ -261,7 +226,6 @@ function generateStrategyName(pattern?: string, instrument?: string, rules?: Str
       r.label.toLowerCase().includes('trigger')
     );
     if (entryRule && entryRule.value) {
-      // Extract key parts (e.g., "Pullback to 20 EMA" → "20 EMA Pullback")
       const value = entryRule.value;
       if (value.match(/\d+\s*(ema|sma|vwap)/i)) {
         const match = value.match(/(\d+\s*(?:ema|sma|vwap))/i);
@@ -270,7 +234,6 @@ function generateStrategyName(pattern?: string, instrument?: string, rules?: Str
     }
   }
   
-  // Use pattern name or fall back to entry detail or "Strategy"
   let baseName = '';
   if (pattern && patternNames[pattern]) {
     baseName = patternNames[pattern];
@@ -281,14 +244,13 @@ function generateStrategyName(pattern?: string, instrument?: string, rules?: Str
   }
   
   const instrumentPrefix = instrument ? `${instrument} ` : '';
-  
   return `${instrumentPrefix}${baseName}`;
 }
 
 /**
- * Convert stop loss answer to rule
+ * Convert critical answer to rule
  */
-function stopLossAnswerToRule(answer: string): StrategyRule {
+function answerToRule(questionType: QuestionType, value: string): StrategyRule | null {
   const valueMap: Record<string, string> = {
     'below_range': 'Below opening range low',
     'range_50': '50% of opening range',
@@ -300,26 +262,23 @@ function stopLossAnswerToRule(answer: string): StrategyRule {
     'atr_1': '1 ATR from entry',
   };
   
-  return {
-    category: 'exit',
-    label: 'Stop Loss',
-    value: valueMap[answer] || answer,
-    isDefaulted: false,
-    source: 'user',
+  const entryDescriptions: Record<string, string> = {
+    'orb': 'Opening range breakout',
+    'pullback': 'Pullback to support/MA',
+    'vwap': 'VWAP cross',
+    'breakout': 'Breakout of structure',
+    'momentum': 'Momentum / New highs',
   };
-}
 
-/**
- * Convert any critical answer to a rule
- */
-function answerToRule(
-  questionType: 'stopLoss' | 'instrument' | 'entryTrigger' | 'direction' | 'profitTarget' | 'positionSizing',
-  value: string
-): StrategyRule | null {
   switch (questionType) {
     case 'stopLoss':
-      return stopLossAnswerToRule(value);
-    
+      return {
+        category: 'exit',
+        label: 'Stop Loss',
+        value: valueMap[value] || value,
+        isDefaulted: false,
+        source: 'user',
+      };
     case 'instrument':
       return {
         category: 'setup',
@@ -328,25 +287,14 @@ function answerToRule(
         isDefaulted: false,
         source: 'user',
       };
-    
     case 'entryTrigger':
-      // Map button values to full descriptions to avoid gap detection loops
-      const entryDescriptions: Record<string, string> = {
-        'orb': 'Opening range breakout',
-        'pullback': 'Pullback to support/MA',
-        'vwap': 'VWAP cross',
-        'breakout': 'Breakout of structure',
-        'momentum': 'Momentum / New highs',
-      };
-
       return {
         category: 'entry',
         label: 'Entry Trigger',
-        value: entryDescriptions[value] || value,  // Use full description or raw value if custom
+        value: entryDescriptions[value] || value,
         isDefaulted: false,
         source: 'user',
       };
-    
     case 'direction':
       return {
         category: 'entry',
@@ -356,7 +304,6 @@ function answerToRule(
         isDefaulted: false,
         source: 'user',
       };
-    
     case 'profitTarget':
       return {
         category: 'exit',
@@ -365,7 +312,6 @@ function answerToRule(
         isDefaulted: false,
         source: 'user',
       };
-    
     case 'positionSizing':
       return {
         category: 'risk',
@@ -374,28 +320,24 @@ function answerToRule(
         isDefaulted: false,
         source: 'user',
       };
-    
     default:
       return null;
   }
 }
 
 /**
- * Map gap component to question type for response
+ * Map gap component to question type
  */
-function mapComponentToQuestionType(
-  component?: string
-): 'stopLoss' | 'instrument' | 'entryTrigger' | 'direction' | 'profitTarget' | 'positionSizing' {
-  const mapping: Record<string, 'stopLoss' | 'instrument' | 'entryTrigger' | 'direction' | 'profitTarget' | 'positionSizing'> = {
+function mapComponentToQuestionType(component?: string): QuestionType {
+  const mapping: Record<string, QuestionType> = {
     'stop_loss': 'stopLoss',
     'instrument': 'instrument',
     'entry_criteria': 'entryTrigger',
     'direction': 'direction',
     'profit_target': 'profitTarget',
     'position_sizing': 'positionSizing',
-    'input_quality': 'entryTrigger', // Generic fallback
+    'input_quality': 'entryTrigger',
   };
-  
   return mapping[component || ''] || 'stopLoss';
 }
 
@@ -403,12 +345,12 @@ function mapComponentToQuestionType(
 // MAIN HANDLER
 // ============================================================================
 
-export async function POST(request: NextRequest): Promise<NextResponse<RapidGenerateResponse>> {
+export async function POST(request: NextRequest): Promise<NextResponse<StrategyBuildResponse>> {
   const startTime = Date.now();
   
   try {
-    const body: RapidGenerateRequest = await request.json();
-    const { message, conversationId, criticalAnswer } = body;
+    const body: StrategyBuildRequest = await request.json();
+    const { message, conversationId, criticalAnswer, patternConfirmation, partialStrategy } = body;
     
     // Validate input
     if (!message || typeof message !== 'string' || message.trim().length === 0) {
@@ -424,44 +366,30 @@ export async function POST(request: NextRequest): Promise<NextResponse<RapidGene
     }
     
     // ========================================================================
-    // STEP 1: INPUT QUALITY VALIDATION (BEFORE Claude call - save costs)
+    // STEP 1: INPUT QUALITY VALIDATION
     // ========================================================================
     
-    // PHASE 2 FIX: Pass context so validation knows if this is an answer to a question
-    const isAnsweringQuestion = !!criticalAnswer;
-    const inputQuality = validateInputQuality(message, { isAnsweringQuestion });
+    const isFollowUp = !!(criticalAnswer || patternConfirmation);
+    const inputQuality = validateInputQuality(message, { isAnsweringQuestion: isFollowUp });
     
     if (!inputQuality.canProceed) {
-      // Log rejection
-      await logBehavioralEventServer(
-        supabase,
-        user.id,
-        'input_quality_rejected',
-        {
-          message: message.substring(0, 100), // Don't log full message
-          issues: inputQuality.issues,
-          severity: inputQuality.severity,
-        }
-      );
+      await logBehavioralEventServer(supabase, user.id, 'input_quality_rejected', {
+        message: message.substring(0, 100),
+        issues: inputQuality.issues,
+      });
       
-      // If we have suggested questions, return them
       if (inputQuality.suggestedQuestions && inputQuality.suggestedQuestions.length > 0) {
         const q = inputQuality.suggestedQuestions[0];
         return NextResponse.json({
           type: 'critical_question',
           question: q.question,
-          questionType: 'entryTrigger', // Generic for input quality
+          questionType: 'entryTrigger',
           options: q.options.map(o => ({ value: o.value, label: o.label, default: o.default })),
-          partialStrategy: {
-            rules: [],
-            pattern: undefined,
-            instrument: undefined,
-          },
+          partialStrategy: { rules: [], pattern: undefined, instrument: undefined },
           conversationId: conversationId || '',
         });
       }
       
-      // Otherwise return error
       return NextResponse.json({ 
         type: 'error', 
         error: inputQuality.issues[0] || 'Please describe your trading strategy',
@@ -469,151 +397,77 @@ export async function POST(request: NextRequest): Promise<NextResponse<RapidGene
     }
     
     // ========================================================================
-    // STEP 2: Get or create conversation
+    // STEP 2: GET OR CREATE CONVERSATION
     // ========================================================================
     
-    let currentConversationId: string = conversationId || '';
+    let currentConversationId = conversationId || '';
     
     if (!currentConversationId) {
-      // Create new conversation
       const { data: newConversation, error: createError } = await supabase
         .from('strategy_conversations')
         .insert({
           user_id: user.id,
           messages: [{ role: 'user', content: message, timestamp: new Date().toISOString() }],
           status: 'in_progress',
-          conversation_type: 'rapid_flow',
+          conversation_type: 'unified_build', // New conversation type for tracking
         })
         .select('id')
         .single();
       
       if (createError || !newConversation) {
-        console.error('[RapidGenerate] Failed to create conversation:', createError);
+        console.error('[StrategyBuild] Failed to create conversation:', createError);
         return NextResponse.json({ type: 'error', error: 'Failed to create conversation' }, { status: 500 });
       }
       
       currentConversationId = newConversation.id as string;
     }
     
-    // Log rapid flow start
-    await logBehavioralEventServer(
-      supabase,
-      user.id,
-      'rapid_flow_started',
-      {
-        conversationId: currentConversationId,
-        messageLength: message.length,
-        hasCriticalAnswer: !!criticalAnswer,
-        inputQualityScore: inputQuality.confidence || 0,
-      }
-    );
-    
     // ========================================================================
-    // STEP 2: Parse user message (SKIP if follow-up with existing rules)
+    // STEP 3: PARSE MESSAGE & DETECT CONTEXT
     // ========================================================================
-    
-    // For follow-up answers, we already have parsed rules from partialStrategy
-    const isFollowUp = !!criticalAnswer && !!body.partialStrategy;
     
     let parsedRules: StrategyRule[];
     let pattern: string | undefined;
     let instrument: string | undefined;
     
-    if (isFollowUp && body.partialStrategy) {
-      // Use existing parsed data from previous request
-      parsedRules = body.partialStrategy.rules || [];
-      pattern = body.partialStrategy.pattern;
-      instrument = body.partialStrategy.instrument;
+    if (isFollowUp && partialStrategy) {
+      parsedRules = partialStrategy.rules || [];
+      pattern = partialStrategy.pattern;
+      instrument = partialStrategy.instrument;
     } else {
-      // First message: Parse with Claude
       parsedRules = await parseUserStrategy(message);
-      
-      // Quick extraction for pattern and instrument (faster than Claude for common cases)
       const instrumentResult = detectInstrument(message);
       const patternResult = detectPatternFromMessage(message);
-      
       pattern = patternResult.value;
       instrument = instrumentResult.value;
     }
     
     // ========================================================================
-    // STEP 3: Apply Phase 1 defaults
-    // ========================================================================
-    
-    const defaultsResult = applyPhase1Defaults(parsedRules, message);
-    let rulesWithDefaults = defaultsResult.rules;
-    
-    // ========================================================================
-    // STEP 4: Handle critical answer (if this is follow-up message)
-    // ========================================================================
-    
-    if (criticalAnswer) {
-      const answerRule = answerToRule(criticalAnswer.questionType, criticalAnswer.value);
-      if (answerRule) {
-        // PHASE 3 FIX: Deduplicate rules before adding new one
-        // Remove existing rules of the same category to prevent duplicates
-        const answerCategory = answerRule.category;
-        rulesWithDefaults = rulesWithDefaults.filter(r => r.category !== answerCategory);
-        
-        rulesWithDefaults = [...rulesWithDefaults, answerRule];
-        
-        // Update context from answer (e.g., if they answered "instrument", update it)
-        if (criticalAnswer.questionType === 'instrument') {
-          instrument = criticalAnswer.value.toUpperCase();
-        }
-      }
-    }
-    
-    // ========================================================================
-    // STEP 4.5: PATTERN DETECTION (Issue #44/#46) - BEFORE critical questions
-    // Only trigger on first message (not follow-ups to critical questions)
+    // STEP 4: PATTERN DETECTION (First message only, before critical questions)
     // ========================================================================
     
     if (!isFollowUp) {
       const expertiseResult = detectExpertiseLevel(message);
       
-      // If we detected a canonical pattern with sufficient confidence, return pattern_detected
       if (
         expertiseResult.detectedPattern && 
         expertiseResult.patternConfidence && 
         expertiseResult.patternConfidence !== 'low'
       ) {
-        // Get pattern display info
-        const patternDisplayNames: Record<CanonicalPatternType, string> = {
-          opening_range_breakout: 'Opening Range Breakout',
-          ema_pullback: 'EMA Pullback',
-          breakout: 'Breakout',
-          vwap: 'VWAP',
-        };
-        
-        const patternFieldCounts: Record<CanonicalPatternType, number> = {
-          opening_range_breakout: 7,
-          ema_pullback: 8,
-          breakout: 8,
-          vwap: 6, // VWAP has fewer fields (coming soon)
-        };
-        
         const detectedPattern = expertiseResult.detectedPattern;
         
-        // Log pattern detection
-        await logBehavioralEventServer(
-          supabase,
-          user.id,
-          'pattern_detected',
-          {
-            conversationId: currentConversationId,
-            pattern: detectedPattern,
-            confidence: expertiseResult.patternConfidence,
-            originalMessage: message.substring(0, 100),
-            timeToDetection: Date.now() - startTime,
-          }
-        );
+        await logBehavioralEventServer(supabase, user.id, 'pattern_detected', {
+          conversationId: currentConversationId,
+          pattern: detectedPattern,
+          confidence: expertiseResult.patternConfidence,
+          timeToDetection: Date.now() - startTime,
+        });
         
         return NextResponse.json({
           type: 'pattern_detected',
           pattern: detectedPattern,
-          patternName: patternDisplayNames[detectedPattern] || detectedPattern,
-          fieldCount: patternFieldCounts[detectedPattern] || 8,
+          patternName: PATTERN_DISPLAY_NAMES[detectedPattern] || detectedPattern,
+          fieldCount: PATTERN_FIELD_COUNTS[detectedPattern] || 8,
           conversationId: currentConversationId,
           originalMessage: message,
         });
@@ -621,56 +475,71 @@ export async function POST(request: NextRequest): Promise<NextResponse<RapidGene
     }
     
     // ========================================================================
-    // STEP 5: Check ALL gaps using comprehensive detection (RE-RUN after answer)
+    // STEP 5: HANDLE PATTERN CONFIRMATION
     // ========================================================================
     
-    // Always re-run detection with current state (stateless re-evaluation)
+    if (patternConfirmation?.confirmed && patternConfirmation.pattern) {
+      pattern = patternConfirmation.pattern;
+      await logBehavioralEventServer(supabase, user.id, 'pattern_confirmed', {
+        conversationId: currentConversationId,
+        pattern,
+      });
+    }
+    
+    // ========================================================================
+    // STEP 6: APPLY DEFAULTS
+    // ========================================================================
+    
+    const defaultsResult = applyPhase1Defaults(parsedRules, message);
+    let rulesWithDefaults = defaultsResult.rules;
+    
+    // ========================================================================
+    // STEP 7: HANDLE CRITICAL ANSWER
+    // ========================================================================
+    
+    if (criticalAnswer) {
+      const answerRule = answerToRule(criticalAnswer.questionType, criticalAnswer.value);
+      if (answerRule) {
+        const answerCategory = answerRule.category;
+        rulesWithDefaults = rulesWithDefaults.filter(r => r.category !== answerCategory);
+        rulesWithDefaults = [...rulesWithDefaults, answerRule];
+        
+        if (criticalAnswer.questionType === 'instrument') {
+          instrument = criticalAnswer.value.toUpperCase();
+        }
+      }
+    }
+    
+    // ========================================================================
+    // STEP 8: CHECK GAPS
+    // ========================================================================
+    
     const gapsResult = detectAllGaps(message, rulesWithDefaults, {
       pattern,
       instrument,
       isFollowUp,
     });
     
-    // ========================================================================
-    // STEP 6: Handle gaps based on action type
-    // ========================================================================
-    
     if (gapsResult.action.type === 'ask_question') {
       const questions = gapsResult.action.questions || [];
       
       if (questions.length > 0) {
         const topQuestion = questions[0];
-        
-        // FIX: Use gapComponent from action (prioritized) instead of searching unprioritized gaps array
-        // This fixes the bug where instrument question was sent with stopLoss questionType
         const gapComponent = gapsResult.action.gapComponent;
         const questionType = mapComponentToQuestionType(gapComponent);
         
-        // Log critical question shown
-        await logBehavioralEventServer(
-          supabase,
-          user.id,
-          'critical_question_shown',
-          {
-            conversationId: currentConversationId,
-            questionType,
-            gapSeverity: gapsResult.severity,
-            pattern,
-            instrument,
-            timeToQuestion: Date.now() - startTime,
-            isFollowUpQuestion: isFollowUp, // Track multi-gap scenarios
-          }
-        );
+        await logBehavioralEventServer(supabase, user.id, 'critical_question_shown', {
+          conversationId: currentConversationId,
+          questionType,
+          pattern,
+          instrument,
+        });
         
         return NextResponse.json({
           type: 'critical_question',
           question: topQuestion.question,
           questionType,
-          options: topQuestion.options.map(o => ({ 
-            value: o.value, 
-            label: o.label, 
-            default: o.default,
-          })),
+          options: topQuestion.options.map(o => ({ value: o.value, label: o.label, default: o.default })),
           partialStrategy: {
             rules: rulesWithDefaults,
             pattern: gapsResult.pattern || pattern,
@@ -682,33 +551,26 @@ export async function POST(request: NextRequest): Promise<NextResponse<RapidGene
       }
     }
     
-    // If action is 'apply_defaults', the defaults were already applied in Step 3
-    // If action is 'reject', we already handled that in input validation
-    
     // ========================================================================
-    // STEP 7: Generate complete strategy
+    // STEP 9: GENERATE COMPLETE STRATEGY
     // ========================================================================
     
-    // PHASE 3 FIX: Generate default ENTRY rule if pattern detected but no entry rules exist
+    // Ensure entry rule exists
     const hasEntryRules = rulesWithDefaults.some(r => r.category === 'entry');
     if (pattern && !hasEntryRules) {
-      // Generate entry rule from detected pattern
       const patternDescriptions: Record<string, string> = {
         'orb': 'Opening Range Breakout',
+        'opening_range_breakout': 'Opening Range Breakout',
         'vwap': 'VWAP Cross',
-        'ema_crossover': 'EMA Crossover',
+        'ema_pullback': 'EMA Pullback',
         'pullback': 'Pullback to Support',
         'breakout': 'Breakout',
-        'scalping': 'Scalp Entry',
-        'reversal': 'Reversal Pattern',
       };
-      
-      const entryDescription = patternDescriptions[pattern] || pattern.replace(/_/g, ' ');
       
       rulesWithDefaults.push({
         category: 'entry',
         label: 'Entry Trigger',
-        value: entryDescription,
+        value: patternDescriptions[pattern] || pattern.replace(/_/g, ' '),
         isDefaulted: true,
         source: 'default',
       });
@@ -735,41 +597,26 @@ export async function POST(request: NextRequest): Promise<NextResponse<RapidGene
       .single();
     
     if (saveError) {
-      console.error('[RapidGenerate] Failed to save strategy:', saveError);
-      
-      // Bug #7: Mark conversation as failed to avoid orphaned records
-      await supabase
-        .from('strategy_conversations')
-        .update({ status: 'failed' })
-        .eq('id', currentConversationId);
-      
+      console.error('[StrategyBuild] Failed to save strategy:', saveError);
+      await supabase.from('strategy_conversations').update({ status: 'failed' }).eq('id', currentConversationId);
       return NextResponse.json({ type: 'error', error: 'Failed to save strategy' }, { status: 500 });
     }
     
-    // Update conversation status
+    // Update conversation
     await supabase
       .from('strategy_conversations')
-      .update({
-        status: 'completed',
-        final_strategy_id: savedStrategy.id,
-      })
+      .update({ status: 'completed', final_strategy_id: savedStrategy.id })
       .eq('id', currentConversationId);
     
-    // Log completion
-    await logBehavioralEventServer(
-      supabase,
-      user.id,
-      'rapid_flow_completed',
-      {
-        conversationId: currentConversationId,
-        strategyId: savedStrategy.id,
-        messageCount: criticalAnswer ? 2 : 1,
-        defaultsApplied: defaultsResult.defaultsApplied,
-        pattern,
-        instrument,
-        timeToCompletion: Date.now() - startTime,
-      }
-    );
+    await logBehavioralEventServer(supabase, user.id, 'strategy_build_completed', {
+      conversationId: currentConversationId,
+      strategyId: savedStrategy.id,
+      messageCount: isFollowUp ? 2 : 1,
+      defaultsApplied: defaultsResult.defaultsApplied,
+      pattern,
+      instrument,
+      timeToCompletion: Date.now() - startTime,
+    });
     
     return NextResponse.json({
       type: 'strategy_complete',
@@ -786,10 +633,10 @@ export async function POST(request: NextRequest): Promise<NextResponse<RapidGene
     });
     
   } catch (error) {
-    console.error('[RapidGenerate] Error:', error);
+    console.error('[StrategyBuild] Error:', error);
     return NextResponse.json({
       type: 'error',
-      error: error instanceof Error ? error.message : 'Generation failed',
+      error: error instanceof Error ? error.message : 'Strategy build failed',
     }, { status: 500 });
   }
 }

@@ -506,71 +506,14 @@ Strategy is complete. Ready to save and start trading?"
 Remember: Traders are on mobile, possibly in a hurry. Respect their time.`;
 
 // ============================================================================
-// LEGACY SOCRATIC PROMPT (DEPRECATED - January 2026)
+// CONVERSATION PROMPT SELECTION
 // ============================================================================
-// Original 10-question Socratic system. Replaced by Rapid Flow after user testing
-// showed excessive abandonment with one-question-at-a-time approach.
-//
-// Key differences from Rapid Flow:
-// - Asked ONE question at a time (vs grouped questions)
-// - 10+ message average (vs 2-3 messages)
-// - ~5-7 minute completion (vs <2 minutes)
-// - Higher abandonment rate
-//
-// KEEP for historical reference and emergency rollback only.
-// DO NOT set rapid_strategy_builder to false without founder approval.
-// ============================================================================
+// Note: Legacy Socratic prompt deleted in Issue #47 Week 2 consolidation.
+// The slow one-question-at-a-time approach had 40% abandonment.
+// RAPID_CONVERSATION_PROMPT is now the only conversation system.
 
-const CONVERSATION_ONLY_PROMPT_LEGACY = `You are a senior trader helping someone articulate their trading strategy for PropTraderAI.
-
-Your personality:
-- Direct but not harsh (like an experienced mentor)
-- Use real trader terminology: "EMA cross", "pullback", "structure-based stop"
-- Give realistic examples: "9 EMA for scalpers, 20 EMA for swing traders"
-- Risk-first mindset: always ask about stop loss before profit targets
-
-Your job:
-1. Listen to their strategy description
-2. Ask clarifying questions using the Socratic method (ONE question at a time)
-3. Keep the conversation flowing naturally
-
-What you need to understand before a strategy is complete:
-- Entry conditions (indicators, price action, patterns)
-- Stop loss (in ticks, dollars, or structure-based)
-- Take profit / risk-reward ratio
-- Trading hours (session filters)
-- Position sizing (risk per trade)
-- Instrument (ES, NQ, MES, MNQ)
-
-CRITICAL: Present clarifying questions as MULTIPLE CHOICE OPTIONS whenever possible.
-
-Format your options as a list with each on its own line:
-- Start with a short intro question
-- List options with A), B), C), D) on separate lines
-- End with "Which matches your approach?" or similar
-
-Example:
-"What time period defines your opening range?
-
-- **A)** First 5 minutes (9:30-9:35 ET) - aggressive, more setups
-- **B)** First 15 minutes (9:30-9:45 ET) - common standard
-- **C)** First 30 minutes (9:30-10:00 ET) - cleaner, fewer false breaks
-- **D)** First 60 minutes (9:30-10:30 ET) - swing traders
-
-Which fits your approach?"
-
-After user selects an option, ALWAYS confirm what they chose:
-- Example: "Got it, 15-minute opening range. Now, what's your entry trigger..."
-
-Keep responses concise. One question at a time. Never overwhelm.`;
-
-// Feature flag to control which prompt is used
-import { FEATURES } from '@/config/features';
-
-// Active conversation prompt based on feature flag
-const CONVERSATION_ONLY_PROMPT = FEATURES.rapid_strategy_builder 
-  ? RAPID_CONVERSATION_PROMPT 
-  : CONVERSATION_ONLY_PROMPT_LEGACY;
+// Active conversation prompt (simplified - no feature flag needed)
+const CONVERSATION_ONLY_PROMPT = RAPID_CONVERSATION_PROMPT;
 
 // System prompt for Pass 2: Rule extraction only
 const RULE_EXTRACTION_PROMPT = `You are a trading strategy parser. Your ONLY job is to extract confirmed rules from the conversation.

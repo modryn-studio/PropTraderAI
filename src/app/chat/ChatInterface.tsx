@@ -39,7 +39,7 @@ import {
 import ToolsManager from '@/components/chat/SmartTools';
 import type { ActiveTool } from '@/components/chat/SmartTools/types';
 import { formatToolResponse, type ToolType } from '@/lib/utils/toolDetection';
-import { FEATURES } from '@/config/features';
+import { FEATURES, AB_TEST_CONFIG } from '@/config/features';
 import { useFeatureFlags } from '@/lib/hooks/useFeatureFlags';
 import StrategyEditableCard from '@/components/strategy/StrategyEditableCard';
 import { StrategySwipeableCards, ReviewAllModal, ParameterEditModal } from '@/components/strategy/mobile';
@@ -47,6 +47,24 @@ import { PatternConfirmation, UnsupportedPattern } from '@/components/strategy/P
 import { MissingFieldPrompt } from '@/components/strategy/MissingFieldPrompt';
 import { validatePattern, detectsVWAP, getAlternativePatterns, type FieldInfo } from '@/lib/strategy/validateAgainstCanonical';
 import type { SupportedPattern } from '@/lib/execution/canonical-schema';
+
+/**
+ * A/B test endpoint selection (Issue #47 Week 3)
+ * Returns the strategy build endpoint based on rollout percentage
+ * Note: Once selected per session, maintains consistency
+ */
+const selectedEndpoint = (() => {
+  if (!FEATURES.unified_endpoint_enabled) {
+    return '/api/strategy/generate-rapid';
+  }
+  const rollout = AB_TEST_CONFIG.unified_endpoint_rollout;
+  const random = Math.random() * 100;
+  return random < rollout ? '/api/strategy/build' : '/api/strategy/generate-rapid';
+})();
+
+function getStrategyBuildEndpoint(): string {
+  return selectedEndpoint;
+}
 
 interface ChatInterfaceProps {
   userId: string;
@@ -211,6 +229,9 @@ export default function ChatInterface({
     instrument?: string;
   } | null>(null);
   
+  // Original message for re-processing after pattern confirmation (Issue #44/#46)
+  const [rapidFlowOriginalMessage, setRapidFlowOriginalMessage] = useState<string>('');
+  
   // Mobile swipeable cards state (Week 3-4, Issue #7)
   const [mobileConfirmedParams, setMobileConfirmedParams] = useState<Set<number>>(new Set());
   const [mobileCardIndex, setMobileCardIndex] = useState(0);
@@ -353,7 +374,7 @@ export default function ChatInterface({
     };
 
     try {
-      const response = await fetch('/api/strategy/generate-rapid', {
+      const response = await fetch(getStrategyBuildEndpoint(), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -562,7 +583,7 @@ export default function ChatInterface({
     setError(null);
 
     try {
-      const response = await fetch('/api/strategy/generate-rapid', {
+      const response = await fetch(getStrategyBuildEndpoint(), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -602,6 +623,63 @@ export default function ChatInterface({
             conversationId: data.conversationId,
             questionType: data.questionType,
             pattern: data.partialStrategy.pattern,
+          }
+        );
+      } else if (data.type === 'pattern_detected') {
+        // ====================================================================
+        // PATTERN DETECTED (Issue #44/#46) - Show PatternConfirmation component
+        // ====================================================================
+        
+        // Check if it's VWAP (unsupported in Phase 1)
+        const isVWAP = data.pattern === 'vwap';
+        
+        if (isVWAP) {
+          setPatternConfirmationState({
+            pending: true,
+            detectedPattern: null,
+            isUnsupported: true,
+            unsupportedName: 'VWAP',
+            missingFields: [],
+            showMissingFields: false,
+          });
+        } else {
+          setPatternConfirmationState({
+            pending: true,
+            detectedPattern: data.pattern as SupportedPattern,
+            isUnsupported: false,
+            missingFields: [],
+            showMissingFields: false,
+          });
+        }
+        
+        // Store original message for re-processing after confirmation
+        setRapidFlowOriginalMessage(data.originalMessage);
+        
+        // Add pattern confirmation message to chat
+        const patternMessage: ChatMessage = {
+          id: `pattern-${Date.now()}`,
+          role: 'assistant',
+          content: isVWAP 
+            ? `I detected a **VWAP** strategy. VWAP is coming in Phase 2! For now, you can choose from our supported patterns.`
+            : `I detected a **${data.patternName}** pattern with ${data.fieldCount} parameters. Please confirm below:`,
+          timestamp: new Date().toISOString(),
+        };
+        setMessages(prev => [...prev, patternMessage]);
+
+        // Set conversation ID from response
+        if (data.conversationId && !conversationId) {
+          setConversationId(data.conversationId);
+        }
+
+        // Log pattern detection
+        await logBehavioralEvent(
+          userId,
+          'pattern_confirmation_shown',
+          {
+            conversationId: data.conversationId,
+            pattern: data.pattern,
+            patternName: data.patternName,
+            isUnsupported: isVWAP,
           }
         );
       } else if (data.type === 'strategy_complete') {
@@ -997,39 +1075,114 @@ export default function ChatInterface({
   }, [conversationId, messages, userId, userProfile?.timezone, animationConfig, handleAnimationAutoExpand, toolsShown, expertiseData, useRapidFlow, generatedStrategy, handleRapidFlowMessage, criticalQuestion, handleCriticalAnswer, conversationState, forceLegacy, flags.generate_first_flow]);
 
   // ========================================================================
-  // PATTERN CONFIRMATION HANDLERS (Issue #44)
+  // PATTERN CONFIRMATION HANDLERS (Issue #44/#46)
   // ========================================================================
   
-  const handlePatternConfirm = useCallback(() => {
-    // User confirmed the detected pattern
-    if (patternConfirmationState.missingFields.length > 0) {
-      // Show missing fields prompt
-      setPatternConfirmationState(prev => ({
-        ...prev,
-        pending: true,
-        showMissingFields: true,
-      }));
-    } else {
-      // No missing fields, proceed directly
-      setPatternConfirmationState({
-        pending: false,
-        detectedPattern: null,
-        isUnsupported: false,
-        missingFields: [],
-        showMissingFields: false,
-      });
+  const handlePatternConfirm = useCallback(async () => {
+    // User confirmed the detected pattern - now build the strategy
+    const confirmedPattern = patternConfirmationState.detectedPattern;
+    
+    if (!confirmedPattern) {
+      console.error('[PatternConfirm] No pattern detected');
+      return;
     }
     
     // Log confirmation
-    logBehavioralEvent(
+    await logBehavioralEvent(
       userId,
       'pattern_confirmed',
       {
         conversationId,
-        pattern: patternConfirmationState.detectedPattern,
+        pattern: confirmedPattern,
       }
     );
-  }, [patternConfirmationState, userId, conversationId]);
+    
+    // Reset pattern confirmation state
+    setPatternConfirmationState({
+      pending: false,
+      detectedPattern: null,
+      isUnsupported: false,
+      missingFields: [],
+      showMissingFields: false,
+    });
+    
+    setIsLoading(true);
+    
+    try {
+      // Continue to strategy builder with confirmed pattern
+      // Send the original message again but this will now skip pattern detection
+      // because we're confirming, and go to strategy generation
+      const response = await fetch(getStrategyBuildEndpoint(), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: `Confirmed pattern: ${confirmedPattern}. Original: ${rapidFlowOriginalMessage}`,
+          conversationId,
+          // Indicate this is a follow-up to skip pattern detection
+          patternConfirmation: {
+            confirmed: true,
+            pattern: confirmedPattern,
+          },
+          criticalAnswer: {
+            questionType: 'entryTrigger',
+            value: confirmedPattern,
+          },
+          partialStrategy: {
+            rules: [],
+            pattern: confirmedPattern,
+            instrument: undefined,
+          },
+        }),
+      });
+      
+      const data = await response.json();
+      
+      if (data.type === 'strategy_complete') {
+        setGeneratedStrategy(data.strategy);
+        setIsPanelVisible(true);
+        
+        const assistantMsg: ChatMessage = {
+          id: `assistant-${Date.now()}`,
+          role: 'assistant',
+          content: 'Strategy created! Review and edit below:',
+          timestamp: new Date().toISOString(),
+        };
+        setMessages(prev => [...prev, assistantMsg]);
+        
+        await logBehavioralEvent(
+          userId,
+          'rapid_flow_completed',
+          {
+            conversationId: data.conversationId,
+            messageCount: 2,
+            defaultsApplied: data.defaultsApplied || [],
+            pattern: confirmedPattern,
+          }
+        );
+      } else if (data.type === 'critical_question') {
+        // Still need more info (e.g., stop loss)
+        setCriticalQuestion({
+          question: data.question,
+          questionType: data.questionType,
+          options: data.options,
+          partialStrategy: data.partialStrategy,
+        });
+        
+        setMessages(prev => [...prev, {
+          id: `question-${Date.now()}`,
+          role: 'assistant',
+          content: data.question,
+        }]);
+      } else if (data.type === 'error') {
+        throw new Error(data.error);
+      }
+    } catch (err) {
+      console.error('[PatternConfirm] Error:', err);
+      toast.error('Failed to build strategy. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [patternConfirmationState, userId, conversationId, rapidFlowOriginalMessage]);
   
   const handlePatternChange = useCallback(() => {
     // Show pattern selector
@@ -1044,35 +1197,10 @@ export default function ChatInterface({
     );
   }, [patternConfirmationState.detectedPattern, userId, conversationId]);
   
-  const handlePatternSelect = useCallback((pattern: SupportedPattern) => {
-    // User selected a different pattern
-    if (generatedStrategy) {
-      // Update generated strategy with new pattern
-      setGeneratedStrategy(prev => prev ? { ...prev, pattern } : prev);
-      
-      // Re-validate with new pattern
-      const validation = validatePattern({ pattern } as never);
-      
-      if (validation.missingFields.length > 0) {
-        setPatternConfirmationState({
-          pending: true,
-          detectedPattern: pattern,
-          isUnsupported: false,
-          missingFields: validation.missingFields,
-          showMissingFields: true,
-        });
-      } else {
-        setPatternConfirmationState({
-          pending: false,
-          detectedPattern: null,
-          isUnsupported: false,
-          missingFields: [],
-          showMissingFields: false,
-        });
-      }
-    }
+  const handlePatternSelect = useCallback(async (pattern: SupportedPattern) => {
+    // User selected a different pattern (e.g., from VWAP alternatives)
     
-    logBehavioralEvent(
+    await logBehavioralEvent(
       userId,
       'pattern_selected',
       {
@@ -1081,6 +1209,20 @@ export default function ChatInterface({
         wasUnsupported: patternConfirmationState.isUnsupported,
       }
     );
+    
+    // Update state to show the selected pattern for confirmation
+    setPatternConfirmationState({
+      pending: true,
+      detectedPattern: pattern,
+      isUnsupported: false,
+      missingFields: [],
+      showMissingFields: false,
+    });
+    
+    // If already have generated strategy, update it
+    if (generatedStrategy) {
+      setGeneratedStrategy(prev => prev ? { ...prev, pattern } : prev);
+    }
   }, [generatedStrategy, userId, conversationId, patternConfirmationState.isUnsupported]);
   
   const handleMissingFieldsComplete = useCallback((values: Record<string, string | number>) => {

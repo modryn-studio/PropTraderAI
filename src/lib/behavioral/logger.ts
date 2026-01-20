@@ -121,6 +121,11 @@ export type BehavioralEventType =
   | 'session_insights_generated'
   | 'input_quality_rejected'
   
+  // Unified Strategy Build events (Issue #47)
+  | 'pattern_detected'
+  | 'pattern_confirmation_shown'
+  | 'strategy_build_completed'
+  
   // API error events
   | 'claude_api_error'
   

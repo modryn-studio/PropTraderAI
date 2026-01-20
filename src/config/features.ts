@@ -33,17 +33,22 @@ export const FEATURES = {
   behavioral_logging: true, // Always on - data collection from Day 1
   account_protection_card: true, // Shows $ protected, not discipline metrics
   
-  // RAPID STRATEGY BUILDER - New optimized flow
-  // Set to true for <2 minute completion (grouped questions, smart defaults)
-  // Set to false ONLY for debugging or A/B testing legacy Socratic method
-  // WARNING: Legacy mode had 40%+ abandonment rate vs 15% for rapid flow
-  rapid_strategy_builder: true,
+  // RAPID STRATEGY BUILDER - Legacy flag REMOVED in Issue #47 Week 2
+  // The rapid flow is now the ONLY conversation system.
+  // Previous rapid_strategy_builder: true controlled Socratic vs Rapid prompt.
+  // Socratic system deleted (40% abandonment vs 15% for rapid).
+  // This comment preserved for historical reference.
   
   // GENERATE-FIRST RAPID FLOW (Phase 1 vibe-first)
   // True = Generate strategy immediately, ask only critical questions (stop loss)
   // False = Use existing Socratic dialogue flow
   // Route: /api/strategy/generate-rapid
   generate_first_flow: true,
+  
+  // UNIFIED STRATEGY BUILD ENDPOINT (Issue #47 Week 3)
+  // When true, enables A/B test routing to /api/strategy/build
+  // Rollout percentage configured in AB_TEST_CONFIG.unified_endpoint_rollout
+  unified_endpoint_enabled: true,
   
   // PHASE 1: STRATEGY BUILDER VISUAL FEATURES (Hidden for vibe-first simplicity)
   // These features work but add visual complexity during conversation
@@ -121,6 +126,15 @@ export const EXECUTION_SAFETY_LIMITS = {
   CIRCUIT_BREAKER_TIMEOUT_MS: 60000,  // 1 minute timeout before half-open
 } as const;
 
+// A/B Test Configuration (Issue #47 Week 3)
+// Separate from FEATURES since these are percentages, not booleans
+export const AB_TEST_CONFIG = {
+  // Unified endpoint rollout: 0-100%
+  // 0 = All traffic to generate-rapid (old)
+  // 100 = All traffic to build (new)
+  unified_endpoint_rollout: 10, // Start with 10%
+} as const;
+
 export type FeatureKey = keyof typeof FEATURES;
 
 /**
@@ -128,4 +142,11 @@ export type FeatureKey = keyof typeof FEATURES;
  */
 export function isFeatureEnabled(feature: FeatureKey): boolean {
   return FEATURES[feature];
+}
+
+/**
+ * Get A/B test rollout percentage
+ */
+export function getABTestRollout(test: keyof typeof AB_TEST_CONFIG): number {
+  return AB_TEST_CONFIG[test];
 }
