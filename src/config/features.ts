@@ -132,7 +132,7 @@ export const AB_TEST_CONFIG = {
   // Unified endpoint rollout: 0-100%
   // 0 = All traffic to generate-rapid (old)
   // 100 = All traffic to build (new)
-  unified_endpoint_rollout: 10, // Start with 10%
+  unified_endpoint_rollout: 100, // Single user - using new endpoint exclusively
 } as const;
 
 export type FeatureKey = keyof typeof FEATURES;
