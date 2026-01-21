@@ -162,8 +162,14 @@ const UNIVERSAL_DEFAULTS: Record<string, DefaultRule> = {
     value: '1% risk per trade',
     explanation: 'Conservative position sizing. Risk no more than 1% of account per trade.',
   },
+  direction: {
+    category: 'entry',
+    label: 'Direction',
+    value: 'Both',
+    explanation: 'Trade both directions for maximum opportunity.',
+  },
   session: {
-    category: 'filters',
+    category: 'timeframe',
     label: 'Trading Session',
     value: 'NY Session (9:30 AM - 4:00 PM ET)',
     explanation: 'Most liquid trading hours for US futures. Highest volume, tightest spreads.',
@@ -185,7 +191,7 @@ const PATTERN_DEFAULTS: Record<string, Record<string, DefaultRule>> = {
   'vwap_trade': {
     // VWAP strategies usually have specific session requirements
     session: {
-      category: 'filters',
+      category: 'timeframe',
       label: 'Trading Session',
       value: 'NY Morning (9:30 AM - 12:00 PM ET)',
       explanation: 'VWAP is most reliable in the morning when volume is highest.',
