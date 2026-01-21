@@ -448,8 +448,11 @@ export async function POST(request: NextRequest): Promise<NextResponse<StrategyB
     if (criticalAnswer) {
       const answerRule = answerToRule(criticalAnswer.questionType, criticalAnswer.value);
       if (answerRule) {
-        const answerCategory = answerRule.category;
-        rulesWithDefaults = rulesWithDefaults.filter(r => r.category !== answerCategory);
+        // Only replace rules with the SAME LABEL, not all rules in the same category
+        // This preserves other defaults (e.g., keep Profit Target when adding Stop Loss)
+        rulesWithDefaults = rulesWithDefaults.filter(r => 
+          r.label.toLowerCase() !== answerRule.label.toLowerCase()
+        );
         rulesWithDefaults = [...rulesWithDefaults, answerRule];
         
         if (criticalAnswer.questionType === 'instrument') {
