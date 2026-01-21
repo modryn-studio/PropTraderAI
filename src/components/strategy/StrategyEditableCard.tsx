@@ -162,7 +162,7 @@ export default function StrategyEditableCard({
   
   // Simple view: Filter to key parameters only
   const simpleViewRules = useMemo(() => {
-    const results = SIMPLE_VIEW_FIELDS
+    return SIMPLE_VIEW_FIELDS
       .map(fieldName => {
         const index = rules.findIndex(r => 
           r.label.toLowerCase() === fieldName.toLowerCase() ||
@@ -171,15 +171,6 @@ export default function StrategyEditableCard({
         return index >= 0 ? { rule: rules[index], index } : null;
       })
       .filter((item): item is { rule: StrategyRule; index: number } => item !== null);
-    
-    // DEBUG: Log if Profit Target is missing
-    const hasProfitTarget = results.some(r => r.rule.label.toLowerCase().includes('profit') || r.rule.label.toLowerCase().includes('target'));
-    if (!hasProfitTarget) {
-      console.warn('⚠️ Profit Target missing from Simple View!');
-      console.log('Available rules:', rules.map(r => ({ label: r.label, value: r.value, isDefaulted: r.isDefaulted })));
-    }
-    
-    return results;
   }, [rules]);
   
   // Count defaults

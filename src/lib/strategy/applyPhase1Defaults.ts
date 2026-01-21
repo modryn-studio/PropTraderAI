@@ -85,7 +85,9 @@ function hasComponent(rules: StrategyRule[], componentType: string): boolean {
           label.includes('r:r') ||
           label.includes('reward') ||
           label.includes('take profit') ||
-          (value.includes(':') && /\d:\d/.test(value)) // R:R notation
+          // Match R:R ratios like "1:2" or "2:1" but NOT times like "9:30"
+          /\b\d+:\d+\s*(r:r|r\/r|ratio|risk|reward)\b/i.test(value) ||
+          /\b\d+:\d+\b/.test(value) && !/(am|pm|\d{2}:\d{2})/i.test(value)
         );
         
       case 'sizing':
