@@ -661,7 +661,7 @@ export default function ChatInterface({
           role: 'assistant',
           content: isVWAP 
             ? `**VWAP** — coming in Phase 2. Choose from our supported patterns.`
-            : `**${data.patternName}** — solid choice. ${data.fieldCount} settings to configure.`,
+            : `**${data.patternName}** — building with smart defaults.`,
           timestamp: new Date().toISOString(),
         };
         setMessages(prev => [...prev, patternMessage]);
