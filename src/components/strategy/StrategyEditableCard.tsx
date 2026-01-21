@@ -5,6 +5,7 @@ import { motion, AnimatePresence, useMotionValue, useTransform, PanInfo } from '
 import { Check, Pencil, Save, Loader2, Info, ChevronRight, Settings2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getConstrainedInput } from '@/components/strategy/ConstrainedInputs';
+import { PatternSpecificFields } from '@/components/strategy/PatternSpecificFields';
 import type { StrategyRule } from '@/lib/utils/ruleExtractor';
 
 /**
@@ -385,6 +386,17 @@ export default function StrategyEditableCard({
               transition={{ duration: 0.2 }}
               className="space-y-4"
             >
+              {/* Pattern-Specific Fields (if pattern detected) */}
+              {pattern && (
+                <PatternSpecificFields
+                  pattern={pattern}
+                  rules={rules}
+                  editingIndex={editing?.ruleIndex ?? null}
+                  onEditStart={handleEditStart}
+                  readOnly={isSaved}
+                />
+              )}
+              
               {/* Rules by Category */}
               {groupedRules.map(([category, { rules: categoryRules, indices }]) => {
                 const config = CATEGORY_CONFIG[category] || { label: category, color: 'text-zinc-400' };
