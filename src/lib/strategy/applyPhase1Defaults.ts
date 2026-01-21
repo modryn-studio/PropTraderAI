@@ -79,16 +79,21 @@ function hasComponent(rules: StrategyRule[], componentType: string): boolean {
     switch (normalized) {
       case 'target':
       case 'profit_target':
-        return (
+        // Check label first (most reliable)
+        if (
           label.includes('target') ||
           label.includes('profit') ||
           label.includes('r:r') ||
           label.includes('reward') ||
-          label.includes('take profit') ||
-          // Match R:R ratios like "1:2" or "2:1" but NOT times like "9:30"
-          /\b\d+:\d+\s*(r:r|r\/r|ratio|risk|reward)\b/i.test(value) ||
-          /\b\d+:\d+\b/.test(value) && !/(am|pm|\d{2}:\d{2})/i.test(value)
-        );
+          label.includes('take profit')
+        ) {
+          return true;
+        }
+        // Check value for R:R patterns, but exclude times like "9:30 AM"
+        // Only match if it looks like a ratio AND doesn't contain time indicators
+        const hasRatioPattern = /\b\d+:\d+\b/.test(value);
+        const hasTimeIndicators = /(am|pm|session|morning|afternoon)/i.test(value);
+        return hasRatioPattern && !hasTimeIndicators;
         
       case 'sizing':
       case 'position_size':
