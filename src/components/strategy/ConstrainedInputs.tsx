@@ -118,12 +118,8 @@ export function InstrumentInput({ label, currentValue, onSave, onCancel }: BaseI
 
 const PATTERNS = [
   { value: 'Opening Range Breakout', shortLabel: 'ORB' },
-  { value: 'Pullback', shortLabel: 'Pullback' },
+  { value: 'EMA Pullback', shortLabel: 'Pullback' },
   { value: 'Breakout', shortLabel: 'Breakout' },
-  { value: 'VWAP Cross', shortLabel: 'VWAP' },
-  { value: 'Momentum', shortLabel: 'Momentum' },
-  { value: 'Reversal', shortLabel: 'Reversal' },
-  { value: 'Range Bound', shortLabel: 'Range' },
 ];
 
 export function PatternInput({ label, currentValue, onSave, onCancel }: BaseInputProps) {
