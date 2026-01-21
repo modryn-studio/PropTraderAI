@@ -530,6 +530,13 @@ export async function POST(request: NextRequest): Promise<NextResponse<StrategyB
     
     const strategyName = generateStrategyName(pattern, instrument, rulesWithDefaults);
     
+    // DEBUG: What are we about to save?
+    console.log('[StrategyBuild] Final rules to save:', rulesWithDefaults.map(r => ({
+      label: r.label,
+      value: r.value,
+      isDefaulted: r.isDefaulted
+    })));
+    
     // Save to database
     const { data: savedStrategy, error: saveError } = await supabase
       .from('strategies')
