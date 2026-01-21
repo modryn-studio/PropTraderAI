@@ -39,16 +39,11 @@ export const FEATURES = {
   // Socratic system deleted (40% abandonment vs 15% for rapid).
   // This comment preserved for historical reference.
   
-  // GENERATE-FIRST RAPID FLOW (Phase 1 vibe-first)
-  // True = Generate strategy immediately, ask only critical questions (stop loss)
-  // False = Use existing Socratic dialogue flow
-  // Route: /api/strategy/generate-rapid
-  generate_first_flow: true,
-  
-  // UNIFIED STRATEGY BUILD ENDPOINT (Issue #47 Week 3)
-  // When true, enables A/B test routing to /api/strategy/build
-  // Rollout percentage configured in AB_TEST_CONFIG.unified_endpoint_rollout
-  unified_endpoint_enabled: true,
+  // UNIFIED STRATEGY BUILD ENDPOINT (Issue #47 Week 4 - COMPLETE)
+  // The /api/strategy/build endpoint is now the ONLY endpoint.
+  // Old endpoints (generate-rapid, parse-stream) have been deleted.
+  // A/B testing and rollout flags removed - consolidation complete.
+  // This comment preserved for historical reference.
   
   // PHASE 1: STRATEGY BUILDER VISUAL FEATURES (Hidden for vibe-first simplicity)
   // These features work but add visual complexity during conversation
@@ -126,14 +121,10 @@ export const EXECUTION_SAFETY_LIMITS = {
   CIRCUIT_BREAKER_TIMEOUT_MS: 60000,  // 1 minute timeout before half-open
 } as const;
 
-// A/B Test Configuration (Issue #47 Week 3)
-// Separate from FEATURES since these are percentages, not booleans
-export const AB_TEST_CONFIG = {
-  // Unified endpoint rollout: 0-100%
-  // 0 = All traffic to generate-rapid (old)
-  // 100 = All traffic to build (new)
-  unified_endpoint_rollout: 100, // Single user - using new endpoint exclusively
-} as const;
+// Issue #47 Week 4 - A/B Test Configuration REMOVED
+// The unified /api/strategy/build endpoint is now the only endpoint.
+// AB_TEST_CONFIG.unified_endpoint_rollout has been removed.
+// All traffic goes to the build endpoint.
 
 export type FeatureKey = keyof typeof FEATURES;
 
@@ -142,11 +133,4 @@ export type FeatureKey = keyof typeof FEATURES;
  */
 export function isFeatureEnabled(feature: FeatureKey): boolean {
   return FEATURES[feature];
-}
-
-/**
- * Get A/B test rollout percentage
- */
-export function getABTestRollout(test: keyof typeof AB_TEST_CONFIG): number {
-  return AB_TEST_CONFIG[test];
 }

@@ -125,6 +125,7 @@ export type BehavioralEventType =
   | 'pattern_detected'
   | 'pattern_confirmation_shown'
   | 'strategy_build_completed'
+  | 'tool_choice_extraction'  // Issue #49: Stateful extraction via Claude tool-choice
   
   // API error events
   | 'claude_api_error'

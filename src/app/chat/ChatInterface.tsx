@@ -39,8 +39,7 @@ import {
 import ToolsManager from '@/components/chat/SmartTools';
 import type { ActiveTool } from '@/components/chat/SmartTools/types';
 import { formatToolResponse, type ToolType } from '@/lib/utils/toolDetection';
-import { FEATURES, AB_TEST_CONFIG } from '@/config/features';
-import { useFeatureFlags } from '@/lib/hooks/useFeatureFlags';
+import { FEATURES } from '@/config/features';
 import StrategyEditableCard from '@/components/strategy/StrategyEditableCard';
 import { StrategySwipeableCards, ReviewAllModal, ParameterEditModal } from '@/components/strategy/mobile';
 import { PatternConfirmation, UnsupportedPattern } from '@/components/strategy/PatternConfirmation';
@@ -49,21 +48,27 @@ import { validatePattern, detectsVWAP, getAlternativePatterns, type FieldInfo } 
 import type { SupportedPattern } from '@/lib/execution/canonical-schema';
 
 /**
- * A/B test endpoint selection (Issue #47 Week 3)
- * Returns the strategy build endpoint based on rollout percentage
- * Note: Once selected per session, maintains consistency
+ * Issue #47 Week 4: Unified endpoint - no more A/B routing
+ * The unified /api/strategy/build endpoint is now the only endpoint
  */
-const selectedEndpoint = (() => {
-  if (!FEATURES.unified_endpoint_enabled) {
-    return '/api/strategy/generate-rapid';
-  }
-  const rollout = AB_TEST_CONFIG.unified_endpoint_rollout;
-  const random = Math.random() * 100;
-  return random < rollout ? '/api/strategy/build' : '/api/strategy/generate-rapid';
-})();
+const STRATEGY_BUILD_ENDPOINT = '/api/strategy/build';
 
 function getStrategyBuildEndpoint(): string {
-  return selectedEndpoint;
+  return STRATEGY_BUILD_ENDPOINT;
+}
+
+/**
+ * Issue #49: Build conversation history for tool-choice extraction
+ * This preserves context from earlier messages (e.g., "ES" from message 1)
+ */
+function buildConversationHistory(messages: ChatMessage[]): ConversationMessage[] {
+  return messages
+    .filter(m => m.role === 'user' || m.role === 'assistant')
+    .map(m => ({
+      role: m.role as 'user' | 'assistant',
+      content: m.content,
+      timestamp: m.timestamp,
+    }));
 }
 
 interface ChatInterfaceProps {
@@ -177,14 +182,17 @@ export default function ChatInterface({
   const [toolsShown, setToolsShown] = useState<ToolType[]>([]);
   
   // Rapid Flow state (Week 2 implementation)
-  const { flags } = useFeatureFlags();
+  // Issue #47 Week 4: Rapid flow is now the ONLY flow - no more A/B testing
+  // const { flags } = useFeatureFlags(); // Removed - no longer needed
   
   // Check URL for legacy mode override (dev testing only: ?legacy=true)
+  // NOTE: Legacy mode is deprecated - endpoint deleted in Issue #47 Week 4
   const searchParams = useSearchParams();
   const forceLegacy = searchParams.get('legacy') === 'true';
   
-  // Use feature flag with fallback to static config, with URL override for dev testing
-  const useRapidFlow = forceLegacy ? false : (flags?.generate_first_flow ?? FEATURES.generate_first_flow);
+  // Issue #47 Week 4: Rapid flow is always enabled now
+  // forceLegacy is kept for debugging but will just fail gracefully
+  const useRapidFlow = !forceLegacy;
   
   // PHASE 1 FIX: Explicit conversation state for rapid flow
   type ConversationMode = 'initial' | 'answering_question';
@@ -374,12 +382,16 @@ export default function ChatInterface({
     };
 
     try {
+      // Issue #49: Include conversation history for tool-choice extraction
+      const conversationHistory = buildConversationHistory(messages);
+      
       const response = await fetch(getStrategyBuildEndpoint(), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message: answerLabel,
           conversationId,
+          conversationHistory,
           criticalAnswer: {
             questionType: currentQuestionContext.questionType,
             value,
@@ -583,12 +595,17 @@ export default function ChatInterface({
     setError(null);
 
     try {
+      // Issue #49: Include conversation history for tool-choice extraction
+      // This enables Claude to preserve context across messages (e.g., "ES" from message 1)
+      const conversationHistory = buildConversationHistory(messages);
+      
       const response = await fetch(getStrategyBuildEndpoint(), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message,
           conversationId,
+          conversationHistory,
         }),
       });
 
@@ -754,8 +771,6 @@ export default function ChatInterface({
       criticalQuestion: !!criticalQuestion,
       conversationState,
       forceLegacy,
-      'flags.generate_first_flow': flags.generate_first_flow,
-      'final useRapidFlow': useRapidFlow,
     });
 
     // PHASE 1 FIX: Check conversation state first
@@ -1072,7 +1087,7 @@ export default function ChatInterface({
       setPendingMessage(null);
       setIsLoading(false);
     }
-  }, [conversationId, messages, userId, userProfile?.timezone, animationConfig, handleAnimationAutoExpand, toolsShown, expertiseData, useRapidFlow, generatedStrategy, handleRapidFlowMessage, criticalQuestion, handleCriticalAnswer, conversationState, forceLegacy, flags.generate_first_flow]);
+  }, [conversationId, messages, userId, userProfile?.timezone, animationConfig, handleAnimationAutoExpand, toolsShown, expertiseData, useRapidFlow, generatedStrategy, handleRapidFlowMessage, criticalQuestion, handleCriticalAnswer, conversationState, forceLegacy]);
 
   // ========================================================================
   // PATTERN CONFIRMATION HANDLERS (Issue #44/#46)
@@ -1109,6 +1124,9 @@ export default function ChatInterface({
     setIsLoading(true);
     
     try {
+      // Issue #49: Include conversation history for tool-choice extraction
+      const conversationHistory = buildConversationHistory(messages);
+      
       // Continue to strategy builder with confirmed pattern
       // Send the original message again but this will now skip pattern detection
       // because we're confirming, and go to strategy generation
@@ -1118,6 +1136,7 @@ export default function ChatInterface({
         body: JSON.stringify({
           message: `Confirmed pattern: ${confirmedPattern}. Original: ${rapidFlowOriginalMessage}`,
           conversationId,
+          conversationHistory,
           // Indicate this is a follow-up to skip pattern detection
           patternConfirmation: {
             confirmed: true,

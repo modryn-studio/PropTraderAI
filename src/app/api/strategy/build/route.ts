@@ -34,6 +34,12 @@ import {
   detectExpertiseLevel,
   type CanonicalPatternType,
 } from '@/lib/strategy/completenessDetection';
+import {
+  extractWithToolChoice,
+  componentsToRules,
+  getNextCriticalQuestion,
+  type ConversationMessage,
+} from '@/lib/strategy/toolChoiceExtraction';
 import type { StrategyRule } from '@/lib/utils/ruleExtractor';
 
 // ============================================================================
@@ -63,6 +69,8 @@ interface StrategyBuildRequest {
     pattern?: string;
     instrument?: string;
   };
+  /** Conversation history for context preservation (Issue #49 fix) */
+  conversationHistory?: ConversationMessage[];
 }
 
 interface AnswerOption {
@@ -426,17 +434,75 @@ export async function POST(request: NextRequest): Promise<NextResponse<StrategyB
     
     // ========================================================================
     // STEP 3: PARSE MESSAGE & DETECT CONTEXT
+    // Issue #49 fix: Use tool-choice extraction for follow-up messages
+    // This preserves context from earlier messages (e.g., "ES" from msg 1)
     // ========================================================================
     
     let parsedRules: StrategyRule[];
     let pattern: string | undefined;
     let instrument: string | undefined;
     
-    if (isFollowUp && partialStrategy) {
+    // Get conversation history for tool-choice extraction
+    const conversationHistory = body.conversationHistory || [];
+    
+    if (isFollowUp && conversationHistory.length > 0) {
+      // ===================================================================
+      // FOLLOW-UP MESSAGE: Use tool-choice extraction (Issue #49 fix)
+      // Claude preserves context from earlier messages natively
+      // ===================================================================
+      
+      // Add current message to history for extraction
+      const fullHistory: ConversationMessage[] = [
+        ...conversationHistory,
+        { role: 'user', content: message },
+      ];
+      
+      // Extract components using Claude tool-choice (stateful!)
+      const extractionResult = await extractWithToolChoice(fullHistory);
+      
+      // Convert extracted components to rules
+      parsedRules = componentsToRules(extractionResult.components);
+      pattern = extractionResult.components.pattern || partialStrategy?.pattern;
+      instrument = extractionResult.components.instrument || partialStrategy?.instrument;
+      
+      // Log tool-choice extraction
+      await logBehavioralEventServer(supabase, user.id, 'tool_choice_extraction', {
+        conversationId: currentConversationId,
+        missingCritical: extractionResult.missingCritical,
+        isComplete: extractionResult.isComplete,
+        extractedComponents: extractionResult.components,
+      });
+      
+      // If still missing critical components, ask follow-up question
+      if (!extractionResult.isComplete) {
+        const nextQuestion = getNextCriticalQuestion(
+          extractionResult.missingCritical,
+          pattern
+        );
+        
+        if (nextQuestion) {
+          return NextResponse.json({
+            type: 'critical_question',
+            question: nextQuestion.question,
+            questionType: nextQuestion.questionType,
+            options: nextQuestion.options,
+            partialStrategy: {
+              rules: parsedRules,
+              pattern,
+              instrument,
+            },
+            conversationId: currentConversationId,
+          });
+        }
+      }
+      
+    } else if (isFollowUp && partialStrategy) {
+      // Fallback for follow-up without conversation history
       parsedRules = partialStrategy.rules || [];
       pattern = partialStrategy.pattern;
       instrument = partialStrategy.instrument;
     } else {
+      // First message: Use existing Claude parsing + regex detection
       parsedRules = await parseUserStrategy(message);
       const instrumentResult = detectInstrument(message);
       const patternResult = detectPatternFromMessage(message);
@@ -513,43 +579,49 @@ export async function POST(request: NextRequest): Promise<NextResponse<StrategyB
     }
     
     // ========================================================================
-    // STEP 8: CHECK GAPS
+    // STEP 8: CHECK GAPS (First message only)
+    // Issue #49 fix: Skip regex gap detection for follow-ups - 
+    // tool-choice extraction in STEP 3 already handled context preservation
     // ========================================================================
     
-    const gapsResult = detectAllGaps(message, rulesWithDefaults, {
-      pattern,
-      instrument,
-      isFollowUp,
-    });
-    
-    if (gapsResult.action.type === 'ask_question') {
-      const questions = gapsResult.action.questions || [];
+    // Only run regex gap detection for first messages
+    // Follow-up messages use tool-choice extraction which is stateful
+    if (!isFollowUp) {
+      const gapsResult = detectAllGaps(message, rulesWithDefaults, {
+        pattern,
+        instrument,
+        isFollowUp,
+      });
       
-      if (questions.length > 0) {
-        const topQuestion = questions[0];
-        const gapComponent = gapsResult.action.gapComponent;
-        const questionType = mapComponentToQuestionType(gapComponent);
+      if (gapsResult.action.type === 'ask_question') {
+        const questions = gapsResult.action.questions || [];
         
-        await logBehavioralEventServer(supabase, user.id, 'critical_question_shown', {
-          conversationId: currentConversationId,
-          questionType,
-          pattern,
-          instrument,
-        });
-        
-        return NextResponse.json({
-          type: 'critical_question',
-          question: topQuestion.question,
-          questionType,
-          options: topQuestion.options.map(o => ({ value: o.value, label: o.label, default: o.default })),
-          partialStrategy: {
-            rules: rulesWithDefaults,
-            pattern: gapsResult.pattern || pattern,
-            instrument: gapsResult.instrument || instrument,
-          },
-          conversationId: currentConversationId,
-          allGaps: gapsResult,
-        });
+        if (questions.length > 0) {
+          const topQuestion = questions[0];
+          const gapComponent = gapsResult.action.gapComponent;
+          const questionType = mapComponentToQuestionType(gapComponent);
+          
+          await logBehavioralEventServer(supabase, user.id, 'critical_question_shown', {
+            conversationId: currentConversationId,
+            questionType,
+            pattern,
+            instrument,
+          });
+          
+          return NextResponse.json({
+            type: 'critical_question',
+            question: topQuestion.question,
+            questionType,
+            options: topQuestion.options.map(o => ({ value: o.value, label: o.label, default: o.default })),
+            partialStrategy: {
+              rules: rulesWithDefaults,
+              pattern: gapsResult.pattern || pattern,
+              instrument: gapsResult.instrument || instrument,
+            },
+            conversationId: currentConversationId,
+            allGaps: gapsResult,
+          });
+        }
       }
     }
     
