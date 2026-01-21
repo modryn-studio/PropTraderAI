@@ -71,14 +71,14 @@ const CATEGORY_CONFIG: Record<string, { label: string; order: number; color: str
 // Key parameters to show in Simple view (ordered by importance)
 const SIMPLE_VIEW_FIELDS = [
   'Instrument',
-  'Direction',
   'Stop Loss',
-  'Take Profit', 
-  'Risk per Trade',
+  'Profit Target',
+  'Position Sizing',
+  'Direction',
   'Trading Session',
-  'Opening Range Period',
-  'EMA Period',
-  'Lookback Period',
+  'Range Period',  // ORB-specific
+  'EMA Period',    // EMA Pullback-specific
+  'Lookback Period',  // Breakout-specific
 ];
 
 interface EditingState {
