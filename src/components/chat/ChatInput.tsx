@@ -14,23 +14,18 @@ interface ChatInputProps {
   onKeyboardHeightChange?: (height: number) => void;
 }
 
-// Example prompts to cycle through
+// Example prompts to cycle through - Match supported patterns only
 const EXAMPLE_PROMPTS = [
-  "Trade pullbacks to 20 EMA when RSI is below 40 during NY session",
-  "Buy when price breaks above VWAP with volume 2x average, exit at 1.5% profit or 0.5% stop",
-  "Sell ES when it's overbought on 5-min chart during first hour of trading",
-  "Fade the extremes on NQ between 9:30-11am, take profit at 15 ticks",
-  "Scalp MES on 1-min chart using order flow imbalances, risk 5 ticks per trade",
+  "ES opening range breakout with 15 tick stop",
+  "NQ pullback to 20 EMA during NY session",
+  "Buy breakouts above 50-period high",
 ];
 
-// Quick prompt templates (short buttons that expand to full prompts)
+// Quick prompt templates - Only supported patterns (matches canonical schema compilers)
 const QUICK_PROMPTS = [
-  { label: "ICT", prompt: "I trade using ICT (Inner Circle Trader) concepts like order blocks, fair value gaps, and liquidity grabs on ES futures" },
-  { label: "ORB", prompt: "I trade the Opening Range Breakout - buy/sell breakouts from the first 15 minutes of trading on NQ" },
-  { label: "VWAP", prompt: "I trade mean reversion to VWAP - fade extremes when price gets too far from VWAP on 5-min chart" },
-  { label: "Scalping", prompt: "I scalp ES futures using 1-min charts, in and out quickly for 4-8 ticks, during high volume hours" },
-  { label: "Momentum", prompt: "I trade momentum breakouts - enter on strong directional moves with increasing volume, hold for larger targets" },
-  { label: "Order Flow", prompt: "I trade using order flow and tape reading - watch for bid/ask imbalances and large orders on the DOM" },
+  { label: "ORB", prompt: "I trade the Opening Range Breakout - buy/sell breakouts from the first 15 minutes of trading on NQ with 20 tick stops" },
+  { label: "Pullback", prompt: "I trade pullbacks to the 20 EMA on ES futures during the NY session, entering on confirmation candles" },
+  { label: "Breakout", prompt: "I trade breakouts above the 50-period high on NQ, entering with volume confirmation and 30 tick stops" },
 ];
 
 // Bug #6: Removed shuffleArray function - quick prompts now in curated order

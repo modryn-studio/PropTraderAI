@@ -97,7 +97,7 @@ export default function ChatMessageList({
               Turn your edge into executed trades
             </h2>
             <p className="text-[rgba(255,255,255,0.85)] text-sm max-w-md mx-auto">
-              Describe your setup in plain English. I&apos;ll ask questions to make it precise.
+              One message to build. Instant execution.
             </p>
           </motion.div>
         )}
