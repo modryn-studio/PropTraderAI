@@ -104,7 +104,7 @@ interface CriticalQuestionResponse {
 interface StrategyCompleteResponse {
   type: 'strategy_complete';
   strategy: {
-    id: string;
+    id?: string; // Optional - only present if saved to database
     name: string;
     natural_language: string;
     parsed_rules: StrategyRule[];
@@ -573,7 +573,6 @@ export async function POST(request: NextRequest): Promise<NextResponse<StrategyB
     
     let events: StrategyEvent[] = [];
     let canonicalRules: CanonicalParsedRules | null = null;
-    let formatVersion = 'legacy';
     
     if (normResult.success) {
       canonicalRules = normResult.canonical;
@@ -582,50 +581,17 @@ export async function POST(request: NextRequest): Promise<NextResponse<StrategyB
         new Date().toISOString(),
         message
       );
-      formatVersion = 'events_v1';
       console.log(`[StrategyBuild] Event-sourced: ${events.length} events, pattern: ${canonicalRules.pattern}`);
     } else {
       console.log(`[StrategyBuild] Fallback to legacy format. Errors: ${normResult.errors.join(', ')}`);
     }
     
-    // Save to database
-    const { data: savedStrategy, error: saveError } = await supabase
-      .from('strategies')
-      .insert({
-        user_id: user.id,
-        name: strategyName,
-        natural_language: message,
-        parsed_rules: canonicalRules || {
-          rules: rulesWithDefaults,
-          pattern,
-          instrument,
-        },
-        // Event-sourced fields (new)
-        ...(events.length > 0 && { events }),
-        ...(canonicalRules && { canonical_rules: canonicalRules }),
-        format_version: formatVersion,
-        event_version: 1,
-        status: 'active',
-        autonomy_level: 'copilot',
-      })
-      .select('id, name')
-      .single();
-    
-    if (saveError) {
-      console.error('[StrategyBuild] Failed to save strategy:', saveError);
-      await supabase.from('strategy_conversations').update({ status: 'failed' }).eq('id', currentConversationId);
-      return NextResponse.json({ type: 'error', error: 'Failed to save strategy' }, { status: 500 });
-    }
-    
-    // Update conversation
-    await supabase
-      .from('strategy_conversations')
-      .update({ status: 'completed', final_strategy_id: savedStrategy.id })
-      .eq('id', currentConversationId);
+    // NOTE: Do NOT save to database here - that's the job of /api/strategy/save
+    // This endpoint just BUILDS the strategy and returns it for user review
+    // Issue #52: Keep generation (build) and persistence (save) separate
     
     await logBehavioralEventServer(supabase, user.id, 'strategy_build_completed', {
       conversationId: currentConversationId,
-      strategyId: savedStrategy.id,
       messageCount: isFollowUp ? 2 : 1,
       defaultsApplied: defaultsResult.defaultsApplied,
       pattern,
@@ -636,10 +602,9 @@ export async function POST(request: NextRequest): Promise<NextResponse<StrategyB
     return NextResponse.json({
       type: 'strategy_complete',
       strategy: {
-        id: savedStrategy.id,
-        name: savedStrategy.name,
+        name: strategyName,
         natural_language: message,
-        parsed_rules: rulesWithDefaults,
+        parsed_rules: componentsToRules(extractionResult.components),
         pattern,
         instrument,
       },

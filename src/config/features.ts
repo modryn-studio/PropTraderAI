@@ -33,17 +33,35 @@ export const FEATURES = {
   behavioral_logging: true, // Always on - data collection from Day 1
   account_protection_card: true, // Shows $ protected, not discipline metrics
   
-  // RAPID STRATEGY BUILDER - Legacy flag REMOVED in Issue #47 Week 2
-  // The rapid flow is now the ONLY conversation system.
-  // Previous rapid_strategy_builder: true controlled Socratic vs Rapid prompt.
-  // Socratic system deleted (40% abandonment vs 15% for rapid).
-  // This comment preserved for historical reference.
-  
-  // UNIFIED STRATEGY BUILD ENDPOINT (Issue #47 Week 4 - COMPLETE)
-  // The /api/strategy/build endpoint is now the ONLY endpoint.
-  // Old endpoints (generate-rapid, parse-stream) have been deleted.
-  // A/B testing and rollout flags removed - consolidation complete.
-  // This comment preserved for historical reference.
+  // STRATEGY CREATION ARCHITECTURE (Issue #52 - Separation of Concerns)
+  // ====================================================================
+  // Two endpoints with distinct responsibilities:
+  // 
+  // 1. /api/strategy/build - GENERATION LAYER
+  //    • Claude API parsing + pattern detection
+  //    • Canonical schema generation + validation
+  //    • Gap detection + smart defaults (Issue #6)
+  //    • Returns strategy object (NOT saved to database)
+  //    • Used by: Chat interface (rapid flow)
+  // 
+  // 2. /api/strategy/save - PERSISTENCE LAYER
+  //    • Accepts strategy object from build or UI edits
+  //    • Normalizes with claudeToCanonical() if needed
+  //    • Generates event stream (Issue #50 event-sourcing)
+  //    • Saves to database with RLS + event history
+  //    • Used by: Chat "Save" button, future template gallery
+  // 
+  // Flow: User message → POST /build → Strategy object returned
+  //       → User reviews in UI → Clicks "Save" → POST /save → Database
+  // 
+  // Why separate? 
+  // - Don't pay Claude API costs for abandoned strategies
+  // - User can edit before saving
+  // - Future: Template gallery bypasses /build entirely
+  // - Clean separation: Generation ≠ Persistence
+  // 
+  // Historical: Issue #47 deleted old endpoints (generate-rapid, parse-stream).
+  // Issue #50 added event-sourcing. Issue #52 clarified dual endpoint purpose.
   
   // PHASE 1: STRATEGY BUILDER VISUAL FEATURES (Hidden for vibe-first simplicity)
   // These features work but add visual complexity during conversation

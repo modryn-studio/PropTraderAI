@@ -24,7 +24,6 @@ import {
   generateEventsFromCanonical,
   // Types
   type StrategyEvent,
-  type SupportedPattern,
 } from '../eventStore';
 
 // ============================================================================
