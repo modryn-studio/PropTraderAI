@@ -21,16 +21,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { logBehavioralEventServer } from '@/lib/behavioral/logger';
-import { createAnthropicClient } from '@/lib/claude/client';
 import { 
   validateInputQuality,
-  detectAllGaps,
-  type GapDetectionResult,
 } from '@/lib/strategy/gapDetection';
 import { applyPhase1Defaults } from '@/lib/strategy/applyPhase1Defaults';
 import { 
-  detectInstrument, 
-  detectPattern as detectPatternFromMessage,
   detectExpertiseLevel,
   type CanonicalPatternType,
 } from '@/lib/strategy/completenessDetection';
@@ -100,7 +95,7 @@ interface CriticalQuestionResponse {
     instrument?: string;
   };
   conversationId: string;
-  allGaps?: GapDetectionResult;
+  // allGaps removed - Issue #49 v2: Using tool-choice extraction instead of regex gap detection
 }
 
 interface StrategyCompleteResponse {
@@ -146,70 +141,9 @@ const PATTERN_FIELD_COUNTS: Record<CanonicalPatternType, number> = {
   vwap: 6,
 };
 
-/**
- * Parse user message into strategy rules using Claude
- */
-async function parseUserStrategy(message: string): Promise<StrategyRule[]> {
-  const anthropic = createAnthropicClient();
-  
-  const systemPrompt = `You are a trading strategy parser. Extract trading rules from the user's description.
-
-Return a JSON array of rules. Each rule has:
-- category: "setup" | "entry" | "exit" | "risk" | "timeframe" | "filters"
-- label: Short name (e.g., "Instrument", "Entry Trigger", "Stop Loss")
-- value: The value as stated by user
-
-ONLY extract what the user explicitly mentions. Do NOT infer or add missing components.
-
-Examples:
-Input: "ES opening range breakout"
-Output: [
-  {"category":"setup","label":"Instrument","value":"ES"},
-  {"category":"entry","label":"Pattern","value":"Opening Range Breakout"},
-  {"category":"entry","label":"Entry Trigger","value":"Break above opening range high"}
-]
-
-Input: "NQ pullback to 20 EMA with 10 tick stop"
-Output: [
-  {"category":"setup","label":"Instrument","value":"NQ"},
-  {"category":"entry","label":"Pattern","value":"EMA Pullback"},
-  {"category":"entry","label":"Entry Trigger","value":"Pullback to 20 EMA"},
-  {"category":"exit","label":"Stop Loss","value":"10 ticks"}
-]
-
-Respond with ONLY the JSON array, no other text.`;
-
-  try {
-    const response = await anthropic.messages.create({
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 1024,
-      system: systemPrompt,
-      messages: [{ role: 'user', content: message }],
-    });
-    
-    const textContent = response.content.find(c => c.type === 'text');
-    if (!textContent || textContent.type !== 'text') {
-      return [];
-    }
-    
-    const parsed = JSON.parse(textContent.text);
-    
-    if (Array.isArray(parsed)) {
-      return parsed.map(rule => ({
-        category: rule.category || 'setup',
-        label: rule.label || 'Unknown',
-        value: rule.value || '',
-        isDefaulted: false,
-        source: 'user' as const,
-      }));
-    }
-    
-    return [];
-  } catch (error) {
-    console.error('[StrategyBuild] Parse error:', error);
-    return [];
-  }
-}
+// parseUserStrategy function REMOVED - Issue #49 v2
+// Now using extractWithToolChoice() from toolChoiceExtraction.ts for all messages
+// Tool-choice extraction is more accurate for compound statements and preserves context
 
 /**
  * Generate strategy name from pattern and instrument
@@ -333,21 +267,8 @@ function answerToRule(questionType: QuestionType, value: string): StrategyRule |
   }
 }
 
-/**
- * Map gap component to question type
- */
-function mapComponentToQuestionType(component?: string): QuestionType {
-  const mapping: Record<string, QuestionType> = {
-    'stop_loss': 'stopLoss',
-    'instrument': 'instrument',
-    'entry_criteria': 'entryTrigger',
-    'direction': 'direction',
-    'profit_target': 'profitTarget',
-    'position_sizing': 'positionSizing',
-    'input_quality': 'entryTrigger',
-  };
-  return mapping[component || ''] || 'stopLoss';
-}
+// mapComponentToQuestionType function REMOVED - Issue #49 v2
+// Was used for regex gap detection, now replaced by getNextCriticalQuestion()
 
 // ============================================================================
 // MAIN HANDLER
@@ -433,85 +354,44 @@ export async function POST(request: NextRequest): Promise<NextResponse<StrategyB
     }
     
     // ========================================================================
-    // STEP 3: PARSE MESSAGE & DETECT CONTEXT
-    // Issue #49 fix: Use tool-choice extraction for follow-up messages
-    // This preserves context from earlier messages (e.g., "ES" from msg 1)
+    // STEP 3: PARSE MESSAGE WITH TOOL-CHOICE EXTRACTION
+    // Issue #49 v2: Use tool-choice for ALL messages, not just follow-ups
+    // This handles compound first messages like "ES ORB with 20 tick stop"
     // ========================================================================
     
-    let parsedRules: StrategyRule[];
     let pattern: string | undefined;
     let instrument: string | undefined;
     
     // Get conversation history for tool-choice extraction
     const conversationHistory = body.conversationHistory || [];
     
-    if (isFollowUp && conversationHistory.length > 0) {
-      // ===================================================================
-      // FOLLOW-UP MESSAGE: Use tool-choice extraction (Issue #49 fix)
-      // Claude preserves context from earlier messages natively
-      // ===================================================================
-      
-      // Add current message to history for extraction
-      const fullHistory: ConversationMessage[] = [
-        ...conversationHistory,
-        { role: 'user', content: message },
-      ];
-      
-      // Extract components using Claude tool-choice (stateful!)
-      const extractionResult = await extractWithToolChoice(fullHistory);
-      
-      // Convert extracted components to rules
-      parsedRules = componentsToRules(extractionResult.components);
-      pattern = extractionResult.components.pattern || partialStrategy?.pattern;
-      instrument = extractionResult.components.instrument || partialStrategy?.instrument;
-      
-      // Log tool-choice extraction
-      await logBehavioralEventServer(supabase, user.id, 'tool_choice_extraction', {
-        conversationId: currentConversationId,
-        missingCritical: extractionResult.missingCritical,
-        isComplete: extractionResult.isComplete,
-        extractedComponents: extractionResult.components,
-      });
-      
-      // If still missing critical components, ask follow-up question
-      if (!extractionResult.isComplete) {
-        const nextQuestion = getNextCriticalQuestion(
-          extractionResult.missingCritical,
-          pattern
-        );
-        
-        if (nextQuestion) {
-          return NextResponse.json({
-            type: 'critical_question',
-            question: nextQuestion.question,
-            questionType: nextQuestion.questionType,
-            options: nextQuestion.options,
-            partialStrategy: {
-              rules: parsedRules,
-              pattern,
-              instrument,
-            },
-            conversationId: currentConversationId,
-          });
-        }
-      }
-      
-    } else if (isFollowUp && partialStrategy) {
-      // Fallback for follow-up without conversation history
-      parsedRules = partialStrategy.rules || [];
-      pattern = partialStrategy.pattern;
-      instrument = partialStrategy.instrument;
-    } else {
-      // First message: Use existing Claude parsing + regex detection
-      parsedRules = await parseUserStrategy(message);
-      const instrumentResult = detectInstrument(message);
-      const patternResult = detectPatternFromMessage(message);
-      pattern = patternResult.value;
-      instrument = instrumentResult.value;
-    }
+    // Build full conversation history including current message
+    const fullHistory: ConversationMessage[] = [
+      ...conversationHistory,
+      { role: 'user', content: message },
+    ];
+    
+    // Use tool-choice extraction for ALL messages (unified approach)
+    // This is more accurate than regex for compound statements and preserves context
+    const extractionResult = await extractWithToolChoice(fullHistory);
+    
+    // Convert extracted components to rules
+    const parsedRules = componentsToRules(extractionResult.components);
+    pattern = extractionResult.components.pattern || partialStrategy?.pattern;
+    instrument = extractionResult.components.instrument || partialStrategy?.instrument;
+    
+    // Log tool-choice extraction
+    await logBehavioralEventServer(supabase, user.id, 'tool_choice_extraction', {
+      conversationId: currentConversationId,
+      isFirstMessage: !isFollowUp,
+      missingCritical: extractionResult.missingCritical,
+      isComplete: extractionResult.isComplete,
+      extractedComponents: extractionResult.components,
+    });
     
     // ========================================================================
     // STEP 4: PATTERN DETECTION (First message only, before critical questions)
+    // Show PatternConfirmation UI if we detected a known pattern
     // ========================================================================
     
     if (!isFollowUp) {
@@ -579,49 +459,47 @@ export async function POST(request: NextRequest): Promise<NextResponse<StrategyB
     }
     
     // ========================================================================
-    // STEP 8: CHECK GAPS (First message only)
-    // Issue #49 fix: Skip regex gap detection for follow-ups - 
-    // tool-choice extraction in STEP 3 already handled context preservation
+    // STEP 8: CHECK FOR MISSING CRITICAL COMPONENTS (Tool-Choice Based)
+    // Issue #49 v2: Use tool-choice extraction results instead of regex
+    // This runs AFTER pattern confirmation, so we can apply defaults first
     // ========================================================================
     
-    // Only run regex gap detection for first messages
-    // Follow-up messages use tool-choice extraction which is stateful
-    if (!isFollowUp) {
-      const gapsResult = detectAllGaps(message, rulesWithDefaults, {
-        pattern,
-        instrument,
-        isFollowUp,
-      });
+    // Only ask questions if:
+    // 1. Extraction is incomplete
+    // 2. This is NOT a first message with pattern detection (let PatternConfirmation handle it)
+    // 3. User has confirmed pattern OR no pattern was detected (isFollowUp handles both cases)
+    const hasPatternConfirmation = !!patternConfirmation;
+    const shouldAskQuestion = 
+      !extractionResult.isComplete && 
+      (isFollowUp || hasPatternConfirmation);
+    
+    if (shouldAskQuestion) {
+      const nextQuestion = getNextCriticalQuestion(
+        extractionResult.missingCritical,
+        pattern
+      );
       
-      if (gapsResult.action.type === 'ask_question') {
-        const questions = gapsResult.action.questions || [];
+      if (nextQuestion) {
+        await logBehavioralEventServer(supabase, user.id, 'critical_question_shown', {
+          conversationId: currentConversationId,
+          questionType: nextQuestion.questionType,
+          pattern,
+          instrument,
+          source: 'tool_choice',
+        });
         
-        if (questions.length > 0) {
-          const topQuestion = questions[0];
-          const gapComponent = gapsResult.action.gapComponent;
-          const questionType = mapComponentToQuestionType(gapComponent);
-          
-          await logBehavioralEventServer(supabase, user.id, 'critical_question_shown', {
-            conversationId: currentConversationId,
-            questionType,
+        return NextResponse.json({
+          type: 'critical_question',
+          question: nextQuestion.question,
+          questionType: nextQuestion.questionType,
+          options: nextQuestion.options,
+          partialStrategy: {
+            rules: rulesWithDefaults,
             pattern,
             instrument,
-          });
-          
-          return NextResponse.json({
-            type: 'critical_question',
-            question: topQuestion.question,
-            questionType,
-            options: topQuestion.options.map(o => ({ value: o.value, label: o.label, default: o.default })),
-            partialStrategy: {
-              rules: rulesWithDefaults,
-              pattern: gapsResult.pattern || pattern,
-              instrument: gapsResult.instrument || instrument,
-            },
-            conversationId: currentConversationId,
-            allGaps: gapsResult,
-          });
-        }
+          },
+          conversationId: currentConversationId,
+        });
       }
     }
     
