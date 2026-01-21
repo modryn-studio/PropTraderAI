@@ -78,9 +78,14 @@ export const FEATURES = {
   session_heatmaps: false,
   friction_patterns: false, // 10-second countdown for revenge trades
   
+  // STRATEGY EDITING (Issue #50 - Locked Down for Phase 1)
+  // Event-sourcing architecture implemented, editing UI disabled
+  // Strategies are read-only after creation until Phase 2
+  strategy_editing_enabled: false,   // Lock down editing in Phase 1
+  
   // Phase 3 (Months 5+)
   api_access: false,
-  strategy_editing: false,
+  strategy_editing: false,           // Legacy flag (kept for compatibility)
   data_export: false,
   multi_account: false,
   webhook_support: false,

@@ -2,10 +2,11 @@
 
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence, useMotionValue, useTransform, PanInfo } from 'framer-motion';
-import { Check, Pencil, Save, Loader2, Info, ChevronRight, Settings2 } from 'lucide-react';
+import { Check, Pencil, Save, Loader2, Info, ChevronRight, Settings2, Lock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getConstrainedInput } from '@/components/strategy/ConstrainedInputs';
 import { PatternSpecificFields } from '@/components/strategy/PatternSpecificFields';
+import { FEATURES } from '@/config/features';
 import type { StrategyRule } from '@/lib/utils/ruleExtractor';
 
 /**
@@ -14,15 +15,19 @@ import type { StrategyRule } from '@/lib/utils/ruleExtractor';
  * Part of the Rapid Strategy Flow (Phase 1).
  * Shows generated strategy with Simple/Advanced tabs.
  * 
+ * NOTE: Issue #50 - Editing is LOCKED DOWN for Phase 1
+ * Strategies are read-only after creation. Event-sourcing architecture
+ * is implemented, but editing UI is disabled until Phase 2.
+ * 
  * Simple Tab (Default):
  * - Read-only summary with key parameters
  * - One tap to switch to Advanced
  * - "Good enough" for most users
  * 
  * Advanced Tab:
- * - Full parameter editing grouped by category
- * - Click-to-edit any parameter
- * - Power user mode
+ * - Full parameter view grouped by category
+ * - Click-to-edit disabled in Phase 1 (strategy_editing_enabled: false)
+ * - Power user mode (enabled in Phase 2)
  * 
  * Design principles:
  * - Simple-first UX (hide complexity)
@@ -31,6 +36,7 @@ import type { StrategyRule } from '@/lib/utils/ruleExtractor';
  * - Grouped by category in Advanced
  * 
  * @see Issue #44 - Enhanced Strategy Builder UX
+ * @see Issue #50 - Strategy Editing System Architecture (Event-Sourcing)
  */
 
 type ViewMode = 'simple' | 'advanced';
@@ -181,14 +187,27 @@ export default function StrategyEditableCard({
   // Format pattern name for display
   const patternDisplay = pattern?.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
   
+  // Check if editing is enabled (Issue #50 - locked down for Phase 1)
+  const isEditingEnabled = FEATURES.strategy_editing_enabled;
+  
   // Handle edit start
   const handleEditStart = (index: number, currentValue: string) => {
+    // Issue #50: Editing is locked down for Phase 1
+    if (!isEditingEnabled) {
+      console.log('[StrategyEditableCard] Editing disabled (Phase 1 lock down)');
+      return;
+    }
     setShowTooltip(null); // Bug #10: Close tooltip when editing
     setEditing({ ruleIndex: index, value: currentValue });
   };
   
   // Handle adding a new rule (for pattern-specific defaults)
   const handleAddRule = (newRule: StrategyRule) => {
+    // Issue #50: Editing is locked down for Phase 1
+    if (!isEditingEnabled) {
+      console.log('[StrategyEditableCard] Adding rules disabled (Phase 1 lock down)');
+      return;
+    }
     // This will trigger a re-render with the new rule in the array
     // The parent component (dashboard) will see this and re-render
     // We're modifying rules in place here for immediate feedback
@@ -485,7 +504,11 @@ export default function StrategyEditableCard({
                                     </>
                                   )}
                                   {!isSaved && (
-                                    <Pencil className="w-4 h-4 text-white/30 group-hover:text-[#00FFD1] transition-colors" />
+                                    isEditingEnabled ? (
+                                      <Pencil className="w-4 h-4 text-white/30 group-hover:text-[#00FFD1] transition-colors" />
+                                    ) : (
+                                      <Lock className="w-4 h-4 text-white/20" />
+                                    )
                                   )}
                                 </div>
                               </div>

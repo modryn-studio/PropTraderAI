@@ -5,6 +5,8 @@ import { ParsedRules } from '@/lib/claude/client';
 import { validateStrategyQuality } from '@/lib/strategy/strategyQualityMetrics';
 import { clearConversationState, getChangesSummary } from '@/lib/strategy/componentHistoryTracker';
 import { claudeToCanonical, type ClaudeStrategyOutput } from '@/lib/strategy/claudeToCanonical';
+import { generateEventsFromCanonical, type StrategyEvent } from '@/lib/strategy/eventStore';
+import type { CanonicalParsedRules } from '@/lib/execution/canonical-schema';
 import type { StrategyRule } from '@/lib/utils/ruleExtractor';
 
 interface SaveRequest {
@@ -123,6 +125,25 @@ export async function POST(request: Request) {
       normalizationErrors = [(normError as Error).message];
     }
 
+    // ========================================================================
+    // GENERATE EVENTS (Event-Sourced Strategy)
+    // Create initial event stream for event-sourced format
+    // ========================================================================
+    
+    let events: StrategyEvent[] = [];
+    let formatVersion = 'legacy';
+    
+    if (normalizationSucceeded && canonicalRules) {
+      // Generate events from the canonical rules
+      events = generateEventsFromCanonical(
+        canonicalRules as CanonicalParsedRules,
+        new Date().toISOString(),
+        naturalLanguage || summary || ''
+      );
+      formatVersion = 'events_v1';
+      console.log(`[Events] Generated ${events.length} events for strategy`);
+    }
+
     // Create the strategy
     // Use canonical format if available, otherwise fall back to Claude's format
     const { data: strategy, error: strategyError } = await supabase
@@ -133,10 +154,13 @@ export async function POST(request: Request) {
         natural_language: naturalLanguage || summary || '',
         // Store canonical format if normalization succeeded, otherwise legacy format
         parsed_rules: canonicalRules || parsedRules,
+        // Event-sourced fields (new)
+        ...(events.length > 0 && { events }),
+        ...(normalizationSucceeded && { canonical_rules: canonicalRules }),
+        format_version: formatVersion,
+        event_version: 1,
         status: 'draft', // Start as draft, user activates when ready
         autonomy_level: 'copilot', // Default to copilot mode
-        // Store metadata about normalization (optional columns - may not exist yet)
-        ...(normalizationSucceeded && { format_version: 'canonical_v1' }),
       })
       .select()
       .single();

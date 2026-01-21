@@ -35,6 +35,9 @@ import {
   getNextCriticalQuestion,
   type ConversationMessage,
 } from '@/lib/strategy/toolChoiceExtraction';
+import { claudeToCanonical, type ClaudeStrategyOutput } from '@/lib/strategy/claudeToCanonical';
+import { generateEventsFromCanonical, type StrategyEvent } from '@/lib/strategy/eventStore';
+import type { CanonicalParsedRules } from '@/lib/execution/canonical-schema';
 import type { StrategyRule } from '@/lib/utils/ruleExtractor';
 
 // ============================================================================
@@ -533,6 +536,58 @@ export async function POST(request: NextRequest): Promise<NextResponse<StrategyB
     
     const strategyName = generateStrategyName(pattern, instrument, rulesWithDefaults);
     
+    // ========================================================================
+    // NORMALIZE TO CANONICAL + GENERATE EVENTS
+    // ========================================================================
+    
+    // Build Claude output format for normalizer
+    // Note: We create partial objects - claudeToCanonical handles incomplete data gracefully
+    const claudeOutput = {
+      strategy_name: strategyName,
+      summary: message,
+      parsed_rules: {
+        entry_conditions: rulesWithDefaults
+          .filter(r => r.category === 'entry')
+          .map(r => ({ indicator: r.label, relation: 'triggers', description: r.value })),
+        exit_conditions: rulesWithDefaults
+          .filter(r => r.category === 'exit')
+          .map(r => ({ 
+            type: r.label.includes('Stop') ? 'stop_loss' as const : 'take_profit' as const, 
+            value: 20, // Default, will be parsed from description
+            unit: 'ticks' as const,
+            description: r.value 
+          })),
+        filters: rulesWithDefaults
+          .filter(r => r.category === 'setup' || r.category === 'filters')
+          .map(r => ({ type: r.label.toLowerCase(), description: r.value })),
+        position_sizing: {
+          method: 'risk_percent' as const,
+          value: 1,
+          max_contracts: 10,
+        },
+      },
+      instrument: instrument || 'ES', // Default to ES if not specified
+    } satisfies ClaudeStrategyOutput;
+    
+    const normResult = claudeToCanonical(claudeOutput);
+    
+    let events: StrategyEvent[] = [];
+    let canonicalRules: CanonicalParsedRules | null = null;
+    let formatVersion = 'legacy';
+    
+    if (normResult.success) {
+      canonicalRules = normResult.canonical;
+      events = generateEventsFromCanonical(
+        canonicalRules,
+        new Date().toISOString(),
+        message
+      );
+      formatVersion = 'events_v1';
+      console.log(`[StrategyBuild] Event-sourced: ${events.length} events, pattern: ${canonicalRules.pattern}`);
+    } else {
+      console.log(`[StrategyBuild] Fallback to legacy format. Errors: ${normResult.errors.join(', ')}`);
+    }
+    
     // Save to database
     const { data: savedStrategy, error: saveError } = await supabase
       .from('strategies')
@@ -540,11 +595,16 @@ export async function POST(request: NextRequest): Promise<NextResponse<StrategyB
         user_id: user.id,
         name: strategyName,
         natural_language: message,
-        parsed_rules: {
+        parsed_rules: canonicalRules || {
           rules: rulesWithDefaults,
           pattern,
           instrument,
         },
+        // Event-sourced fields (new)
+        ...(events.length > 0 && { events }),
+        ...(canonicalRules && { canonical_rules: canonicalRules }),
+        format_version: formatVersion,
+        event_version: 1,
         status: 'active',
         autonomy_level: 'copilot',
       })
