@@ -71,7 +71,10 @@ export function detectPattern(message: string): string | undefined {
 function hasComponent(rules: StrategyRule[], componentType: string): boolean {
   const normalized = componentType.toLowerCase();
   
-  return rules.some(rule => {
+  // DEBUG: Log what we're checking
+  console.log(`[hasComponent] Checking for: ${componentType}`);
+  
+  const result = rules.some(rule => {
     const label = rule.label.toLowerCase();
     const value = rule.value.toLowerCase();
     const category = rule.category.toLowerCase();
@@ -80,20 +83,29 @@ function hasComponent(rules: StrategyRule[], componentType: string): boolean {
       case 'target':
       case 'profit_target':
         // Check label first (most reliable)
-        if (
+        const labelMatch = (
           label.includes('target') ||
           label.includes('profit') ||
           label.includes('r:r') ||
           label.includes('reward') ||
           label.includes('take profit')
-        ) {
+        );
+        if (labelMatch) {
+          console.log(`[hasComponent] TARGET: Label match on "${rule.label}"`);
           return true;
         }
         // Check value for R:R patterns, but exclude times like "9:30 AM"
         // Only match if it looks like a ratio AND doesn't contain time indicators
         const hasRatioPattern = /\b\d+:\d+\b/.test(value);
         const hasTimeIndicators = /(am|pm|session|morning|afternoon)/i.test(value);
-        return hasRatioPattern && !hasTimeIndicators;
+        const valueMatch = hasRatioPattern && !hasTimeIndicators;
+        if (valueMatch) {
+          console.log(`[hasComponent] TARGET: Value match on "${rule.value}"`);
+        }
+        if (hasRatioPattern && hasTimeIndicators) {
+          console.log(`[hasComponent] TARGET: Excluded time value "${rule.value}"`);
+        }
+        return valueMatch;
         
       case 'sizing':
       case 'position_size':
@@ -140,6 +152,9 @@ function hasComponent(rules: StrategyRule[], componentType: string): boolean {
         return label.includes(normalized);
     }
   });
+  
+  console.log(`[hasComponent] ${componentType} => ${result}`);
+  return result;
 }
 
 // ============================================================================
@@ -251,10 +266,16 @@ export function applyPhase1Defaults(
   // Merge universal defaults with pattern-specific (pattern takes precedence)
   const allDefaults = { ...UNIVERSAL_DEFAULTS, ...patternSpecificDefaults };
   
+  // DEBUG: Log what we're starting with
+  console.log('[applyPhase1Defaults] Starting rules:', rules.map(r => r.label));
+  console.log('[applyPhase1Defaults] Defaults to check:', Object.keys(allDefaults));
+  
   // Apply each default if component is missing
   for (const [componentKey, defaultRule] of Object.entries(allDefaults)) {
     // Skip if already has this component
-    if (hasComponent(rules, componentKey)) {
+    const hasIt = hasComponent(rules, componentKey);
+    console.log(`[applyPhase1Defaults] ${componentKey}: hasComponent=${hasIt}`);
+    if (hasIt) {
       continue;
     }
     
