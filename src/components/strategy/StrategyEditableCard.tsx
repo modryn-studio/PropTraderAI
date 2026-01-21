@@ -138,16 +138,11 @@ export default function StrategyEditableCard({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [editing, showTooltip]);
   
-  // Group rules by category (filter out instrument since it's in header)
+  // Group rules by category
   const groupedRules = useMemo(() => {
     const groups: Record<string, { rules: StrategyRule[]; indices: number[] }> = {};
     
     rules.forEach((rule, index) => {
-      // Skip instrument - it's already shown in header badge
-      if (rule.label.toLowerCase().includes('instrument')) {
-        return;
-      }
-      
       const category = rule.category || 'filters';
       if (!groups[category]) {
         groups[category] = { rules: [], indices: [] };
