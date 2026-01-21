@@ -50,6 +50,8 @@ interface PatternSpecificFieldsProps {
   editingIndex?: number | null;
   /** Callback when user starts editing a field */
   onEditStart?: (index: number, currentValue: string) => void;
+  /** Callback when user wants to add a new rule (for default fields) */
+  onAddRule?: (rule: StrategyRule) => void;
   /** Callback when user clicks info tooltip */
   onShowInfo?: (index: number) => void;
   /** Whether to show as read-only */
@@ -175,6 +177,7 @@ export function PatternSpecificFields({
   rules,
   editingIndex,
   onEditStart,
+  onAddRule,
   onShowInfo,
   readOnly = false,
   className,
@@ -220,8 +223,22 @@ export function PatternSpecificFields({
               !readOnly && 'cursor-pointer'
             )}
             onClick={() => {
-              if (!readOnly && ruleIndex >= 0 && onEditStart) {
+              if (readOnly) return;
+              
+              // If rule exists, edit it
+              if (ruleIndex >= 0 && onEditStart) {
                 onEditStart(ruleIndex, value);
+              }
+              // If rule doesn't exist (showing default), add it first
+              else if (ruleIndex === -1 && onAddRule) {
+                const newRule: StrategyRule = {
+                  category: 'setup',
+                  label: fieldConfig.label,
+                  value: fieldConfig.defaultValue,
+                  isDefaulted: true,
+                  source: 'default',
+                };
+                onAddRule(newRule);
               }
             }}
           >

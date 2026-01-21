@@ -187,6 +187,18 @@ export default function StrategyEditableCard({
     setEditing({ ruleIndex: index, value: currentValue });
   };
   
+  // Handle adding a new rule (for pattern-specific defaults)
+  const handleAddRule = (newRule: StrategyRule) => {
+    // This will trigger a re-render with the new rule in the array
+    // The parent component (dashboard) will see this and re-render
+    // We're modifying rules in place here for immediate feedback
+    rules.push(newRule);
+    
+    // Trigger edit mode for the new rule immediately  
+    const newIndex = rules.length - 1;
+    handleEditStart(newIndex, newRule.value);
+  };
+  
   // Bug #9: Auto-apply unsaved edit before saving strategy
   const handleStrategySave = () => {
     if (editing) {
@@ -388,6 +400,7 @@ export default function StrategyEditableCard({
                   rules={rules}
                   editingIndex={editing?.ruleIndex ?? null}
                   onEditStart={handleEditStart}
+                  onAddRule={handleAddRule}
                   readOnly={isSaved}
                 />
               )}
