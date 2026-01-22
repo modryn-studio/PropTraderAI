@@ -239,13 +239,6 @@ export async function POST(request: Request) {
       );
     }
 
-    // Generate events from canonical
-    const events = generateEventsFromCanonical(
-      canonical,
-      new Date().toISOString(),
-      `Created from ${pattern} template`
-    );
-
     // Create the strategy in database
     const { data: strategy, error: strategyError } = await supabase
       .from('strategies')

@@ -577,7 +577,7 @@ export default function ChatInterface({
     } finally {
       setIsLoading(false);
     }
-  }, [criticalQuestion, conversationId, userId, messages.length]);
+  }, [criticalQuestion, conversationId, userId, messages]);
 
   /**
    * Handle rapid flow message (generate-first approach)
@@ -756,7 +756,7 @@ export default function ChatInterface({
     } finally {
       setIsLoading(false);
     }
-  }, [conversationId, userId]);
+  }, [conversationId, userId, messages]);
 
   // ============================================================================
   // MAIN MESSAGE HANDLER (Routes between rapid flow and traditional)
@@ -1201,7 +1201,7 @@ export default function ChatInterface({
     } finally {
       setIsLoading(false);
     }
-  }, [patternConfirmationState, userId, conversationId, rapidFlowOriginalMessage]);
+  }, [patternConfirmationState, userId, conversationId, rapidFlowOriginalMessage, messages]);
   
   const handlePatternChange = useCallback(() => {
     // Show pattern selector
