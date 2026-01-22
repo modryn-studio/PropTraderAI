@@ -90,12 +90,12 @@ function PatternCard({ pattern, onSelect }: PatternCardProps) {
   
   return (
     <div 
-      className={`relative rounded-xl border p-6 transition-all duration-200 cursor-pointer hover:scale-[1.02] hover:shadow-lg hover:shadow-black/20 ${pattern.bgColor}`}
+      className={`relative border p-5 sm:p-6 transition-all duration-200 cursor-pointer hover:scale-[1.02] hover:shadow-lg hover:shadow-black/20 active:scale-[0.98] ${pattern.bgColor}`}
       onClick={onSelect}
     >
       {/* Complexity Badge */}
-      <div className="absolute top-4 right-4">
-        <span className={`text-xs px-2 py-1 rounded-full ${
+      <div className="absolute top-3 sm:top-4 right-3 sm:right-4">
+        <span className={`text-xs px-2 py-1 ${
           pattern.complexity === 'Beginner' 
             ? 'bg-emerald-500/20 text-emerald-400' 
             : 'bg-amber-500/20 text-amber-400'
@@ -106,11 +106,11 @@ function PatternCard({ pattern, onSelect }: PatternCardProps) {
 
       {/* Icon & Title */}
       <div className="flex items-center gap-3 mb-4">
-        <div className={`p-2 rounded-lg bg-white/5 ${pattern.color}`}>
+        <div className={`p-2 bg-white/5 ${pattern.color}`}>
           <Icon className="w-5 h-5" />
         </div>
         <div>
-          <h3 className="font-semibold text-white">{pattern.name}</h3>
+          <h3 className="font-semibold text-white text-base sm:text-lg">{pattern.name}</h3>
           <p className="text-xs text-zinc-500">{pattern.shortName}</p>
         </div>
       </div>
@@ -139,7 +139,7 @@ function PatternCard({ pattern, onSelect }: PatternCardProps) {
 
       {/* Select Button */}
       <button 
-        className={`w-full mt-4 py-2.5 rounded-lg font-medium transition-colors ${pattern.color} bg-white/5 hover:bg-white/10`}
+        className={`w-full mt-4 py-3 sm:py-2.5 font-medium transition-colors text-sm sm:text-base ${pattern.color} bg-white/5 hover:bg-white/10 active:bg-white/15`}
         onClick={(e) => {
           e.stopPropagation();
           onSelect();
@@ -179,10 +179,10 @@ export default function NewStrategyPage() {
     <div className="min-h-screen bg-[#0a0e14]">
       {/* Header */}
       <header className="border-b border-zinc-800/50 bg-[#0a0e14]/80 backdrop-blur-sm sticky top-0 z-10">
-        <div className="max-w-5xl mx-auto px-4 py-4 flex items-center gap-4">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-4 flex items-center gap-4">
           <Link 
             href="/dashboard" 
-            className="p-2 rounded-lg hover:bg-zinc-800/50 transition-colors"
+            className="p-2 hover:bg-zinc-800/50 transition-colors"
           >
             <ArrowLeft className="w-5 h-5 text-zinc-400" />
           </Link>
@@ -194,19 +194,19 @@ export default function NewStrategyPage() {
       </header>
 
       {/* Main Content */}
-      <main className="max-w-5xl mx-auto px-4 py-8">
+      <main className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
         {/* Section Header */}
         <div className="text-center mb-8">
-          <h2 className="text-2xl font-bold text-white mb-2">
+          <h2 className="text-xl sm:text-2xl font-bold text-white mb-2">
             Professional Strategy Library
           </h2>
-          <p className="text-zinc-400 max-w-lg mx-auto">
+          <p className="text-sm sm:text-base text-zinc-400 max-w-lg mx-auto">
             Battle-tested patterns used by funded traders. Select one and customize it to your style in under 2 minutes.
           </p>
         </div>
 
         {/* Pattern Grid */}
-        <div className="grid md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {PATTERN_TEMPLATES.map((pattern) => (
             <PatternCard
               key={pattern.id}
@@ -217,11 +217,11 @@ export default function NewStrategyPage() {
         </div>
 
         {/* Bottom Note */}
-        <div className="mt-12 text-center">
-          <p className="text-sm text-zinc-500">
+        <div className="mt-12 text-center px-4">
+          <p className="text-xs sm:text-sm text-zinc-500">
             All strategies include smart defaults based on professional trading standards.
-            <br />
-            You can customize everything after selecting a pattern.
+            <br className="hidden sm:block" />
+            <span className="block sm:inline"> You can customize everything after selecting a pattern.</span>
           </p>
         </div>
       </main>
