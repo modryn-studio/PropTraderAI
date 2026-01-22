@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { logBehavioralEventServer } from '@/lib/behavioral/logger';
 import { 
-  generateEventsFromCanonical,
   type SupportedPattern,
 } from '@/lib/strategy/eventStore';
 import { 
