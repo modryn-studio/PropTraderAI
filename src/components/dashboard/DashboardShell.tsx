@@ -192,7 +192,7 @@ export default function DashboardShell({
                 Connect Your Account
               </button>
               <p className="text-xs text-[rgba(255,255,255,0.5)]">
-                Or <Link href="/chat" className="text-[#00FFD1] underline hover:text-[#00FFD1]/80 transition-colors">describe your strategy first</Link>
+                Or <Link href="/strategies/new" className="text-[#00FFD1] underline hover:text-[#00FFD1]/80 transition-colors">create a strategy first</Link>
               </p>
             </div>
 
@@ -244,10 +244,10 @@ export default function DashboardShell({
                 {profile?.firm_name ? `Connected to ${profile.firm_name}` : 'Tradovate Connected'}
               </h3>
               <p className="text-[rgba(255,255,255,0.5)] text-sm mb-6 max-w-sm mx-auto">
-                Now describe your strategy in plain English. We&apos;ll handle the execution.
+                Choose from battle-tested patterns and customize to your style.
               </p>
-              <Link href="/chat" className="btn-primary inline-block mb-4">
-                Describe Your Strategy
+              <Link href="/strategies/new" className="btn-primary inline-block mb-4">
+                Create Your Strategy
               </Link>
               
               {/* Disconnect option */}
@@ -364,7 +364,7 @@ export default function DashboardShell({
         <div className="flex justify-around items-center h-16 max-w-[600px] mx-auto">
           {[
             { icon: Activity, label: 'Dashboard', href: '/dashboard', active: true },
-            { icon: MessageSquare, label: 'AI Chat', href: '/chat', active: false },
+            { icon: MessageSquare, label: 'Strategy', href: '/strategies/new', active: false },
             { icon: BarChart3, label: 'History', href: '/history', active: false },
             { icon: Settings, label: 'Settings', href: '/settings', active: false },
           ].map((item) => (
