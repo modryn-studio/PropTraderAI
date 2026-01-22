@@ -75,6 +75,11 @@ export const FEATURES = {
   websocket_monitoring: false,
   push_notifications: false,
   
+  // STRATEGY ACTIVATION (Issue #10 Activation API)
+  // When enabled, strategies are sent to execution server after creation
+  // Feature flag allows gradual rollout: beta users → all users
+  strategy_activation_enabled: true,  // ✅ ENABLED - Local testing active
+  
   // EXECUTION LAYER (Release 1: Strategy Validator - Weeks 1-4)
   // Controls the execution engine and Tradovate integration
   execution_engine: false,           // Master switch for execution layer

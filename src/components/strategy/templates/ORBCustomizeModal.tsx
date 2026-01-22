@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { X, ChevronDown, Loader2, Target, Info } from 'lucide-react';
 import { INSTRUMENT_DEFAULTS } from '@/lib/execution/canonical-schema';
+import { FEATURES } from '@/config/features';
 
 // ============================================================================
 // TYPES
@@ -188,6 +189,20 @@ export function ORBCustomizeModal({ isOpen, onClose, onSave }: ORBCustomizeModal
 
       if (!response.ok) {
         throw new Error(data.error || 'Failed to create strategy');
+      }
+
+      // Activate strategy on execution server (if enabled)
+      if (FEATURES.strategy_activation_enabled) {
+        try {
+          await fetch('/api/strategy/activate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ strategyId: data.strategy.id }),
+          });
+        } catch (activationError) {
+          // Don't fail save if activation fails - it will retry on server restart
+          console.warn('[ORB] Activation pending:', activationError);
+        }
       }
 
       onSave(data.strategy.id);

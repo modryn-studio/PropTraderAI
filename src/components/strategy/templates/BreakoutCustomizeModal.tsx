@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { X, ChevronDown, Loader2, Zap, Info } from 'lucide-react';
 import { INSTRUMENT_DEFAULTS } from '@/lib/execution/canonical-schema';
+import { FEATURES } from '@/config/features';
 
 // ============================================================================
 // TYPES
@@ -153,6 +154,20 @@ export function BreakoutCustomizeModal({ isOpen, onClose, onSave }: BreakoutCust
 
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'Failed to create strategy');
+
+      // Activate strategy on execution server (if enabled)
+      if (FEATURES.strategy_activation_enabled) {
+        try {
+          await fetch('/api/strategy/activate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ strategyId: data.strategy.id }),
+          });
+        } catch (activationError) {
+          console.warn('[Breakout] Activation pending:', activationError);
+        }
+      }
+
       onSave(data.strategy.id);
     } catch (err) {
       setError((err as Error).message);

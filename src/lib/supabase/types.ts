@@ -148,6 +148,10 @@ export type Database = {
           autonomy_level: 'copilot' | 'autopilot'
           created_at: string
           updated_at: string
+          is_active: boolean
+          activated_at: string | null
+          deactivated_at: string | null
+          execution_server_id: string | null
         }
         Insert: {
           id?: string
@@ -161,6 +165,10 @@ export type Database = {
           autonomy_level?: 'copilot' | 'autopilot'
           created_at?: string
           updated_at?: string
+          is_active?: boolean
+          activated_at?: string | null
+          deactivated_at?: string | null
+          execution_server_id?: string | null
         }
         Update: {
           id?: string
@@ -174,6 +182,10 @@ export type Database = {
           autonomy_level?: 'copilot' | 'autopilot'
           created_at?: string
           updated_at?: string
+          is_active?: boolean
+          activated_at?: string | null
+          deactivated_at?: string | null
+          execution_server_id?: string | null
         }
       }
       trades: {

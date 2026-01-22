@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { logBehavioralEvent } from '@/lib/behavioral/logger';
+import { logBehavioralEventServer } from '@/lib/behavioral/logger';
 import { 
   generateEventsFromCanonical,
   type SupportedPattern,
@@ -253,11 +253,7 @@ export async function POST(request: Request) {
         user_id: user.id,
         name: strategyName.trim(),
         natural_language: `Created from ${pattern} template`,
-        parsed_rules: canonical,
-        events,
-        canonical_rules: canonical,
-        format_version: 'events_v1',
-        event_version: 1,
+        parsed_rules: canonical, // Store canonical in parsed_rules for now
         status: 'draft',
         autonomy_level: 'copilot',
       })
@@ -273,7 +269,8 @@ export async function POST(request: Request) {
     }
 
     // Log behavioral event
-    await logBehavioralEvent(
+    await logBehavioralEventServer(
+      supabase,
       user.id,
       'strategy_created',
       {
