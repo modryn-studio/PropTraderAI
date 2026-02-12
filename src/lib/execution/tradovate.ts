@@ -179,8 +179,23 @@ export class TradovateClient {
         );
       }
 
-      return res.json();
+      const jsonResponse = await res.json();
+      console.log('[TradovateClient] Raw API response:', JSON.stringify(jsonResponse, null, 2));
+      
+      // Tradovate returns 200 OK even for auth failures, check for errorText
+      if (jsonResponse.errorText) {
+        throw new TradovateAPIError(
+          jsonResponse.errorText,
+          'AUTH_FAILED',
+          res.status,
+          false
+        );
+      }
+      
+      return jsonResponse;
     });
+
+    console.log('[TradovateClient] Parsed response:', response);
 
     return {
       accessToken: response.accessToken,

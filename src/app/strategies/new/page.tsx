@@ -172,6 +172,7 @@ export default function NewStrategyPage() {
 
   const handleStrategySaved = (strategyId: string) => {
     setIsModalOpen(false);
+    // Note: Strategy is now activated on Railway automatically (if feature flag enabled)
     router.push(`/dashboard?strategy=${strategyId}`);
   };
 
